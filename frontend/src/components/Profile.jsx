@@ -1,8 +1,9 @@
-import React from 'react';
-import { User, Mail, Shield, LogOut } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { User, Mail, Shield, LogOut, Settings } from 'lucide-react';
 import { auth } from '../utils/databaseAuth';
 
 const Profile = ({ user }) => {
+    const navigate = useNavigate();
     if (!user) return null;
 
     return (
@@ -49,10 +50,17 @@ const Profile = ({ user }) => {
                     </div>
                 </div>
 
-                <div className="flex items-center">
+                <div className="flex flex-col md:flex-row items-center gap-3">
+                    <Link
+                        to="/profile"
+                        className="flex items-center space-x-2 px-4 py-2 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 transition-all font-medium border border-slate-200"
+                    >
+                        <Settings className="w-4 h-4" />
+                        <span>Profile Settings</span>
+                    </Link>
                     <button
                         onClick={() => auth.signOut()}
-                        className="flex items-center space-x-2 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium"
+                        className="flex items-center space-x-2 px-4 py-2 border border-slate-200 rounded-xl text-red-500 hover:bg-red-50 transition-all font-medium"
                     >
                         <LogOut className="w-4 h-4" />
                         <span>Sign Out</span>

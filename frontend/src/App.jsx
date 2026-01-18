@@ -76,6 +76,14 @@ function App() {
               }
             />
             <Route
+              path="/edit-property/:id"
+              element={
+                <PrivateRoute>
+                  <PropertyForm />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/profile"
               element={
                 <PrivateRoute>

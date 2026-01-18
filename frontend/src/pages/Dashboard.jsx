@@ -74,7 +74,7 @@ const Dashboard = () => {
                 ) : (announcements || []).length > 0 ? (
                     <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-4"}>
                         {announcements.map((p) => (
-                            <PropertyCard key={p.id} property={p} />
+                            <PropertyCard key={p.id} property={p} showEditAction={true} />
                         ))}
                     </div>
                 ) : (

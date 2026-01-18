@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Upload, X, Plus, Info, Home, DollarSign,
     Text, List, Image as ImageIcon, Layout,
     ArrowRight, ArrowLeft, CheckCircle2
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
 
 const PropertyForm = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditMode = !!id;
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        id: crypto.randomUUID(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `prop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: '',
         description: '',
         price: '',
@@ -26,6 +28,22 @@ const PropertyForm = () => {
         images: [],
         layout_image: null
     });
+
+    useEffect(() => {
+        if (isEditMode) {
+            const fetchProperty = async () => {
+                try {
+                    const res = await api.get(`/announcements/${id}`);
+                    setFormData(res.data);
+                } catch (err) {
+                    console.error('Failed to fetch property details:', err);
+                    alert('Failed to load property details.');
+                    navigate('/dashboard');
+                }
+            };
+            fetchProperty();
+        }
+    }, [id, isEditMode, navigate]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -64,11 +82,15 @@ const PropertyForm = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/announcements', formData);
+            if (isEditMode) {
+                await api.put(`/announcements/${id}`, formData);
+            } else {
+                await api.post('/announcements', formData);
+            }
             setStep(4); // Success step
         } catch (err) {
-            console.error('Failed to create announcement:', err);
-            alert('Error creating listing. Please try again.');
+            console.error('Failed to save announcement:', err);
+            alert('Error saving listing. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -323,7 +345,7 @@ const PropertyForm = () => {
                                         disabled={loading}
                                         className="bg-primary-600 text-white px-12 py-4 rounded-2xl font-bold shadow-xl flex items-center gap-2 hover:bg-primary-700 transition-all transform hover:-translate-y-1 disabled:opacity-50"
                                     >
-                                        <span>{loading ? 'Submitting...' : 'Submit Listing'}</span>
+                                        <span>{loading ? 'Submitting...' : (isEditMode ? 'Update Listing' : 'Submit Listing')}</span>
                                         <CheckCircle2 className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -340,8 +362,8 @@ const PropertyForm = () => {
                                 <div className="bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
                                     <CheckCircle2 className="w-12 h-12 text-green-600" />
                                 </div>
-                                <h2 className="text-4xl font-black text-slate-800 mb-4">Listing Published!</h2>
-                                <p className="text-slate-500 text-lg mb-12">Your property has been successfully announced to the Mugen ecosystem.</p>
+                                <h2 className="text-4xl font-black text-slate-800 mb-4">{isEditMode ? 'Listing Updated!' : 'Listing Published!'}</h2>
+                                <p className="text-slate-500 text-lg mb-12">Your property has been successfully {isEditMode ? 'updated' : 'announced'} to the Mugen ecosystem.</p>
                                 <div className="flex flex-col md:flex-row gap-4 justify-center">
                                     <button
                                         onClick={() => navigate('/dashboard')}

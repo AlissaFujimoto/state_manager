@@ -4,7 +4,7 @@ import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
-const PropertyCard = ({ property }) => {
+const PropertyCard = ({ property, showEditAction = false }) => {
     return (
         <Motion.div
             layout
@@ -55,13 +55,24 @@ const PropertyCard = ({ property }) => {
                     </div>
                 </div>
 
-                <Link
-                    to={`/property/${property.id}`}
-                    className="mt-6 w-full flex items-center justify-center space-x-2 py-3 bg-slate-50 hover:bg-primary-50 text-slate-600 hover:text-primary-600 rounded-xl font-semibold transition-all group/btn"
-                >
-                    <span>View Details</span>
-                    <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                </Link>
+                <div className="flex gap-3 mt-6">
+                    <Link
+                        to={`/property/${property.id}`}
+                        className="flex-1 flex items-center justify-center space-x-2 py-3 bg-slate-50 hover:bg-primary-50 text-slate-600 hover:text-primary-600 rounded-xl font-semibold transition-all group/btn"
+                    >
+                        <span>View Details</span>
+                        <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                    </Link>
+                    {showEditAction && (
+                        <Link
+                            to={`/edit-property/${property.id}`}
+                            className="flex-none px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                            title="Edit Details"
+                        >
+                            <span className="font-bold text-sm">Edit</span>
+                        </Link>
+                    )}
+                </div>
             </div>
         </Motion.div>
     );

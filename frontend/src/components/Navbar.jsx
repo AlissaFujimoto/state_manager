@@ -60,6 +60,15 @@ const Navbar = () => {
                                             </div>
 
                                             <Link
+                                                to="/profile"
+                                                className="flex items-center space-x-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-primary-600 transition-colors"
+                                                onClick={() => setIsOpen(false)}
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                                <span className="font-medium">Profile Settings</span>
+                                            </Link>
+
+                                            <Link
                                                 to="/dashboard"
                                                 className="flex items-center space-x-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-primary-600 transition-colors"
                                                 onClick={() => setIsOpen(false)}
@@ -75,15 +84,6 @@ const Navbar = () => {
                                             >
                                                 <PlusCircle className="w-4 h-4" />
                                                 <span className="font-medium">List Property</span>
-                                            </Link>
-
-                                            <Link
-                                                to="/profile"
-                                                className="flex items-center space-x-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-primary-600 transition-colors"
-                                                onClick={() => setIsOpen(false)}
-                                            >
-                                                <Settings className="w-4 h-4" />
-                                                <span className="font-medium">Profile Settings</span>
                                             </Link>
 
                                             <div className="h-px bg-slate-100 my-2"></div>
@@ -132,15 +132,29 @@ const Navbar = () => {
                         <Link to="/" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Home</Link>
                         {user ? (
                             <>
-                                <Link to="/dashboard" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Dashboard</Link>
                                 <Link to="/profile" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Profile Settings</Link>
+                                <Link to="/dashboard" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Dashboard</Link>
                                 <Link to="/create-announcement" className="block text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>List Property</Link>
-                                <button
-                                    onClick={() => { auth.signOut(); setIsOpen(false); }}
-                                    className="w-full text-left text-xl font-bold text-red-500"
-                                >
-                                    Sign Out
-                                </button>
+
+                                <div className="border-t border-slate-100 pt-6 mt-6">
+                                    <div className="flex items-center space-x-3 mb-6">
+                                        <img
+                                            src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}&background=0ea5e9&color=fff`}
+                                            alt="Avatar"
+                                            className="w-10 h-10 rounded-full"
+                                        />
+                                        <div className="overflow-hidden">
+                                            <p className="text-sm font-bold text-slate-800 truncate">{user.displayName || 'User'}</p>
+                                            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => { auth.signOut(); setIsOpen(false); }}
+                                        className="w-full text-left text-xl font-bold text-red-500"
+                                    >
+                                        Sign Out
+                                    </button>
+                                </div>
                             </>
                         ) : (
                             <Link to="/auth" className="block text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>Sign In</Link>
