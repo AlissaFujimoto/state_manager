@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
 const PropertyCard = ({ property }) => {
     return (
-        <motion.div
+        <Motion.div
             layout
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -63,7 +63,7 @@ const PropertyCard = ({ property }) => {
                     <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Link>
             </div>
-        </motion.div>
+        </Motion.div>
     );
 };
 

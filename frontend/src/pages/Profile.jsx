@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, storage } from '../utils/databaseAuth';
+import { auth } from '../utils/databaseAuth';
 import { updateProfile, updatePassword } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User, Lock, Camera, Save, AlertCircle, CheckCircle, Upload } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import ImageEditor from '../components/ImageEditor';
 
 const Profile = () => {
@@ -83,15 +82,37 @@ const Profile = () => {
         setMessage({ type: '', text: '' });
 
         try {
-            const storageRef = ref(storage, `users/${user.uid}/profile_${Date.now()}.jpg`);
-            await uploadBytes(storageRef, blob);
-            const downloadURL = await getDownloadURL(storageRef);
+            if (!user) throw new Error('User not authenticated');
+
+            const token = await user.getIdToken();
+            const formData = new FormData();
+            formData.append('file', blob, 'profile.jpg');
+
+            const response = await fetch('/api/user/profile-image', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Upload failed');
+            }
+
+            const data = await response.json();
+            const downloadURL = data.url;
 
             setPhotoURL(downloadURL);
-            setMessage({ type: 'success', text: 'Image uploaded! Click "Save Changes" to finalize.' });
+
+            // Update profile with the new URL immediately
+            await updateProfile(user, { photoURL: downloadURL });
+
+            setMessage({ type: 'success', text: 'Image uploaded successfully!' });
         } catch (error) {
             console.error(error);
-            setMessage({ type: 'error', text: 'Failed to upload image. Please try again.' });
+            setMessage({ type: 'error', text: `Failed to upload image: ${error.message}` });
         } finally {
             setIsUploading(false);
         }
@@ -105,7 +126,7 @@ const Profile = () => {
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="grid gap-8"
@@ -116,7 +137,7 @@ const Profile = () => {
                 </div>
 
                 {message.text && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         className={`p-4 rounded-xl flex items-center space-x-3 ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
@@ -124,7 +145,7 @@ const Profile = () => {
                     >
                         {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                         <span className="font-medium">{message.text}</span>
-                    </motion.div>
+                    </Motion.div>
                 )}
 
                 <div className="grid md:grid-cols-2 gap-8">
@@ -243,7 +264,7 @@ const Profile = () => {
                         </form>
                     </div>
                 </div>
-            </motion.div>
+            </Motion.div>
 
             {imageSrc && (
                 <ImageEditor

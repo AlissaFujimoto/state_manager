@@ -1,15 +1,14 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings } from 'lucide-react';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
 const Navbar = () => {
     const [user] = useAuthState(auth);
     const [isOpen, setIsOpen] = useState(false);
-    const navigate = useNavigate();
+
 
     return (
         <nav className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
@@ -41,7 +40,7 @@ const Navbar = () => {
 
                                 <AnimatePresence>
                                     {isOpen && (
-                                        <motion.div
+                                        <Motion.div
                                             initial={{ opacity: 0, y: 8, scale: 0.98 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -99,7 +98,7 @@ const Navbar = () => {
                                                 <LogOut className="w-4 h-4" />
                                                 <span className="font-medium">Sign Out</span>
                                             </button>
-                                        </motion.div>
+                                        </Motion.div>
                                     )}
                                 </AnimatePresence>
                             </div>
@@ -124,7 +123,7 @@ const Navbar = () => {
             {/* Mobile Menu */}
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
@@ -146,7 +145,7 @@ const Navbar = () => {
                         ) : (
                             <Link to="/auth" className="block text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>Sign In</Link>
                         )}
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
         </nav>

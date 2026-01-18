@@ -4,7 +4,6 @@ import { auth } from '../utils/databaseAuth';
 import Profile from '../components/Profile';
 import { PropertyCard } from './Home';
 import { Plus, LayoutGrid, List as ListIcon, Loader } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../api';
 

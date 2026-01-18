@@ -4,7 +4,7 @@ import {
     Text, List, Image as ImageIcon, Layout,
     ArrowRight, ArrowLeft, CheckCircle2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -86,7 +86,7 @@ const PropertyForm = () => {
                         </span>
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <motion.div
+                        <Motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${(step / 3) * 100}%` }}
                             className="h-full bg-primary-600"
@@ -95,14 +95,14 @@ const PropertyForm = () => {
                 </div>
             )}
 
-            <motion.div
+            <Motion.div
                 layout
                 className="glass-card rounded-3xl p-8 md:p-12 shadow-2xl"
             >
                 <form onSubmit={handleSubmit}>
                     <AnimatePresence mode="wait">
                         {step === 1 && (
-                            <motion.div
+                            <Motion.div
                                 key="step1"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -179,11 +179,11 @@ const PropertyForm = () => {
                                         <ArrowRight className="w-5 h-5" />
                                     </button>
                                 </div>
-                            </motion.div>
+                            </Motion.div>
                         )}
 
                         {step === 2 && (
-                            <motion.div
+                            <Motion.div
                                 key="step2"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -246,11 +246,11 @@ const PropertyForm = () => {
                                         <ArrowRight className="w-5 h-5" />
                                     </button>
                                 </div>
-                            </motion.div>
+                            </Motion.div>
                         )}
 
                         {step === 3 && (
-                            <motion.div
+                            <Motion.div
                                 key="step3"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -327,11 +327,11 @@ const PropertyForm = () => {
                                         <CheckCircle2 className="w-5 h-5" />
                                     </button>
                                 </div>
-                            </motion.div>
+                            </Motion.div>
                         )}
 
                         {step === 4 && (
-                            <motion.div
+                            <Motion.div
                                 key="success"
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -356,11 +356,11 @@ const PropertyForm = () => {
                                         View Homepage
                                     </button>
                                 </div>
-                            </motion.div>
+                            </Motion.div>
                         )}
                     </AnimatePresence>
                 </form>
-            </motion.div>
+            </Motion.div>
         </div>
     );
 };

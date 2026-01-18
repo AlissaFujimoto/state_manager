@@ -1,7 +1,6 @@
 import React from 'react';
 import { User, Mail, Shield, LogOut } from 'lucide-react';
 import { auth } from '../utils/databaseAuth';
-import { motion } from 'framer-motion';
 
 const Profile = ({ user }) => {
     if (!user) return null;

@@ -5,7 +5,7 @@ import {
     MapPin, Share2, Heart, Calendar, ArrowLeft,
     CheckCircle2, Info, Building2, Layout
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 
 const PropertyDetails = () => {
@@ -49,7 +49,7 @@ const PropertyDetails = () => {
                     {/* Image Carousel */}
                     <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl group">
                         <AnimatePresence mode="wait">
-                            <motion.img
+                            <Motion.img
                                 key={activeImage}
                                 src={property.images?.[activeImage]}
                                 initial={{ opacity: 0 }}

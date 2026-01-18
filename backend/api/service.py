@@ -167,6 +167,65 @@ def get_user_announcements() -> Tuple[flask.Response, int]:
     announcements = manager.get_user_announcements(user["uid"])
     return jsonify(announcements), 200
 
+from firebase_admin import auth, storage
+
+# ... existing code ...
+
+@app.route("/api/user/profile-image", methods=["POST"])
+def upload_profile_image() -> Tuple[flask.Response, int]:
+    """Upload profile image via server-side proxy to bypass CORS."""
+    user = verify_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        # Create a bucket reference
+        bucket = storage.bucket()
+        
+        # Create a blob path: users/{uid}/profile_{timestamp}.jpg
+        # We can use the filename provided or generate one
+        import time
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+        
+        if ext not in allowed_extensions:
+             return jsonify({"error": "Invalid file type"}), 400
+
+        blob_path = f"users/{user['uid']}/profile_{int(time.time())}.{ext}"
+        blob = bucket.blob(blob_path)
+        
+        # Upload the file
+        blob.upload_from_file(file.stream, content_type=file.content_type)
+        
+        # Make it public (optional, or use signed URL)
+        # standardized way for Firebase Storage public URLs
+        # https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media
+        
+        # NOTE: enabling public access might require bucket config changes. 
+        # Alternatively, we can generate a signed URL:
+        # url = blob.generate_signed_url(expiration=3600)
+        
+        # For this user profile use case, usually we want a long-lived public URL if the bucket allows public reads,
+        # OR we use the download token method similar to client SDK.
+        
+        # Let's try to generate a persistent public access via make_public() if ACLs allow,
+        # Otherwise fall back to a construction that mimics the client SDK if the token is properly set.
+        
+        # Ideally, we just want the standard public URL:
+        blob.make_public()
+        return jsonify({"url": blob.public_url}), 200
+
+    except Exception as e:
+        print(f"Upload failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/user/profile", methods=["GET"])
 def get_user_profile() -> Tuple[flask.Response, int]:
     """Get the profile of the logged-in user."""

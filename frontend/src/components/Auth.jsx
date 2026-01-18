@@ -3,7 +3,7 @@ import { auth } from '../utils/databaseAuth';
 import { loginWithGoogle } from '../utils/googleAuth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { LogIn, Mail, Lock, User, Chrome, Apple } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
@@ -61,7 +61,7 @@ const Auth = () => {
 
     return (
         <div className="min-h-[80vh] flex items-center justify-center px-4">
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card w-full max-w-md p-8 rounded-2xl"
@@ -146,22 +146,22 @@ const Auth = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <motion.button
+                    <Motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={handleGoogleLogin}
                         className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                     >
                         <Chrome className="w-5 h-5 text-red-500" />
                         <span className="font-medium">Google</span>
-                    </motion.button>
-                    <motion.button
+                    </Motion.button>
+                    <Motion.button
                         whileTap={{ scale: 0.95 }}
                         className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                         onClick={() => alert("Apple Login not implemented in backend")}
                     >
                         <Apple className="w-5 h-5 text-slate-900" />
                         <span className="font-medium">Apple</span>
-                    </motion.button>
+                    </Motion.button>
                 </div>
 
                 <p className="mt-8 text-center text-slate-600">
@@ -173,7 +173,7 @@ const Auth = () => {
                         {isLogin ? 'Sign up' : 'Sign in'}
                     </button>
                 </p>
-            </motion.div>
+            </Motion.div>
         </div>
     );
 };
