@@ -1,0 +1,20 @@
+### Python ###
+__pycache__
+.venv
+
+### Testing & Coverage ###
+.coverage
+.coverage-reports/
+.pytest_cache
+
+### IDEs ###
+.vscode
+
+### Local Tools ###
+tools/style_checker.py
+tools/style_cleaner.py
+
+### Environment Variables ###
+.env
+.env.local
+
