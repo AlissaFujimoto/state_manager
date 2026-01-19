@@ -2,11 +2,59 @@ import React, { useState, useEffect } from 'react';
 import {
     Upload, X, Plus, Info, Home, DollarSign,
     Text, List, Image as ImageIcon, Layout,
-    ArrowRight, ArrowLeft, CheckCircle2
+    ArrowRight, ArrowLeft, CheckCircle2, MapPin
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents, Circle } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icon in leaflet
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
+
+const LocationPicker = ({ location, setFormData }) => {
+    useMapEvents({
+        click(e) {
+            const { lat, lng } = e.latlng;
+            setFormData(prev => ({
+                ...prev,
+                location: { lat, lng }
+                // Note: Address will be picked up by the useEffect in PropertyForm
+            }));
+        },
+    });
+    return location ? (
+        <>
+            <Marker position={[location.lat, location.lng]} />
+            <Circle
+                center={[location.lat, location.lng]}
+                radius={1000}
+                pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+            />
+        </>
+    ) : null;
+};
+
+const RecenterMap = ({ center }) => {
+    const map = useMapEvents({});
+    useEffect(() => {
+        if (center) {
+            map.setView([center.lat, center.lng], 13);
+        }
+    }, [center, map]);
+    return null;
+};
 
 const PropertyForm = () => {
     const navigate = useNavigate();
@@ -14,6 +62,7 @@ const PropertyForm = () => {
     const isEditMode = !!id;
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [isResolvingAddress, setIsResolvingAddress] = useState(false);
     const [formData, setFormData] = useState({
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `prop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: '',
@@ -22,19 +71,41 @@ const PropertyForm = () => {
         property_type: 'house',
         characteristics: {
             bedrooms: '',
+            suites: '',
+            rooms: '',
             bathrooms: '',
+            garages: '',
             area: ''
         },
+        location: {
+            lat: -23.5505,
+            lng: -46.6333
+        },
+        address: '',
         images: [],
         layout_image: null
     });
+
 
     useEffect(() => {
         if (isEditMode) {
             const fetchProperty = async () => {
                 try {
-                    const res = await api.get(`/announcements/${id}`);
-                    setFormData(res.data);
+                    const res = await api.get(`/announcements/${id}?coords=true`);
+                    const propertyData = res.data;
+
+                    // Safety checks for missing fields in old properties
+                    if (!propertyData.location) {
+                        propertyData.location = { lat: -23.5505, lng: -46.6333 };
+                    }
+                    if (!propertyData.characteristics) {
+                        propertyData.characteristics = {
+                            bedrooms: '', suites: '', rooms: '',
+                            bathrooms: '', garages: '', area: ''
+                        };
+                    }
+
+                    setFormData(propertyData);
                 } catch (err) {
                     console.error('Failed to fetch property details:', err);
                     alert('Failed to load property details.');
@@ -44,6 +115,38 @@ const PropertyForm = () => {
             fetchProperty();
         }
     }, [id, isEditMode, navigate]);
+
+    const fetchAddress = async (lat, lng) => {
+        console.log(`Geocoding started for: ${lat}, ${lng}`);
+        setIsResolvingAddress(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await response.json();
+            if (data && data.address) {
+                const { suburb, neighbourhood, city, town, village, state, country } = data.address;
+                const region = suburb || neighbourhood || village || '';
+                const cityPart = city || town || '';
+                const locationParts = [region, cityPart, state, country].filter(Boolean);
+                const fullAddress = locationParts.join(', ');
+                console.log(`Address resolved: ${fullAddress}`);
+                setFormData(prev => ({
+                    ...prev,
+                    address: fullAddress
+                }));
+            }
+        } catch (error) {
+            console.error('Geocoding failed:', error);
+        } finally {
+            setIsResolvingAddress(false);
+        }
+    };
+
+    // Automatic reverse geocoding if address is missing but location exists
+    useEffect(() => {
+        if (formData.location && (!formData.address || formData.address === '')) {
+            fetchAddress(formData.location.lat, formData.location.lng);
+        }
+    }, [formData.location.lat, formData.location.lng]); // Only trigger on coordinate changes
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -80,8 +183,14 @@ const PropertyForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('Submission started. current address:', formData.address);
+        if (isResolvingAddress) {
+            console.warn('Submission blocked: Resolution in progress.');
+            return;
+        }
         setLoading(true);
         try {
+            console.log('Sending data to backend:', formData);
             if (isEditMode) {
                 await api.put(`/announcements/${id}`, formData);
             } else {
@@ -171,12 +280,14 @@ const PropertyForm = () => {
                                             name="price"
                                             value={formData.price}
                                             onChange={handleInputChange}
+                                            min="0"
                                             placeholder="500,000"
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none"
                                             required
                                         />
                                     </div>
                                 </div>
+
 
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
@@ -217,7 +328,7 @@ const PropertyForm = () => {
                                     <p className="text-slate-500 mt-2">Specify the technical specs of the property.</p>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Bedrooms</label>
                                         <input
@@ -225,6 +336,29 @@ const PropertyForm = () => {
                                             name="characteristics.bedrooms"
                                             value={formData.characteristics.bedrooms}
                                             onChange={handleInputChange}
+                                            min="0"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Suites</label>
+                                        <input
+                                            type="number"
+                                            name="characteristics.suites"
+                                            value={formData.characteristics.suites}
+                                            onChange={handleInputChange}
+                                            min="0"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Rooms</label>
+                                        <input
+                                            type="number"
+                                            name="characteristics.rooms"
+                                            value={formData.characteristics.rooms}
+                                            onChange={handleInputChange}
+                                            min="0"
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                                         />
                                     </div>
@@ -235,6 +369,18 @@ const PropertyForm = () => {
                                             name="characteristics.bathrooms"
                                             value={formData.characteristics.bathrooms}
                                             onChange={handleInputChange}
+                                            min="0"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Garages</label>
+                                        <input
+                                            type="number"
+                                            name="characteristics.garages"
+                                            value={formData.characteristics.garages}
+                                            onChange={handleInputChange}
+                                            min="0"
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                                         />
                                     </div>
@@ -245,6 +391,7 @@ const PropertyForm = () => {
                                             name="characteristics.area"
                                             value={formData.characteristics.area}
                                             onChange={handleInputChange}
+                                            min="0"
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                                         />
                                     </div>
@@ -331,6 +478,30 @@ const PropertyForm = () => {
                                     )}
                                 </div>
 
+                                {/* Map Localization */}
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-primary-600" />
+                                        <span>Property Location (1km visibility circle)</span>
+                                    </label>
+                                    <div className="h-72 rounded-2xl overflow-hidden border border-slate-200 shadow-inner z-0">
+                                        <MapContainer
+                                            center={[formData.location.lat, formData.location.lng]}
+                                            zoom={13}
+                                            scrollWheelZoom={false}
+                                            style={{ height: '100%', width: '100%' }}
+                                        >
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <LocationPicker location={formData.location} setFormData={setFormData} />
+                                            <RecenterMap center={formData.location} />
+                                        </MapContainer>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2">Click on the map to set the property location. A 1km radius will be displayed.</p>
+                                </div>
+
                                 <div className="flex justify-between mt-12">
                                     <button
                                         type="button"
@@ -342,10 +513,14 @@ const PropertyForm = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={loading}
+                                        disabled={loading || isResolvingAddress}
                                         className="bg-primary-600 text-white px-12 py-4 rounded-2xl font-bold shadow-xl flex items-center gap-2 hover:bg-primary-700 transition-all transform hover:-translate-y-1 disabled:opacity-50"
                                     >
-                                        <span>{loading ? 'Submitting...' : (isEditMode ? 'Update Listing' : 'Submit Listing')}</span>
+                                        <span>
+                                            {loading ? 'Submitting...' :
+                                                isResolvingAddress ? 'Searching location...' :
+                                                    (isEditMode ? 'Update Listing' : 'Submit Listing')}
+                                        </span>
                                         <CheckCircle2 className="w-5 h-5" />
                                     </button>
                                 </div>

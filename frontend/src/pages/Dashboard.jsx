@@ -3,7 +3,8 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import Profile from '../components/Profile';
 import { PropertyCard } from './Home';
-import { Plus, LayoutGrid, List as ListIcon, Loader } from 'lucide-react';
+import { Plus, LayoutGrid, List as ListIcon, Loader, Trash2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
@@ -12,6 +13,9 @@ const Dashboard = () => {
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('grid'); // grid or list
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [propertyToDelete, setPropertyToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -28,6 +32,27 @@ const Dashboard = () => {
             fetchUserAnnouncements();
         }
     }, [user]);
+
+    const handleDeleteClick = (id) => {
+        setPropertyToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!propertyToDelete) return;
+        setIsDeleting(true);
+        try {
+            await api.delete(`/announcements/${propertyToDelete}`);
+            setAnnouncements(announcements.filter(p => p.id !== propertyToDelete));
+            setIsDeleteModalOpen(false);
+            setPropertyToDelete(null);
+        } catch (err) {
+            console.error('Failed to delete announcement:', err);
+            alert('Error deleting listing. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     if (!user) return null;
 
@@ -74,7 +99,12 @@ const Dashboard = () => {
                 ) : (announcements || []).length > 0 ? (
                     <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-4"}>
                         {announcements.map((p) => (
-                            <PropertyCard key={p.id} property={p} showEditAction={true} />
+                            <PropertyCard
+                                key={p.id}
+                                property={p}
+                                showEditAction={true}
+                                onDelete={handleDeleteClick}
+                            />
                         ))}
                     </div>
                 ) : (
@@ -93,6 +123,55 @@ const Dashboard = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {isDeleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl overflow-hidden"
+                        >
+                            <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+                                <Trash2 className="w-8 h-8 text-red-600" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-800 mb-2">Delete listing?</h3>
+                            <p className="text-slate-500 mb-8">
+                                Are you sure you want to delete this listing? This action cannot be undone and the property will be removed from the ecosystem.
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition-all disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteConfirm}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold shadow-lg shadow-red-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {isDeleting ? (
+                                        <Loader className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <span>Confirm Delete</span>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

@@ -3,8 +3,23 @@ import { useParams, Link } from 'react-router-dom';
 import {
     ChevronLeft, ChevronRight, Bed, Bath, Square,
     MapPin, Share2, Heart, Calendar, ArrowLeft,
-    CheckCircle2, Info, Building2, Layout
+    CheckCircle2, Info, Building2, Layout, Car, DoorOpen, Bath as BathIcon
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Circle } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icon in leaflet
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 
@@ -97,12 +112,16 @@ const PropertyDetails = () => {
                                 <span className="px-3 py-1 bg-primary-50 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider border border-primary-100 italic">
                                     Lux Premium
                                 </span>
-                                <span className="text-slate-400 font-medium">• 3 days ago</span>
+                                <span className="text-slate-400 font-medium whitespace-nowrap">
+                                    • {property.created_at ? new Date(property.created_at).toLocaleDateString() : 'Recently'}
+                                </span>
                             </div>
                             <h1 className="text-4xl font-extrabold text-slate-900">{property.title}</h1>
                             <div className="flex items-center text-slate-500 mt-3">
                                 <MapPin className="w-5 h-5 mr-2 text-primary-500" />
-                                {property.address || 'Address not available'}
+                                <span className="font-medium">
+                                    {property.address || (property.location ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}` : 'Location not specified')}
+                                </span>
                             </div>
                         </div>
                         <div className="text-right">
@@ -114,41 +133,59 @@ const PropertyDetails = () => {
                     </div>
 
                     {/* Characteristics Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="glass-card p-4 rounded-2xl flex items-center space-x-3">
-                            <div className="bg-primary-50 p-2 rounded-xl text-primary-600">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <div className="glass-card p-5 rounded-2xl flex items-center space-x-4">
+                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
                                 <Bed className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-xs text-slate-400 font-bold">BEDROOMS</p>
-                                <p className="text-lg font-bold text-slate-800">{property.characteristics?.bedrooms || 0}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Bedrooms</p>
+                                <p className="text-xl font-bold text-slate-800">{property.characteristics?.bedrooms || 0}</p>
                             </div>
                         </div>
-                        <div className="glass-card p-4 rounded-2xl flex items-center space-x-3">
-                            <div className="bg-primary-50 p-2 rounded-xl text-primary-600">
-                                <Bath className="w-6 h-6" />
+                        <div className="glass-card p-5 rounded-2xl flex items-center space-x-4">
+                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
+                                <DoorOpen className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-xs text-slate-400 font-bold">BATHS</p>
-                                <p className="text-lg font-bold text-slate-800">{property.characteristics?.bathrooms || 0}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Suites</p>
+                                <p className="text-xl font-bold text-slate-800">{property.suites || 0}</p>
                             </div>
                         </div>
-                        <div className="glass-card p-4 rounded-2xl flex items-center space-x-3">
-                            <div className="bg-primary-50 p-2 rounded-xl text-primary-600">
+                        <div className="glass-card p-5 rounded-2xl flex items-center space-x-4">
+                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
+                                <Layout className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Rooms</p>
+                                <p className="text-xl font-bold text-slate-800">{property.rooms || 0}</p>
+                            </div>
+                        </div>
+                        <div className="glass-card p-5 rounded-2xl flex items-center space-x-4">
+                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
+                                <BathIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Baths</p>
+                                <p className="text-xl font-bold text-slate-800">{property.bathrooms || 0}</p>
+                            </div>
+                        </div>
+                        <div className="glass-card p-5 rounded-2xl flex items-center space-x-4">
+                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
+                                <Car className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Garages</p>
+                                <p className="text-xl font-bold text-slate-800">{property.garages || 0}</p>
+                            </div>
+                        </div>
+                        <div className="glass-card p-5 rounded-2xl flex items-center space-x-4">
+                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
                                 <Square className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-xs text-slate-400 font-bold">AREA</p>
-                                <p className="text-lg font-bold text-slate-800">{property.characteristics?.area || 0}m²</p>
-                            </div>
-                        </div>
-                        <div className="glass-card p-4 rounded-2xl flex items-center space-x-3">
-                            <div className="bg-primary-50 p-2 rounded-xl text-primary-600">
-                                <Building2 className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-400 font-bold">BUILT</p>
-                                <p className="text-lg font-bold text-slate-800">{property.characteristics?.yearBuilt || 'N/A'}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Area</p>
+                                <p className="text-xl font-bold text-slate-800">{property.area || 0}m²</p>
                             </div>
                         </div>
                     </div>
@@ -190,6 +227,36 @@ const PropertyDetails = () => {
                                     alt="Building Layout"
                                     className="w-full h-auto rounded-2xl"
                                 />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Property Location */}
+                    {property.location && (
+                        <div>
+                            <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
+                                <MapPin className="w-7 h-7 mr-3 text-primary-600" />
+                                Property Location
+                            </h3>
+                            <p className="text-slate-500 mb-6 text-sm">Approximate location within a 1km radius.</p>
+                            <div className="h-96 rounded-3xl overflow-hidden border border-slate-200 shadow-2xl z-0">
+                                <MapContainer
+                                    center={[property.location.lat, property.location.lng]}
+                                    zoom={14}
+                                    scrollWheelZoom={false}
+                                    style={{ height: '100%', width: '100%' }}
+                                >
+                                    <TileLayer
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    />
+                                    <Marker position={[property.location.lat, property.location.lng]} />
+                                    <Circle
+                                        center={[property.location.lat, property.location.lng]}
+                                        radius={1000}
+                                        pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+                                    />
+                                </MapContainer>
                             </div>
                         </div>
                     )}

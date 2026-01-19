@@ -100,7 +100,10 @@ def get_announcement(property_id: str) -> Tuple[flask.Response, int]:
     announcement = manager.get_announcement(property_id)
     if not announcement:
         return jsonify({"error": "Announcement not found"}), 404
-    return jsonify(announcement.to_dict()), 200
+    
+    # Only include location (coordinates) if explicitly requested (e.g., for editing)
+    include_coords = request.args.get("coords", "false").lower() == "true"
+    return jsonify(announcement.to_dict(include_location=include_coords)), 200
 
 @app.route("/api/announcements", methods=["POST"])
 def create_announcement() -> Tuple[flask.Response, int]:
@@ -110,14 +113,22 @@ def create_announcement() -> Tuple[flask.Response, int]:
         return jsonify({"error": "Unauthorized"}), 401
     
     data = request.json
+    print(f"[DEBUG_SERVICE] Received payload keys: {list(data.keys()) if data else 'None'}")
+    print(f"[DEBUG_SERVICE] Address in payload: {data.get('address') if data else 'None'}")
     if not data:
         return jsonify({"error": "Missing data"}), 400
     
     data["owner_id"] = user["uid"]
-    property_obj = Property.from_dict(data)
-    property_id = manager.create_announcement(property_obj)
     
-    return jsonify({"id": property_id, "status": "created"}), 201
+    try:
+        property_obj = Property.from_dict(data)
+        property_id = manager.create_announcement(property_obj)
+        return jsonify({"id": property_id, "status": "created"}), 201
+    except Exception as e:
+        print(f"[ERROR_SERVICE] Failed to create property: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/announcements/<property_id>", methods=["PUT"])
 def update_announcement(property_id: str) -> Tuple[flask.Response, int]:

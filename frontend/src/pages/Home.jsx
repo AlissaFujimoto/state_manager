@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, ChevronRight } from 'lucide-react';
+import { Search, Filter, MapPin, ChevronRight, Trash2, Edit, Calendar } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
-const PropertyCard = ({ property, showEditAction = false }) => {
+const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
     return (
         <Motion.div
             layout
@@ -36,20 +36,46 @@ const PropertyCard = ({ property, showEditAction = false }) => {
                 <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors">
                     {property.title}
                 </h3>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 mt-1.5">
+                    <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                        <span className="text-xs font-medium line-clamp-1">
+                            {property.address || (property.location ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}` : 'Location not specified')}
+                        </span>
+                    </div>
+                    {property.created_at && (
+                        <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-xs font-medium">{new Date(property.created_at).toLocaleDateString()}</span>
+                        </div>
+                    )}
+                </div>
                 <p className="text-slate-500 text-sm mt-2 line-clamp-2">
                     {property.description}
                 </p>
 
-                <div className="grid grid-cols-3 gap-4 mt-6 py-4 border-y border-slate-100">
+                <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
                     <div className="flex flex-col items-center">
                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Beds</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.bedrooms || 0}</span>
                     </div>
                     <div className="flex flex-col items-center border-x border-slate-100">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Suites</span>
+                        <span className="text-slate-700 font-semibold">{property.characteristics?.suites || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Rooms</span>
+                        <span className="text-slate-700 font-semibold">{property.characteristics?.rooms || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Baths</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.bathrooms || 0}</span>
                     </div>
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center pt-2 mt-2 border-x border-t border-slate-50">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Grgs</span>
+                        <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Area</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.area || 0}m²</span>
                     </div>
@@ -64,13 +90,22 @@ const PropertyCard = ({ property, showEditAction = false }) => {
                         <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                     </Link>
                     {showEditAction && (
-                        <Link
-                            to={`/edit-property/${property.id}`}
-                            className="flex-none px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
-                            title="Edit Details"
-                        >
-                            <span className="font-bold text-sm">Edit</span>
-                        </Link>
+                        <div className="flex gap-2">
+                            <Link
+                                to={`/edit-property/${property.id}`}
+                                className="flex-none px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                                title="Edit Details"
+                            >
+                                <Edit className="w-4 h-4" />
+                            </Link>
+                            <button
+                                onClick={() => onDelete && onDelete(property.id)}
+                                className="flex-none px-4 py-2 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all"
+                                title="Delete Listing"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
