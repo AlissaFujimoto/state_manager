@@ -64,6 +64,9 @@ const PropertyForm = () => {
     const [loading, setLoading] = useState(false);
     const [isResolvingAddress, setIsResolvingAddress] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [showErrors, setShowErrors] = useState(false);
+    const [invalidatedFields, setInvalidatedFields] = useState(new Set());
+    const [isShaking, setIsShaking] = useState(false);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -186,20 +189,71 @@ const PropertyForm = () => {
         setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
     };
 
-    const isFieldInvalid = (value) => {
+    const isFieldInvalidValue = (value) => {
         const num = parseFloat(value);
         return !isNaN(num) && num < 0;
     };
 
+    const isFieldMissing = (name) => {
+        if (name === 'title' || name === 'description' || name === 'price') {
+            return !formData[name] && formData[name] !== 0;
+        }
+        return false;
+    };
+
+    const isFieldValid = (name) => {
+        if (name.includes('.')) {
+            const [parent, child] = name.split('.');
+            const val = formData[parent][child];
+            if (val === '') return true; // Optional fields are valid if empty
+            return !isFieldInvalidValue(val);
+        }
+        if (isFieldMissing(name)) return false;
+        if (name === 'price') return !isFieldInvalidValue(formData.price) && formData.price !== '';
+        return true;
+    };
+
+    const getFieldStatus = (name, forceShow = false) => {
+        let val;
+        if (name.includes('.')) {
+            const [parent, child] = name.split('.');
+            val = formData[parent][child];
+        } else {
+            val = formData[name];
+        }
+
+        const isMissing = isFieldMissing(name);
+        const isInvalidValue = isFieldInvalidValue(val);
+
+        // Immediate feedback for invalid values (negatives)
+        if (isInvalidValue) return 'error';
+
+        // Feedback for missing fields only after submit attempt
+        if (showErrors || forceShow) {
+            if (isMissing) return 'warning';
+        }
+
+        return 'neutral';
+    };
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+
+
     const getValidationErrors = () => {
         const errors = [];
-        if (isFieldInvalid(formData.price)) errors.push('Price cannot be negative');
-        if (isFieldInvalid(formData.characteristics.bedrooms)) errors.push('Bedrooms cannot be negative');
-        if (isFieldInvalid(formData.characteristics.suites)) errors.push('Suites cannot be negative');
-        if (isFieldInvalid(formData.characteristics.rooms)) errors.push('Rooms cannot be negative');
-        if (isFieldInvalid(formData.characteristics.bathrooms)) errors.push('Bathrooms cannot be negative');
-        if (isFieldInvalid(formData.characteristics.garages)) errors.push('Garages cannot be negative');
-        if (isFieldInvalid(formData.characteristics.area)) errors.push('Area cannot be negative');
+        if (isFieldMissing('title')) errors.push('Title is required');
+        if (isFieldMissing('description')) errors.push('Description is required');
+        if (isFieldMissing('price')) errors.push('Price is required');
+        if (isFieldInvalidValue(formData.price)) errors.push('Price cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.bedrooms)) errors.push('Bedrooms cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.suites)) errors.push('Suites cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.rooms)) errors.push('Rooms cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.bathrooms)) errors.push('Bathrooms cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.garages)) errors.push('Garages cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.area)) errors.push('Area cannot be negative');
         return errors;
     };
 
@@ -223,12 +277,78 @@ const PropertyForm = () => {
     const nextStep = () => {
         if (isStepValid(step)) {
             setStep(prev => prev + 1);
+            setShowErrors(false);
+        } else {
+            setShowErrors(true);
+            const invalidFieldsInStep = [];
+            if (step === 1) {
+                if (isFieldMissing('title')) invalidFieldsInStep.push('title');
+                if (isFieldMissing('description')) invalidFieldsInStep.push('description');
+                if (isFieldMissing('price') || isFieldInvalidValue(formData.price)) invalidFieldsInStep.push('price');
+            }
+            if (step === 2) {
+                const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area'];
+                charFields.forEach(f => {
+                    const val = formData.characteristics[f];
+                    if (isFieldInvalidValue(val)) {
+                        invalidFieldsInStep.push(`characteristics.${f}`);
+                    }
+                });
+            }
+            if (invalidFieldsInStep.length > 0) {
+                setInvalidatedFields(prev => {
+                    const next = new Set(prev);
+                    invalidFieldsInStep.forEach(f => next.add(f));
+                    return next;
+                });
+            }
+            scrollToTop();
         }
     };
     const prevStep = () => setStep(prev => prev - 1);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const errors = getValidationErrors();
+        const hasErrors = errors.length > 0;
+        const step1Valid = isStepValid(1);
+        const step2Valid = isStepValid(2);
+
+        if (!step1Valid || !step2Valid || hasErrors) {
+            setShowErrors(true);
+            setIsShaking(true);
+            setTimeout(() => setIsShaking(false), 500);
+
+            const invalidFields = [];
+
+            // Track Step 1
+            if (isFieldMissing('title')) invalidFields.push('title');
+            if (isFieldMissing('description')) invalidFields.push('description');
+            if (isFieldMissing('price') || isFieldInvalidValue(formData.price)) invalidFields.push('price');
+
+            // Track Step 2
+            const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area'];
+            charFields.forEach(f => {
+                const val = formData.characteristics[f];
+                if (isFieldInvalidValue(val)) {
+                    invalidFields.push(`characteristics.${f}`);
+                }
+            });
+
+            if (invalidFields.length > 0) {
+                setInvalidatedFields(prev => {
+                    const next = new Set(prev);
+                    invalidFields.forEach(f => next.add(f));
+                    return next;
+                });
+            }
+
+            console.log('Validation failed', { errors, invalidFields });
+            scrollToTop();
+            return;
+        }
+
         console.log('Submission started. current address:', formData.address);
         if (isResolvingAddress) {
             console.warn('Submission blocked: Resolution in progress.');
@@ -277,6 +397,17 @@ const PropertyForm = () => {
                 className={`glass-card rounded-3xl p-8 md:p-12 shadow-2xl ${!isMobile && step < 4 ? 'max-w-none' : ''}`}
             >
                 <form onSubmit={handleSubmit}>
+                    {showErrors && getValidationErrors().length > 0 && (
+                        <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-fade-in">
+                            <Info className="w-5 h-5 text-red-500 mt-0.5" />
+                            <div>
+                                <h3 className="text-sm font-bold text-red-800">Please correct the following:</h3>
+                                <ul className="text-sm text-red-600 list-disc list-inside mt-1">
+                                    {getValidationErrors().map((err, i) => <li key={i}>{err}</li>)}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
                     <AnimatePresence mode="wait">
                         {step === 4 ? (
                             <Motion.div
@@ -322,27 +453,26 @@ const PropertyForm = () => {
                                             <p className="text-slate-500 mt-2">Let's start with the core details of your property.</p>
                                         </div>
 
-                                        <div>
+                                        <div className="field-container">
                                             <label className="block text-sm font-bold text-slate-700 mb-2">Announcement Title</label>
                                             <input
                                                 type="text"
+                                                id="title"
                                                 name="title"
                                                 value={formData.title}
                                                 onChange={handleInputChange}
-                                                placeholder="e.g. Modern Villa with Sunset View"
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                                required
+
+                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('title') === 'error' ? 'neon-error' : getFieldStatus('title') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                                             />
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
+                                            <div className="field-container">
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Property Type</label>
                                                 <select
                                                     name="property_type"
                                                     value={formData.property_type}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none"
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
                                                 >
                                                     <option value="house">House</option>
                                                     <option value="apartment">Apartment</option>
@@ -350,31 +480,33 @@ const PropertyForm = () => {
                                                     <option value="land">Land</option>
                                                 </select>
                                             </div>
-                                            <div>
+                                            <div className="field-container">
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Price ($)</label>
                                                 <input
                                                     type="number"
+                                                    id="price"
                                                     name="price"
                                                     value={formData.price}
                                                     onChange={handleInputChange}
-                                                    min="0"
+
+
                                                     placeholder="500,000"
-                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${isFieldInvalid(formData.price) ? 'border-red-500 focus:ring-red-500' : 'border-slate-200'}`}
-                                                    required
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('price') === 'error' ? 'neon-error' : getFieldStatus('price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                                                 />
                                             </div>
                                         </div>
 
-                                        <div>
+                                        <div className="field-container">
                                             <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
                                             <textarea
+                                                id="description"
                                                 name="description"
                                                 value={formData.description}
                                                 onChange={handleInputChange}
+
                                                 rows="4"
                                                 placeholder="Describe the property's unique features..."
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                                required
+                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('description') === 'error' ? 'neon-error' : getFieldStatus('description') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                                             ></textarea>
                                         </div>
 
@@ -383,8 +515,7 @@ const PropertyForm = () => {
                                                 <button
                                                     type="button"
                                                     onClick={nextStep}
-                                                    disabled={!isStepValid(1)}
-                                                    className="bg-primary-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-700 transition-all disabled:opacity-50"
+                                                    className={`bg-primary-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-700 transition-all ${!isStepValid(1) ? 'opacity-50 cursor-not-allowed' : ''} ${isShaking ? 'shake' : ''}`}
                                                 >
                                                     <span>Next Step</span>
                                                     <ArrowRight className="w-5 h-5" />
@@ -418,15 +549,17 @@ const PropertyForm = () => {
                                                 { label: 'Garages', name: 'characteristics.garages' },
                                                 { label: 'Area (m²)', name: 'characteristics.area' }
                                             ].map((field) => (
-                                                <div key={field.name}>
+                                                <div key={field.name} className="field-container">
                                                     <label className="block text-sm font-bold text-slate-700 mb-2">{field.label}</label>
                                                     <input
                                                         type="number"
+                                                        id={field.name}
                                                         name={field.name}
                                                         value={field.name.split('.').reduce((obj, key) => obj[key], formData)}
                                                         onChange={handleInputChange}
-                                                        min="0"
-                                                        className={`w-full px-4 py-3 bg-slate-50 border rounded-xl ${isFieldInvalid(field.name.split('.').reduce((obj, key) => obj[key], formData)) ? 'border-red-500' : 'border-slate-200'}`}
+
+
+                                                        className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus(field.name) === 'error' ? 'neon-error' : getFieldStatus(field.name) === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                                                     />
                                                 </div>
                                             ))}
@@ -445,8 +578,7 @@ const PropertyForm = () => {
                                                 <button
                                                     type="button"
                                                     onClick={nextStep}
-                                                    disabled={!isStepValid(2)}
-                                                    className="bg-primary-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-700 transition-all disabled:opacity-50"
+                                                    className={`bg-primary-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-700 transition-all ${!isStepValid(2) ? 'opacity-50 cursor-not-allowed' : ''} ${isShaking ? 'shake' : ''}`}
                                                 >
                                                     <span>Next Step</span>
                                                     <ArrowRight className="w-5 h-5" />
@@ -480,7 +612,6 @@ const PropertyForm = () => {
                                                         <img src={url} className="w-full h-full object-cover" />
                                                         <button
                                                             type="button"
-                                                            onClick={() => removeImage(idx)}
                                                             className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                                                         >
                                                             <X className="w-4 h-4" />
@@ -556,8 +687,9 @@ const PropertyForm = () => {
                                                 ) : <div></div>}
                                                 <button
                                                     type="submit"
-                                                    disabled={loading || isResolvingAddress || getValidationErrors().length > 0}
-                                                    className="bg-primary-600 text-white px-12 py-4 rounded-2xl font-bold shadow-xl flex items-center gap-2 hover:bg-primary-700 transition-all transform hover:-translate-y-1 disabled:opacity-50"
+                                                    id="submit-button"
+                                                    disabled={loading || isResolvingAddress}
+                                                    className={`bg-primary-600 text-white px-12 py-4 rounded-2xl font-bold shadow-xl flex items-center gap-2 transition-all transform hover:-translate-y-1 ${(!isStepValid(1) || !isStepValid(2)) ? 'opacity-50 cursor-not-allowed hover:bg-primary-700' : 'hover:bg-primary-700'} ${isShaking ? 'shake' : ''}`}
                                                 >
                                                     <span>
                                                         {loading ? 'Submitting...' :
