@@ -29,8 +29,8 @@ const LocationPicker = ({ location, setFormData }) => {
             const { lat, lng } = e.latlng;
             setFormData(prev => ({
                 ...prev,
-                location: { lat, lng }
-                // Note: Address will be picked up by the useEffect in PropertyForm
+                location: { lat, lng },
+                address: '' // Clear address to trigger re-geocoding
             }));
         },
     });

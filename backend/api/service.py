@@ -109,8 +109,6 @@ def create_announcement() -> Tuple[flask.Response, int]:
         return jsonify({"error": "Unauthorized"}), 401
     
     data = request.json
-    print(f"[DEBUG_SERVICE] Received payload keys: {list(data.keys()) if data else 'None'}")
-    print(f"[DEBUG_SERVICE] Address in payload: {data.get('address') if data else 'None'}")
     if not data:
         return jsonify({"error": "Missing data"}), 400
     

@@ -131,16 +131,19 @@ class Property:
         raw_chars = data.get("characteristics", {}).copy()
         
         # Extract fields that might be either top-level or nested in characteristics
-        suites = int(data.get("suites") or raw_chars.pop("suites", 0) or 0)
-        rooms = int(data.get("rooms") or raw_chars.pop("rooms", 0) or 0)
-        garages = int(data.get("garages") or raw_chars.pop("garages", 0) or 0)
+        suites = int(data.get("suites") or raw_chars.get("suites", 0) or 0)
+        rooms = int(data.get("rooms") or raw_chars.get("rooms", 0) or 0)
+        garages = int(data.get("garages") or raw_chars.get("garages", 0) or 0)
         
         # Build cleansed characteristics but preserve other potential fields
         characteristics = raw_chars.copy()
         characteristics.update({
             "bedrooms": int(raw_chars.get("bedrooms") or 0),
             "bathrooms": int(raw_chars.get("bathrooms") or 0),
-            "area": float(raw_chars.get("area") or 0.0)
+            "area": float(raw_chars.get("area") or 0.0),
+            "suites": suites,
+            "rooms": rooms,
+            "garages": garages
         })
         
         return cls(
