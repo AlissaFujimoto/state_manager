@@ -19,6 +19,7 @@ from firebase_admin import auth
 from server_utils.ai import AI as AIService
 from server_utils.database import Database
 from server_utils.security import Security
+from server_utils.auth import Auth
 
 # Add backend directory to sys.path
 basedir = Path(__file__).parent.parent
@@ -73,12 +74,7 @@ def verify_token() -> Any:
         return None
     
     token = auth_header.split("Bearer ")[1]
-    try:
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token
-    except Exception as e:
-        print(f"Token verification failed: {e}")
-        return None
+    return Auth.verify_id_token(token)
 
 @app.before_request
 def before_request_hook() -> Any:
@@ -178,7 +174,7 @@ def get_user_announcements() -> Tuple[flask.Response, int]:
     announcements = manager.get_user_announcements(user["uid"])
     return jsonify(announcements), 200
 
-from firebase_admin import auth, storage
+from firebase_admin import storage
 
 # ... existing code ...
 
