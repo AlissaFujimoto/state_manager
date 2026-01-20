@@ -1,10 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, ChevronRight, Trash2, Edit, Calendar } from 'lucide-react';
+import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 
 const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
+    const navigate = useNavigate();
+    const [currentImgIndex, setCurrentImgIndex] = useState(0);
+
+    // Combine images and layout_image (if exists)
+    const displayImages = [
+        ...(property.images || []),
+        ...(property.layout_image ? [property.layout_image] : [])
+    ];
+
+    // Fallback if no images
+    if (displayImages.length === 0) {
+        displayImages.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
+    }
+
+    const handleCardClick = () => {
+        navigate(`/property/${property.id}`);
+    };
+
+    const nextImage = (e) => {
+        e.stopPropagation();
+        if (currentImgIndex < displayImages.length - 1) {
+            setCurrentImgIndex((prev) => prev + 1);
+        }
+    };
+
+    const prevImage = (e) => {
+        e.stopPropagation();
+        if (currentImgIndex > 0) {
+            setCurrentImgIndex((prev) => prev - 1);
+        }
+    };
+
     return (
         <Motion.div
             layout
@@ -12,20 +44,61 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             whileHover={{ y: -5 }}
-            className="glass-card rounded-2xl overflow-hidden group premium-shadow"
+            onClick={handleCardClick}
+            className="glass-card rounded-2xl overflow-hidden group premium-shadow cursor-pointer relative"
         >
-            <div className="relative h-64 overflow-hidden">
-                <img
-                    src={property.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80'}
-                    alt={property.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider">
+            <div className="relative h-64 overflow-hidden group/image">
+                <AnimatePresence mode="wait">
+                    <Motion.img
+                        key={currentImgIndex}
+                        src={displayImages[currentImgIndex]}
+                        alt={property.title}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-110"
+                    />
+                </AnimatePresence>
+
+                {/* Navigation Arrows */}
+                {displayImages.length > 1 && (
+                    <>
+                        <button
+                            onClick={prevImage}
+                            disabled={currentImgIndex === 0}
+                            className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full backdrop-blur-sm transition-opacity z-10 opacity-0 group-hover/image:opacity-100 ${currentImgIndex === 0 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
+                                }`}
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={nextImage}
+                            disabled={currentImgIndex === displayImages.length - 1}
+                            className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full backdrop-blur-sm transition-opacity z-10 opacity-0 group-hover/image:opacity-100 ${currentImgIndex === displayImages.length - 1 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
+                                }`}
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+
+                        {/* Image Indicator Dots */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                            {displayImages.map((_, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImgIndex ? 'bg-white w-3' : 'bg-white/50'}`}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                <div className="absolute top-4 left-4 z-10">
+                    <span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider shadow-sm">
                         {property.property_type}
                     </span>
                 </div>
-                <div className="absolute bottom-4 right-4">
+                <div className="absolute bottom-4 right-4 z-10">
                     <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg">
                         ${Number(property.price).toLocaleString()}
                     </div>
@@ -81,25 +154,20 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
                     </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
-                    <Link
-                        to={`/property/${property.id}`}
-                        className="flex-1 flex items-center justify-center space-x-2 py-3 bg-slate-50 hover:bg-primary-50 text-slate-600 hover:text-primary-600 rounded-xl font-semibold transition-all group/btn"
-                    >
-                        <span>View Details</span>
-                        <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                    </Link>
+                <div className="flex justify-end gap-3 mt-6">
+                    {/* View Details button removed, card is clickable */}
+
                     {showEditAction && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Link
                                 to={`/edit-property/${property.id}`}
-                                className="flex-none px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                                className="flex-none px-4 py-2 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
                                 title="Edit Details"
                             >
                                 <Edit className="w-4 h-4" />
                             </Link>
                             <button
-                                onClick={() => onDelete && onDelete(property.id)}
+                                onClick={(e) => { e.stopPropagation(); onDelete && onDelete(property.id); }}
                                 className="flex-none px-4 py-2 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all"
                                 title="Delete Listing"
                             >

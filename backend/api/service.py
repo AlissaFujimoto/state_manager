@@ -99,7 +99,27 @@ def get_announcement(property_id: str) -> Tuple[flask.Response, int]:
     
     # Only include location (coordinates) if explicitly requested (e.g., for editing)
     include_coords = request.args.get("coords", "false").lower() == "true"
-    return jsonify(announcement.to_dict(include_location=include_coords)), 200
+    data = announcement.to_dict(include_location=include_coords)
+    
+    # Fetch owner details
+    if announcement.owner_id:
+        print(f"[DEBUG] Fetching owner for ID: {announcement.owner_id}")
+        try:
+            owner_record = auth.get_user(announcement.owner_id)
+            data["owner"] = {
+                "uid": owner_record.uid,
+                "name": owner_record.display_name,
+                "email": owner_record.email,
+                "photo": owner_record.photo_url
+            }
+            print(f"[DEBUG] Successfully fetched owner: {owner_record.display_name}")
+        except Exception as e:
+            print(f"[ERROR_SERVICE] Failed to fetch owner details: {e}")
+            data["owner"] = None
+    else:
+        print(f"[DEBUG] No owner_id found for property {property_id}")
+            
+    return jsonify(data), 200
 
 @app.route("/api/announcements", methods=["POST"])
 def create_announcement() -> Tuple[flask.Response, int]:

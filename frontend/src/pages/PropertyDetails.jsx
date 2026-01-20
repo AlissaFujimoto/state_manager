@@ -5,7 +5,7 @@ import {
     MapPin, Share2, Heart, Calendar, ArrowLeft,
     CheckCircle2, Info, Building2, Layout, Car, DoorOpen, Bath as BathIcon
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -32,7 +32,7 @@ const PropertyDetails = () => {
     useEffect(() => {
         const fetchProperty = async () => {
             try {
-                const res = await api.get(`/announcements/${id}`);
+                const res = await api.get(`/announcements/${id}?coords=true`);
                 setProperty(res.data);
                 setLoading(false);
             } catch (err) {
@@ -48,8 +48,16 @@ const PropertyDetails = () => {
     </div>;
     if (!property) return <div className="min-h-screen flex items-center justify-center text-slate-500">Property not found</div>;
 
-    const nextImage = () => setActiveImage((prev) => (prev + 1) % (property.images?.length || 1));
-    const prevImage = () => setActiveImage((prev) => (prev - 1 + (property.images?.length || 1)) % (property.images?.length || 1));
+    const nextImage = () => {
+        if (activeImage < (property.images?.length || 0) - 1) {
+            setActiveImage((prev) => prev + 1);
+        }
+    };
+    const prevImage = () => {
+        if (activeImage > 0) {
+            setActiveImage((prev) => prev - 1);
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -81,13 +89,17 @@ const PropertyDetails = () => {
                             <>
                                 <button
                                     onClick={prevImage}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full text-white transition-all opacity-0 group-hover:opacity-100"
+                                    disabled={activeImage === 0}
+                                    className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 ${activeImage === 0 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
+                                        }`}
                                 >
                                     <ChevronLeft className="w-6 h-6" />
                                 </button>
                                 <button
                                     onClick={nextImage}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full text-white transition-all opacity-0 group-hover:opacity-100"
+                                    disabled={activeImage === (property.images?.length || 0) - 1}
+                                    className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 ${activeImage === (property.images?.length || 0) - 1 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
+                                        }`}
                                 >
                                     <ChevronRight className="w-6 h-6" />
                                 </button>
@@ -198,6 +210,37 @@ const PropertyDetails = () => {
                         </p>
                     </div>
 
+                    {/* Property Location */}
+                    {property.location && (
+                        <div>
+                            <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
+                                <MapPin className="w-6 h-6 mr-2 text-primary-600" />
+                                Location
+                            </h3>
+                            <div className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-0 relative group">
+                                <MapContainer
+                                    center={[Number(property.location.lat), Number(property.location.lng)]}
+                                    zoom={15}
+                                    scrollWheelZoom={true}
+                                    style={{ height: '100%', width: '100%' }}
+                                >
+                                    <TileLayer
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    />
+                                    <Circle
+                                        center={[Number(property.location.lat), Number(property.location.lng)]}
+                                        radius={500}
+                                        pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.2, weight: 2 }}
+                                    />
+                                </MapContainer>
+                                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200">
+                                    {Number(property.location.lat).toFixed(4)}, {Number(property.location.lng).toFixed(4)}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Amenities */}
                     {property.amenities && (
                         <div>
@@ -231,43 +274,32 @@ const PropertyDetails = () => {
                         </div>
                     )}
 
-                    {/* Property Location */}
-                    {property.location && (
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
-                                <MapPin className="w-7 h-7 mr-3 text-primary-600" />
-                                Property Location
-                            </h3>
-                            <p className="text-slate-500 mb-6 text-sm">Approximate location within a 1km radius.</p>
-                            <div className="h-96 rounded-3xl overflow-hidden border border-slate-200 shadow-2xl z-0">
-                                <MapContainer
-                                    center={[property.location.lat, property.location.lng]}
-                                    zoom={14}
-                                    scrollWheelZoom={false}
-                                    style={{ height: '100%', width: '100%' }}
-                                >
-                                    <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    />
-                                    <Marker position={[property.location.lat, property.location.lng]} />
-                                    <Circle
-                                        center={[property.location.lat, property.location.lng]}
-                                        radius={1000}
-                                        pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
-                                    />
-                                </MapContainer>
-                            </div>
-                        </div>
-                    )}
+
                 </div>
 
                 {/* Right Column: Sidebar */}
                 <div className="space-y-8">
                     {/* Contact Card */}
-                    <div className="glass-card p-8 rounded-3xl sticky top-8 premium-shadow bg-primary-600 text-white border-none">
-                        <h3 className="text-2xl font-bold mb-6 italic">Interested?</h3>
-                        <div className="space-y-4">
+                    <div className="p-8 rounded-3xl sticky top-28 premium-shadow bg-primary-600 text-white shadow-2xl overflow-hidden relative">
+                        {/* Background Pattern */}
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-primary-500/30 rounded-full blur-3xl"></div>
+
+                        {property.owner && (
+                            <div className="flex items-center gap-4 mb-8 pb-8 border-b border-white/20 relative z-10">
+                                <img
+                                    src={property.owner.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(property.owner.name || 'Owner')}&background=random`}
+                                    alt={property.owner.name}
+                                    className="w-16 h-16 rounded-full border-2 border-white/30 object-cover shadow-lg"
+                                />
+                                <div>
+                                    <p className="text-primary-100 text-xs font-bold uppercase tracking-widest mb-1">Listed by</p>
+                                    <h4 className="text-xl font-bold text-white leading-tight">{property.owner.name || 'Property Owner'}</h4>
+                                </div>
+                            </div>
+                        )}
+                        <h3 className="text-2xl font-bold mb-6 italic relative z-10">Interested?</h3>
+                        <div className="space-y-4 relative z-10">
                             <button className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg">
                                 Contact Agent
                             </button>
