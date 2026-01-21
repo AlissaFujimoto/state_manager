@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
-import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings } from 'lucide-react';
+import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
@@ -30,11 +30,9 @@ const Navbar = () => {
                                     onClick={() => setIsOpen(!isOpen)}
                                     className="flex items-center space-x-3 p-1.5 pr-4 rounded-full bg-white border border-slate-200 hover:border-primary-200 hover:shadow-md transition-all ease-in-out duration-300"
                                 >
-                                    <img
-                                        src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}&background=0ea5e9&color=fff`}
-                                        alt="Avatar"
-                                        className="w-8 h-8 rounded-full"
-                                    />
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                                        <User className="w-5 h-5 text-slate-600" />
+                                    </div>
                                     <span className="text-sm font-bold text-slate-700">{user.displayName?.split(' ')[0] || 'User'}</span>
                                 </button>
                             ) : (
@@ -78,35 +76,40 @@ const Navbar = () => {
                             exit={{ opacity: 0, height: 0 }}
                             className="fixed top-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-8 space-y-6 z-[50] shadow-xl overflow-hidden"
                         >
-                            <Link to="/" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Home</Link>
+                            <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>
+                                <Home className="w-6 h-6" />
+                                <span>Home</span>
+                            </Link>
                             {user ? (
                                 <>
-                                    <Link to="/profile" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Profile Settings</Link>
-                                    <Link to="/dashboard" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Dashboard</Link>
-                                    <Link to="/create-announcement" className="block text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>List Property</Link>
+                                    <Link to="/profile" className="flex items-center space-x-3 text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>
+                                        <Settings className="w-6 h-6" />
+                                        <span>Profile Settings</span>
+                                    </Link>
+                                    <Link to="/dashboard" className="flex items-center space-x-3 text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>
+                                        <LayoutDashboard className="w-6 h-6" />
+                                        <span>Dashboard</span>
+                                    </Link>
+                                    <Link to="/create-announcement" className="flex items-center space-x-3 text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>
+                                        <PlusCircle className="w-6 h-6" />
+                                        <span>List Property</span>
+                                    </Link>
 
                                     <div className="border-t border-slate-100 pt-6 mt-6">
-                                        <div className="flex items-center space-x-3 mb-6">
-                                            <img
-                                                src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}&background=0ea5e9&color=fff`}
-                                                alt="Avatar"
-                                                className="w-10 h-10 rounded-full"
-                                            />
-                                            <div className="overflow-hidden">
-                                                <p className="text-sm font-bold text-slate-800 truncate">{user.displayName || 'User'}</p>
-                                                <p className="text-xs text-slate-500 truncate">{user.email}</p>
-                                            </div>
-                                        </div>
                                         <button
                                             onClick={() => { auth.signOut(); setIsOpen(false); }}
-                                            className="w-full text-left text-xl font-bold text-red-500"
+                                            className="w-full flex items-center space-x-3 text-left text-xl font-bold text-red-500"
                                         >
-                                            Sign Out
+                                            <LogOut className="w-6 h-6" />
+                                            <span>Sign Out</span>
                                         </button>
                                     </div>
                                 </>
                             ) : (
-                                <Link to="/auth" className="block text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>Sign In</Link>
+                                <Link to="/auth" className="flex items-center space-x-3 text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>
+                                    <LogIn className="w-6 h-6" />
+                                    <span>Sign In</span>
+                                </Link>
                             )}
                         </Motion.div>
                     </div>
@@ -180,7 +183,7 @@ const Navbar = () => {
 
                                         <Link
                                             to="/create-announcement"
-                                            className="flex items-center space-x-3 px-4 py-3 text-slate-600 hover:bg-primary-50 hover:text-primary-600 rounded-xl transition-all font-medium"
+                                            className="flex items-center space-x-3 px-4 py-3 text-primary-600 hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all font-medium"
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <PlusCircle className="w-5 h-5" />
