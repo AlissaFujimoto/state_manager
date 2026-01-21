@@ -6,6 +6,7 @@ import { auth } from './utils/databaseAuth';
 // Components
 import Navbar from './components/Navbar';
 import Auth from './components/Auth';
+import ScrollToTop from './components/ScrollToTop';
 
 // Pages
 import Home from './pages/Home';
@@ -43,6 +44,7 @@ const PublicRoute = ({ children }) => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="min-h-screen bg-slate-50">
         <Navbar />
         <main className="animate-fade-in">

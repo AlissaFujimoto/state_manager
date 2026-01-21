@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 
 const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
     // Combine images and layout_image (if exists)
@@ -20,7 +21,7 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
     }
 
     const handleCardClick = () => {
-        navigate(`/property/${property.id}`);
+        navigate(`/property/${property.id}`, { state: { from: location.pathname } });
     };
 
     const nextImage = (e) => {

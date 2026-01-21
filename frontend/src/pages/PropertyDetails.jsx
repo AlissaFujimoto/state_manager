@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import {
     ChevronLeft, ChevronRight, Bed, Bath, Square,
     MapPin, Share2, Heart, Calendar, ArrowLeft,
     CheckCircle2, Info, Building2, Layout, Car, DoorOpen, Bath as BathIcon
 } from 'lucide-react';
-import { MapContainer, TileLayer, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -20,14 +20,26 @@ let DefaultIcon = L.icon({
     iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Custom Favicon Marker
+const faviconIcon = L.icon({
+    iconUrl: '/favicon.svg',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    className: 'drop-shadow-lg'
+});
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 
 const PropertyDetails = () => {
     const { id } = useParams();
+    const location = useLocation();
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
+
+    const backLink = location.state?.from === '/dashboard' ? '/dashboard' : '/';
+    const backText = location.state?.from === '/dashboard' ? 'Back to Dashboard' : 'Back to results';
 
     useEffect(() => {
         const fetchProperty = async () => {
@@ -61,9 +73,9 @@ const PropertyDetails = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
-            <Link to="/" className="inline-flex items-center text-slate-500 hover:text-primary-600 transition-colors mb-6 font-medium">
+            <Link to={backLink} className="inline-flex items-center text-slate-500 hover:text-primary-600 transition-colors mb-6 font-medium">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to results
+                {backText}
             </Link>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -232,6 +244,10 @@ const PropertyDetails = () => {
                                         center={[Number(property.location.lat), Number(property.location.lng)]}
                                         radius={500}
                                         pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.2, weight: 2 }}
+                                    />
+                                    <Marker
+                                        position={[Number(property.location.lat), Number(property.location.lng)]}
+                                        icon={faviconIcon}
                                     />
                                 </MapContainer>
                                 <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200">

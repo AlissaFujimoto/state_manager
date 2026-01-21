@@ -511,7 +511,14 @@ const PropertyForm = () => {
                                         </div>
 
                                         {isMobile && (
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-between items-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(-1)}
+                                                    className="text-slate-400 font-bold flex items-center gap-2 hover:text-red-500 transition-all px-2"
+                                                >
+                                                    <span>Cancel</span>
+                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={nextStep}
@@ -608,11 +615,12 @@ const PropertyForm = () => {
                                             <label className="block text-sm font-bold text-slate-700 mb-3">Property Gallery</label>
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 {formData.images.map((url, idx) => (
-                                                    <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group">
-                                                        <img src={url} className="w-full h-full object-cover" />
+                                                    <div key={idx} className="relative aspect-square group z-10">
+                                                        <img src={url} className="w-full h-full object-cover rounded-2xl shadow-sm" />
                                                         <button
                                                             type="button"
-                                                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => removeImage(idx)}
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-md z-20 hover:bg-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                                         >
                                                             <X className="w-4 h-4" />
                                                         </button>
@@ -626,18 +634,19 @@ const PropertyForm = () => {
                                             </div>
                                         </div>
 
+
                                         {/* Layout Upload */}
                                         <div>
                                             <label className="block text-sm font-bold text-slate-700 mb-3">Building Layout (Floor Plan)</label>
                                             {formData.layout_image ? (
-                                                <div className="relative rounded-2xl overflow-hidden bg-slate-100 p-4 border border-slate-200">
-                                                    <img src={formData.layout_image} className="max-h-64 mx-auto rounded-xl" />
+                                                <div className="relative group bg-slate-100 p-4 border border-slate-200 rounded-2xl">
+                                                    <img src={formData.layout_image} className="max-h-64 mx-auto rounded-2xl" />
                                                     <button
                                                         type="button"
                                                         onClick={() => setFormData(prev => ({ ...prev, layout_image: null }))}
-                                                        className="absolute top-6 right-6 bg-red-500 text-white p-2 rounded-full shadow-lg"
+                                                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-md z-20 hover:bg-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                                     >
-                                                        <X className="w-5 h-5" />
+                                                        <X className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             ) : (
@@ -707,7 +716,7 @@ const PropertyForm = () => {
                     </AnimatePresence>
                 </form>
             </Motion.div>
-        </div>
+        </div >
     );
 };
 

@@ -5,10 +5,10 @@ import { auth } from '../utils/databaseAuth';
 import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+
 const Navbar = () => {
     const [user] = useAuthState(auth);
     const [isOpen, setIsOpen] = useState(false);
-
 
     return (
         <>
@@ -54,15 +54,29 @@ const Navbar = () => {
                         </button>
                     </div>
                 </div>
+            </nav>
 
-                {/* Mobile Menu */}
-                <AnimatePresence>
-                    {isOpen && (
+            {/* Mobile Menu Overlay */}
+            <AnimatePresence>
+                {isOpen && (
+                    <div className="md:hidden">
+                        {/* Backdrop with Blur */}
+                        <Motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40]"
+                            onClick={() => setIsOpen(false)}
+                            style={{ top: '80px' }} // Starts below the navbar
+                        />
+
+                        {/* Menu Content */}
                         <Motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="md:hidden bg-white border-t border-slate-100 px-4 py-8 space-y-6"
+                            className="fixed top-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-8 space-y-6 z-[50] shadow-xl overflow-hidden"
                         >
                             <Link to="/" className="block text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>Home</Link>
                             {user ? (
@@ -95,9 +109,9 @@ const Navbar = () => {
                                 <Link to="/auth" className="block text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>Sign In</Link>
                             )}
                         </Motion.div>
-                    )}
-                </AnimatePresence>
-            </nav>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Desktop Side Drawer */}
             <div className="hidden md:block">
@@ -197,4 +211,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
