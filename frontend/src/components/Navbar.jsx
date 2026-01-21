@@ -76,21 +76,21 @@ const Navbar = () => {
                             exit={{ opacity: 0, height: 0 }}
                             className="fixed top-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-8 space-y-6 z-[50] shadow-xl overflow-hidden"
                         >
-                            <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>
+                            <Link to="/" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                 <Home className="w-6 h-6" />
                                 <span>Home</span>
                             </Link>
                             {user ? (
                                 <>
-                                    <Link to="/profile" className="flex items-center space-x-3 text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>
+                                    <Link to="/profile" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                         <Settings className="w-6 h-6" />
                                         <span>Profile Settings</span>
                                     </Link>
-                                    <Link to="/dashboard" className="flex items-center space-x-3 text-xl font-bold text-slate-800" onClick={() => setIsOpen(false)}>
+                                    <Link to="/dashboard" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                         <LayoutDashboard className="w-6 h-6" />
                                         <span>Dashboard</span>
                                     </Link>
-                                    <Link to="/create-announcement" className="flex items-center space-x-3 text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>
+                                    <Link to="/create-announcement" className="mobile-nav-link primary" onClick={() => setIsOpen(false)}>
                                         <PlusCircle className="w-6 h-6" />
                                         <span>List Property</span>
                                     </Link>
@@ -106,7 +106,7 @@ const Navbar = () => {
                                     </div>
                                 </>
                             ) : (
-                                <Link to="/auth" className="flex items-center space-x-3 text-xl font-bold text-primary-600" onClick={() => setIsOpen(false)}>
+                                <Link to="/auth" className="mobile-nav-link text-primary-600" onClick={() => setIsOpen(false)}>
                                     <LogIn className="w-6 h-6" />
                                     <span>Sign In</span>
                                 </Link>
@@ -165,7 +165,7 @@ const Navbar = () => {
                                     <div className="flex-1 space-y-2">
                                         <Link
                                             to="/profile"
-                                            className="flex items-center space-x-3 px-4 py-3 text-slate-600 hover:bg-primary-50 hover:text-primary-600 rounded-xl transition-all font-medium"
+                                            className="drawer-nav-link"
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <Settings className="w-5 h-5" />
@@ -174,7 +174,7 @@ const Navbar = () => {
 
                                         <Link
                                             to="/dashboard"
-                                            className="flex items-center space-x-3 px-4 py-3 text-slate-600 hover:bg-primary-50 hover:text-primary-600 rounded-xl transition-all font-medium"
+                                            className="drawer-nav-link"
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <LayoutDashboard className="w-5 h-5" />
@@ -183,7 +183,7 @@ const Navbar = () => {
 
                                         <Link
                                             to="/create-announcement"
-                                            className="flex items-center space-x-3 px-4 py-3 text-primary-600 hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all font-medium"
+                                            className="drawer-nav-link primary"
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <PlusCircle className="w-5 h-5" />

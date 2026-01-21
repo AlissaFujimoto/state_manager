@@ -1,8 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar } from 'lucide-react';
+import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
+
+const variants = {
+    enter: (direction) => ({
+        x: direction > 0 ? 300 : -300,
+        opacity: 0
+    }),
+    center: {
+        zIndex: 1,
+        x: 0,
+        opacity: 1
+    },
+    exit: (direction) => ({
+        zIndex: 0,
+        x: direction < 0 ? 300 : -300,
+        opacity: 0
+    })
+};
 
 const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
     const navigate = useNavigate();
@@ -39,12 +56,7 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
     };
 
     return (
-        <Motion.div
-            layout
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            whileHover={{ y: -5 }}
+        <div
             onClick={handleCardClick}
             className="glass-card rounded-2xl overflow-hidden group premium-shadow cursor-pointer relative"
         >
@@ -68,16 +80,14 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
                         <button
                             onClick={prevImage}
                             disabled={currentImgIndex === 0}
-                            className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full backdrop-blur-sm transition-opacity z-10 opacity-0 group-hover/image:opacity-100 ${currentImgIndex === 0 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
-                                }`}
+                            className="carousel-nav-btn left-2 p-1.5 z-10"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button
                             onClick={nextImage}
                             disabled={currentImgIndex === displayImages.length - 1}
-                            className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full backdrop-blur-sm transition-opacity z-10 opacity-0 group-hover/image:opacity-100 ${currentImgIndex === displayImages.length - 1 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
-                                }`}
+                            className="carousel-nav-btn right-2 p-1.5 z-10"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
@@ -178,7 +188,7 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
                     )}
                 </div>
             </div>
-        </Motion.div>
+        </div>
     );
 };
 
@@ -187,6 +197,22 @@ const Home = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState({ type: 'all', minPrice: '', maxPrice: '' });
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
+    const [direction, setDirection] = useState(0);
+
+    // Minimum swipe distance (in px)
+    const minSwipeDistance = 50;
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const ITEMS_PER_PAGE = isMobile ? 1 : 9;
 
     useEffect(() => {
         const fetchProperties = async () => {
@@ -207,14 +233,73 @@ const Home = () => {
         fetchProperties();
     }, [filter]);
 
+    // Reset page to 1 whenever filters change
+    useEffect(() => {
+        setCurrentPage(1);
+        setDirection(0);
+    }, [filter, searchQuery]);
+
+    const paginate = (newDirection) => {
+        if (newDirection > 0 && currentPage < totalPages) {
+            setDirection(1);
+            setCurrentPage((prev) => prev + 1);
+        } else if (newDirection < 0 && currentPage > 1) {
+            setDirection(-1);
+            setCurrentPage((prev) => prev - 1);
+        }
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+    };
+
+    const jumpToPage = (page) => {
+        const newDirection = page > currentPage ? 1 : -1;
+        setDirection(newDirection);
+        setCurrentPage(page);
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+    };
+
+    const onTouchStart = (e) => {
+        setTouchEnd(null); // Reset touch end
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe) {
+            paginate(1);
+        }
+
+        if (isRightSwipe) {
+            paginate(-1);
+        }
+    };
+
     const filteredProperties = (properties || []).filter(p => {
         const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
         const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesType && matchesSearch;
     });
 
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+    const currentItems = filteredProperties.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div
+            className="max-w-7xl mx-auto px-4 py-8 min-h-screen"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+        >
             <header className="mb-12">
                 <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
                     Find Your <span className="text-primary-600">Dream State</span>
@@ -252,11 +337,25 @@ const Home = () => {
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <AnimatePresence>
-                    {filteredProperties.map((p) => (
-                        <PropertyCard key={p.id} property={p} />
-                    ))}
+            <div className="relative">
+                <AnimatePresence initial={false} custom={direction} mode="popLayout">
+                    <Motion.div
+                        key={currentPage}
+                        custom={direction}
+                        variants={variants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{
+                            x: { type: "spring", stiffness: 300, damping: 30 },
+                            opacity: { duration: 0.2 }
+                        }}
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full"
+                    >
+                        {currentItems.map((p) => (
+                            <PropertyCard key={p.id} property={p} />
+                        ))}
+                    </Motion.div>
                 </AnimatePresence>
             </div>
 
@@ -267,6 +366,99 @@ const Home = () => {
                     </div>
                     <h3 className="text-xl font-bold text-slate-700">No properties found</h3>
                     <p className="text-slate-500 mt-2">Try adjusting your filters or search terms.</p>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {filteredProperties.length > ITEMS_PER_PAGE && (
+                <div className="flex justify-center items-center mt-12 gap-2 md:gap-4">
+                    {/* First Page Button */}
+                    {totalPages > (isMobile ? 3 : 9) && (
+                        <button
+                            onClick={() => jumpToPage(1)}
+                            disabled={currentPage === 1}
+                            className="pagination-btn hidden md:flex"
+                        >
+                            <ChevronsLeft className="w-5 h-5" />
+                        </button>
+                    )}
+                    {/* Mobile First Page Button */}
+                    {totalPages > (isMobile ? 3 : 9) && isMobile && (
+                        <button
+                            onClick={() => jumpToPage(1)}
+                            disabled={currentPage === 1}
+                            className="pagination-btn flex md:hidden"
+                        >
+                            <ChevronsLeft className="w-4 h-4" />
+                        </button>
+                    )}
+
+
+                    <button
+                        onClick={() => paginate(-1)}
+                        disabled={currentPage === 1}
+                        className="pagination-btn"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex items-center gap-1 md:gap-2">
+                        {(() => {
+                            const MAX_VISIBLE_PAGES = isMobile ? 3 : 9;
+                            let start = Math.max(1, currentPage - Math.floor(MAX_VISIBLE_PAGES / 2));
+                            let end = start + MAX_VISIBLE_PAGES - 1;
+
+                            if (end > totalPages) {
+                                end = totalPages;
+                                start = Math.max(1, end - MAX_VISIBLE_PAGES + 1);
+                            }
+
+                            // Ensure start is at least 1
+                            if (start < 1) start = 1;
+
+                            // Recalculate end if start changed (to maintain window size if possible, or clamp)
+                            end = Math.min(start + MAX_VISIBLE_PAGES - 1, totalPages);
+
+                            return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => jumpToPage(page)}
+                                    className={`pagination-number ${currentPage === page ? 'active' : 'inactive'}`}
+                                >
+                                    {page}
+                                </button>
+                            ));
+                        })()}
+                    </div>
+
+                    <button
+                        onClick={() => paginate(1)}
+                        disabled={currentPage === totalPages}
+                        className="pagination-btn"
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
+
+                    {/* Last Page Button */}
+                    {totalPages > (isMobile ? 3 : 9) && (
+                        <button
+                            onClick={() => jumpToPage(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="pagination-btn hidden md:flex"
+                        >
+                            <ChevronsRight className="w-5 h-5" />
+                        </button>
+                    )}
+                    {/* Mobile Last Page Button */}
+                    {totalPages > (isMobile ? 3 : 9) && isMobile && (
+                        <button
+                            onClick={() => jumpToPage(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="pagination-btn flex md:hidden"
+                        >
+                            <ChevronsRight className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             )}
         </div>

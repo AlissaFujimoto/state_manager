@@ -37,6 +37,9 @@ const PropertyDetails = () => {
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
+    const minSwipeDistance = 50;
 
     const backLink = location.state?.from === '/dashboard' ? '/dashboard' : '/';
     const backText = location.state?.from === '/dashboard' ? 'Back to Dashboard' : 'Back to results';
@@ -71,6 +74,31 @@ const PropertyDetails = () => {
         }
     };
 
+
+
+    const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe) {
+            nextImage();
+        }
+        if (isRightSwipe) {
+            prevImage();
+        }
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
             <Link to={backLink} className="inline-flex items-center text-slate-500 hover:text-primary-600 transition-colors mb-6 font-medium">
@@ -82,7 +110,12 @@ const PropertyDetails = () => {
                 {/* Left Column: Media & Content */}
                 <div className="lg:col-span-2 space-y-12">
                     {/* Image Carousel */}
-                    <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl group">
+                    <div
+                        className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl group"
+                        onTouchStart={onTouchStart}
+                        onTouchMove={onTouchMove}
+                        onTouchEnd={onTouchEnd}
+                    >
                         <AnimatePresence mode="wait">
                             <Motion.img
                                 key={activeImage}
@@ -102,16 +135,14 @@ const PropertyDetails = () => {
                                 <button
                                     onClick={prevImage}
                                     disabled={activeImage === 0}
-                                    className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 ${activeImage === 0 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
-                                        }`}
+                                    className="carousel-nav-btn left-4"
                                 >
                                     <ChevronLeft className="w-6 h-6" />
                                 </button>
                                 <button
                                     onClick={nextImage}
                                     disabled={activeImage === (property.images?.length || 0) - 1}
-                                    className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 ${activeImage === (property.images?.length || 0) - 1 ? 'bg-black/20 text-white/40 cursor-not-allowed' : 'bg-black/30 hover:bg-black/50 text-white'
-                                        }`}
+                                    className="carousel-nav-btn right-4"
                                 >
                                     <ChevronRight className="w-6 h-6" />
                                 </button>
