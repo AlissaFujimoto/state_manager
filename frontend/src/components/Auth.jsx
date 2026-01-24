@@ -18,7 +18,7 @@ const Auth = () => {
 
     useEffect(() => {
         if (user) {
-            navigate('/dashboard');
+            navigate('/my-listings');
         }
     }, [user, navigate]);
 

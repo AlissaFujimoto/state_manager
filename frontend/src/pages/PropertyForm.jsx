@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Upload, X, Plus, Info, Home, DollarSign,
     Text, List, Image as ImageIcon, Layout,
-    ArrowRight, ArrowLeft, CheckCircle2, MapPin
+    ArrowRight, ArrowLeft, CheckCircle2, MapPin, Search, Loader
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
@@ -22,16 +22,52 @@ L.Marker.prototype.options.icon = DefaultIcon;
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
+import AddressAutocomplete from '../components/AddressAutocomplete';
+import CompressedImage from '../components/CompressedImage';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../utils/databaseAuth';
+import ImageLightbox from '../components/ImageLightbox';
 
-const LocationPicker = ({ location, setFormData }) => {
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ1) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+};
+
+const LocationPicker = ({ location, setFormData, anchorLocation, onLocationChange }) => {
     useMapEvents({
         click(e) {
             const { lat, lng } = e.latlng;
+
+            if (anchorLocation) {
+                const dist = calculateDistance(lat, lng, anchorLocation.lat, anchorLocation.lng);
+                if (dist > 1000) {
+                    alert("You cannot move the pin more than 1km from the selected address.");
+                    return;
+                }
+            }
+
             setFormData(prev => ({
                 ...prev,
-                location: { lat, lng },
-                address: '' // Clear address to trigger re-geocoding
+                address: {
+                    ...prev.address,
+                    location: { lat, lng }
+                }
             }));
+
+            if (!anchorLocation && onLocationChange) {
+                onLocationChange(lat, lng);
+            }
         },
     });
     return location ? (
@@ -42,6 +78,13 @@ const LocationPicker = ({ location, setFormData }) => {
                 radius={1000}
                 pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
             />
+            {anchorLocation && (
+                <Circle
+                    center={[anchorLocation.lat, anchorLocation.lng]}
+                    radius={1000}
+                    pathOptions={{ color: 'red', fill: false, weight: 1, dashArray: '5, 10' }}
+                />
+            )}
         </>
     ) : null;
 };
@@ -60,6 +103,7 @@ const PropertyForm = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditMode = !!id;
+    const [user, loadingAuth] = useAuthState(auth);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [isResolvingAddress, setIsResolvingAddress] = useState(false);
@@ -67,82 +111,188 @@ const PropertyForm = () => {
     const [showErrors, setShowErrors] = useState(false);
     const [invalidatedFields, setInvalidatedFields] = useState(new Set());
     const [isShaking, setIsShaking] = useState(false);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 1024);
-        handleResize(); // Initial check
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const [propertyTypes, setPropertyTypes] = useState([]);
+    const [listingTypes, setListingTypes] = useState([]);
+    const [propertyStatuses, setPropertyStatuses] = useState([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [anchorLocation, setAnchorLocation] = useState(null);
     const [formData, setFormData] = useState({
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `prop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: '',
         description: '',
         price: '',
         property_type: 'house',
+        listing_type: 'sale',
+        status: 'available',
         characteristics: {
-            bedrooms: '',
-            suites: '',
-            rooms: '',
-            bathrooms: '',
-            garages: '',
-            area: ''
+            bedrooms: 0,
+            suites: 0,
+            rooms: 0,
+            bathrooms: 0,
+            garages: 0,
+            area: 0,
+            total_area: 0
         },
-        location: {
-            lat: -23.5505,
-            lng: -46.6333
-        },
-        address: '',
         images: [],
-        layout_image: null
+        layout_image: null,
+        address: {
+            location: { lat: -23.5505, lng: -46.6333 },
+            private: '',
+            public: ''
+        }
     });
 
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [lightboxImages, setLightboxImages] = useState([]);
 
+    const openLightbox = (imgs, index) => {
+        setLightboxImages(imgs);
+        setLightboxIndex(index);
+        setLightboxOpen(true);
+    };
+
+    const isOwner = user && !loadingAuth; // Basic check during form creation/edit
+
+    // Fetch static data (types, statuses)
     useEffect(() => {
-        if (isEditMode) {
+        const fetchStaticData = async () => {
+            // Property Types
+            try {
+                const res = await api.get('/types');
+                if (Array.isArray(res.data) && res.data.length > 0) {
+                    setPropertyTypes(res.data);
+                } else {
+                    console.warn("Received empty or invalid property types:", res.data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch property types:", err);
+            }
+
+            // Listing Types
+            try {
+                const res = await api.get('/listing-types');
+                if (Array.isArray(res.data) && res.data.length > 0) {
+                    setListingTypes(res.data);
+                } else {
+                    console.warn("Received empty or invalid listing types:", res.data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch listing types:", err);
+            }
+
+            // Statuses
+            try {
+                const res = await api.get('/statuses');
+                if (Array.isArray(res.data) && res.data.length > 0) {
+                    setPropertyStatuses(res.data);
+                } else {
+                    console.warn("Received empty or invalid statuses:", res.data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch statuses:", err);
+            }
+        };
+        fetchStaticData();
+    }, []);
+
+    // Fetch existing property data for Edit Mode
+    useEffect(() => {
+        if (isEditMode && id && !loadingAuth) { // Wait for auth to be ready
             const fetchProperty = async () => {
+                setLoading(true);
                 try {
                     const res = await api.get(`/announcements/${id}?coords=true`);
-                    const propertyData = res.data;
+                    const data = res.data;
 
-                    // Safety checks for missing fields in old properties
-                    if (!propertyData.location) {
-                        propertyData.location = { lat: -23.5505, lng: -46.6333 };
-                    }
-                    if (!propertyData.characteristics) {
-                        propertyData.characteristics = {
-                            bedrooms: '', suites: '', rooms: '',
-                            bathrooms: '', garages: '', area: ''
-                        };
-                    }
+                    // Parse address: New backend returns 'address' object, legacy/fallback might need check
+                    // But we unified backend to return 'address' object.
+                    // If old data exists without 'address' dict, we might need fallback logic here or hope backend handles it (backend *does* handle migration in from_dict but returns new structure)
 
-                    setFormData(propertyData);
+                    const addr = data.address || {};
+                    const loc = addr.location || data.location || { lat: -23.5505, lng: -46.6333 };
+
+                    setFormData({
+                        title: data.title || '',
+                        description: data.description || '',
+                        price: data.price || '',
+                        property_type: data.property_type || 'house',
+                        listing_type: data.listing_type || 'sale',
+                        status: data.status || 'available',
+                        characteristics: data.characteristics || {
+                            bedrooms: 0, suites: 0, rooms: 0, bathrooms: 0, garages: 0, area: 0, total_area: 0
+                        },
+                        images: data.images || [],
+                        layout_image: data.layout_image,
+                        address: {
+                            location: loc,
+                            private: addr.private || data.private_address || '',
+                            public: addr.public || data.public_address || ''
+                        }
+                    });
+
+                    if (loc) {
+                        setAnchorLocation(loc);
+                    }
                 } catch (err) {
-                    console.error('Failed to fetch property details:', err);
-                    alert('Failed to load property details.');
-                    navigate('/dashboard');
+                    console.error("Failed to fetch property:", err);
+                    alert("Failed to load property details.");
+                } finally {
+                    setLoading(false);
                 }
             };
             fetchProperty();
         }
-    }, [id, isEditMode, navigate]);
+    }, [isEditMode, id, loadingAuth, user]);
+
+    const handleAddressSelect = (data) => {
+        console.log("Selected:", data);
+        setAnchorLocation(data.location);
+
+        const details = data.addressDetails || {};
+        const neighborhood = details.neighborhood || '';
+        const city = details.city || '';
+        const state = details.state || '';
+
+        let public_addr = [neighborhood, city].filter(Boolean).join(', ');
+        if (state) public_addr += ` - ${state}`;
+
+        setFormData(prev => ({
+            ...prev,
+            address: {
+                ...prev.address,
+                location: data.location,
+                private: data.address,
+                public: public_addr
+            }
+        }));
+    };
 
     const fetchAddress = async (lat, lng) => {
+        if (anchorLocation) return;
+
         console.log(`Geocoding started for: ${lat}, ${lng}`);
         setIsResolvingAddress(true);
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             const data = await response.json();
             if (data && data.address) {
-                const { suburb, neighbourhood, city, town, village, state, country } = data.address;
-                const region = suburb || neighbourhood || village || '';
-                const cityPart = city || town || '';
-                const locationParts = [region, cityPart, state, country].filter(Boolean);
-                const fullAddress = locationParts.join(', ');
-                console.log(`Address resolved: ${fullAddress}`);
+                const { suburb, neighbourhood, quarter, city, town, municipality, village, state, country } = data.address;
+
+                // Construct masked address for Public
+                const region = suburb || neighbourhood || quarter || village || '';
+                const cityPart = city || town || municipality || '';
+                const stateName = state || '';
+
+                let public_addr = [region, cityPart].filter(Boolean).join(', ');
+                if (stateName) public_addr += ` - ${stateName}`;
+
                 setFormData(prev => ({
                     ...prev,
-                    address: fullAddress
+                    address: {
+                        ...prev.address,
+                        private: data.display_name,
+                        public: public_addr
+                    }
                 }));
             }
         } catch (error) {
@@ -152,12 +302,8 @@ const PropertyForm = () => {
         }
     };
 
-    // Automatic reverse geocoding if address is missing but location exists
-    useEffect(() => {
-        if (formData.location && (!formData.address || formData.address === '')) {
-            fetchAddress(formData.location.lat, formData.location.lng);
-        }
-    }, [formData.location.lat, formData.location.lng, formData.address]); // Trigger on coordinate changes and address cleared
+    // Automatic reverse geocoding - REMOVED to prevent auto-fill when clearing address
+    // Effect now only relies on manual interactions (map click or address select)
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -172,16 +318,47 @@ const PropertyForm = () => {
         }
     };
 
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
-        const mockUrls = files.map(f => URL.createObjectURL(f));
-        setFormData(prev => ({ ...prev, images: [...prev.images, ...mockUrls] }));
+        if (files.length === 0) return;
+
+        setIsUploading(true);
+        try {
+            const { processPropertyImage } = await import('../utils/imageCompression');
+            const uploadPromises = files.map(async (file) => {
+                // Process image: resize to 1920x1080 and compress
+                const compressedData = await processPropertyImage(file);
+                return compressedData;
+            });
+
+            const compressedImages = await Promise.all(uploadPromises);
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, ...compressedImages]
+            }));
+        } catch (err) {
+            console.error('Failed to process images:', err);
+            alert('Failed to process some images. Please try again.');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
-    const handleLayoutUpload = (e) => {
+    const handleLayoutUpload = async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            setFormData(prev => ({ ...prev, layout_image: URL.createObjectURL(file) }));
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const { processPropertyImage } = await import('../utils/imageCompression');
+            // Process layout image same as property images
+            const compressedData = await processPropertyImage(file);
+            setFormData(prev => ({ ...prev, layout_image: compressedData }));
+        } catch (err) {
+            console.error('Failed to process layout:', err);
+            alert('Failed to process floor plan. Please try again.');
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -254,6 +431,7 @@ const PropertyForm = () => {
         if (isFieldInvalidValue(formData.characteristics.bathrooms)) errors.push('Bathrooms cannot be negative');
         if (isFieldInvalidValue(formData.characteristics.garages)) errors.push('Garages cannot be negative');
         if (isFieldInvalidValue(formData.characteristics.area)) errors.push('Area cannot be negative');
+        if (isFieldInvalidValue(formData.characteristics.total_area)) errors.push('Total area cannot be negative');
         return errors;
     };
 
@@ -264,7 +442,7 @@ const PropertyForm = () => {
         }
         if (s === 2) {
             const c = formData.characteristics;
-            const fields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area'];
+            const fields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
             return fields.every(field => {
                 const val = c[field];
                 if (val === '') return true;
@@ -287,7 +465,7 @@ const PropertyForm = () => {
                 if (isFieldMissing('price') || isFieldInvalidValue(formData.price)) invalidFieldsInStep.push('price');
             }
             if (step === 2) {
-                const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area'];
+                const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
                 charFields.forEach(f => {
                     const val = formData.characteristics[f];
                     if (isFieldInvalidValue(val)) {
@@ -306,6 +484,29 @@ const PropertyForm = () => {
         }
     };
     const prevStep = () => setStep(prev => prev - 1);
+
+    const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe && step < 3) {
+            nextStep();
+        }
+        if (isRightSwipe && step > 1 && step < 4) {
+            prevStep();
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -350,8 +551,8 @@ const PropertyForm = () => {
         }
 
         console.log('Submission started. current address:', formData.address);
-        if (isResolvingAddress) {
-            console.warn('Submission blocked: Resolution in progress.');
+        if (isResolvingAddress || isUploading) {
+            console.warn('Submission blocked: Resolution or Upload in progress.');
             return;
         }
         setLoading(true);
@@ -372,7 +573,12 @@ const PropertyForm = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-12">
+        <div
+            className="max-w-4xl mx-auto px-4 py-12"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+        >
             {/* Progress Bar - Only for mobile steps */}
             {step < 4 && isMobile && (
                 <div className="mb-12">
@@ -420,14 +626,14 @@ const PropertyForm = () => {
                                     <CheckCircle2 className="w-12 h-12 text-green-600" />
                                 </div>
                                 <h2 className="text-4xl font-black text-slate-800 mb-4">{isEditMode ? 'Listing Updated!' : 'Listing Published!'}</h2>
-                                <p className="text-slate-500 text-lg mb-12">Your property has been successfully {isEditMode ? 'updated' : 'announced'} to the Mugen ecosystem.</p>
+                                <p className="text-slate-500 text-lg mb-12">Your property has been successfully {isEditMode ? 'updated' : 'announced'} to the Vita ecosystem.</p>
                                 <div className="flex flex-col md:flex-row gap-4 justify-center">
                                     <button
                                         type="button"
-                                        onClick={() => navigate('/dashboard')}
+                                        onClick={() => navigate('/my-listings')}
                                         className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-800 transition-all"
                                     >
-                                        Go to Dashboard
+                                        Go to My Listings
                                     </button>
                                     <button
                                         type="button"
@@ -466,34 +672,74 @@ const PropertyForm = () => {
                                             />
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="field-container">
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Property Type</label>
                                                 <select
                                                     name="property_type"
                                                     value={formData.property_type}
+                                                    onChange={handleInputChange}
                                                     className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
                                                 >
-                                                    <option value="house">House</option>
-                                                    <option value="apartment">Apartment</option>
-                                                    <option value="villa">Villa</option>
-                                                    <option value="land">Land</option>
+                                                    {propertyTypes.map(type => (
+                                                        <option key={type} value={type}>
+                                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                             </div>
                                             <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Price ($)</label>
-                                                <input
-                                                    type="number"
-                                                    id="price"
-                                                    name="price"
-                                                    value={formData.price}
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Listing Type</label>
+                                                <select
+                                                    name="listing_type"
+                                                    value={formData.listing_type}
                                                     onChange={handleInputChange}
-
-
-                                                    placeholder="500,000"
-                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('price') === 'error' ? 'neon-error' : getFieldStatus('price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
-                                                />
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                >
+                                                    {listingTypes.map(type => (
+                                                        <option key={type} value={type}>
+                                                            For {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
+
+                                            <div className="field-container">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
+                                                <select
+                                                    name="status"
+                                                    value={formData.status}
+                                                    onChange={handleInputChange}
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                >
+                                                    {(propertyStatuses || []).map(status => {
+                                                        let label = status.label;
+                                                        if (status.id === 'sold_rented') {
+                                                            label = formData.listing_type === 'rent' ? 'Rented' : 'Sold';
+                                                        }
+                                                        return (
+                                                            <option key={status.id} value={status.id}>
+                                                                {label}
+                                                            </option>
+                                                        );
+                                                    })}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="field-container">
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Price ($)</label>
+                                            <input
+                                                type="number"
+                                                id="price"
+                                                name="price"
+                                                value={formData.price}
+                                                onChange={handleInputChange}
+
+
+                                                placeholder="500,000"
+                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('price') === 'error' ? 'neon-error' : getFieldStatus('price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                            />
                                         </div>
 
                                         <div className="field-container">
@@ -554,7 +800,8 @@ const PropertyForm = () => {
                                                 { label: 'Rooms', name: 'characteristics.rooms' },
                                                 { label: 'Bathrooms', name: 'characteristics.bathrooms' },
                                                 { label: 'Garages', name: 'characteristics.garages' },
-                                                { label: 'Area (m²)', name: 'characteristics.area' }
+                                                { label: 'Area (m²)', name: 'characteristics.area' },
+                                                { label: 'Total (m²)', name: 'characteristics.total_area' }
                                             ].map((field) => (
                                                 <div key={field.name} className="field-container">
                                                     <label className="block text-sm font-bold text-slate-700 mb-2">{field.label}</label>
@@ -615,21 +862,27 @@ const PropertyForm = () => {
                                             <label className="block text-sm font-bold text-slate-700 mb-3">Property Gallery</label>
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 {formData.images.map((url, idx) => (
-                                                    <div key={idx} className="relative aspect-square group z-10">
-                                                        <img src={url} className="w-full h-full object-cover rounded-2xl shadow-sm" />
+                                                    <div key={idx} className="relative aspect-square group z-10 bg-slate-100 rounded-2xl cursor-pointer" onClick={() => openLightbox(formData.images, idx)}>
+                                                        <CompressedImage src={url} className="w-full h-full object-cover rounded-2xl shadow-sm transition-transform group-hover:scale-[1.02]" />
                                                         <button
                                                             type="button"
-                                                            onClick={() => removeImage(idx)}
+                                                            onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
                                                             className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-md z-20 hover:bg-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                                         >
                                                             <X className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                 ))}
-                                                <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all">
-                                                    <Plus className="w-8 h-8 text-slate-400" />
-                                                    <span className="text-xs font-bold text-slate-400 mt-2 uppercase">Add Photo</span>
-                                                    <input type="file" multiple onChange={handleImageUpload} className="hidden" />
+                                                <label className={`aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                    {isUploading ? (
+                                                        <Loader className="w-8 h-8 text-primary-500 animate-spin" />
+                                                    ) : (
+                                                        <Plus className="w-8 h-8 text-slate-400" />
+                                                    )}
+                                                    <span className="text-xs font-bold text-slate-400 mt-2 uppercase">
+                                                        {isUploading ? 'Uploading...' : 'Add Photo'}
+                                                    </span>
+                                                    <input type="file" multiple onChange={handleImageUpload} className="hidden" disabled={isUploading} />
                                                 </label>
                                             </div>
                                         </div>
@@ -639,47 +892,89 @@ const PropertyForm = () => {
                                         <div>
                                             <label className="block text-sm font-bold text-slate-700 mb-3">Building Layout (Floor Plan)</label>
                                             {formData.layout_image ? (
-                                                <div className="relative group bg-slate-100 p-4 border border-slate-200 rounded-2xl">
-                                                    <img src={formData.layout_image} className="max-h-64 mx-auto rounded-2xl" />
+                                                <div className="relative group bg-slate-100 p-4 border border-slate-200 flex items-center justify-center cursor-pointer" style={{ minHeight: '300px', maxHeight: '500px' }} onClick={() => openLightbox([formData.layout_image], 0)}>
+                                                    <CompressedImage src={formData.layout_image} className="max-w-full max-h-full object-contain rounded-2xl transition-transform group-hover:scale-[1.02]" />
                                                     <button
                                                         type="button"
-                                                        onClick={() => setFormData(prev => ({ ...prev, layout_image: null }))}
+                                                        onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, layout_image: null })); }}
                                                         className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-md z-20 hover:bg-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <label className="w-full h-40 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all">
-                                                    <Layout className="w-10 h-10 text-slate-400" />
-                                                    <span className="text-sm font-bold text-slate-400 mt-2 uppercase">Upload Floor Plan</span>
-                                                    <input type="file" onChange={handleLayoutUpload} className="hidden" />
+                                                <label className={`w-full h-40 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                    {isUploading ? (
+                                                        <Loader className="w-10 h-10 text-primary-500 animate-spin" />
+                                                    ) : (
+                                                        <Layout className="w-10 h-10 text-slate-400" />
+                                                    )}
+                                                    <span className="text-sm font-bold text-slate-400 mt-2 uppercase">
+                                                        {isUploading ? 'Uploading...' : 'Upload Floor Plan'}
+                                                    </span>
+                                                    <input type="file" onChange={handleLayoutUpload} className="hidden" disabled={isUploading} />
                                                 </label>
                                             )}
                                         </div>
 
-                                        {/* Map Localization */}
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                                <MapPin className="w-4 h-4 text-primary-600" />
-                                                <span>Property Location (1km visibility circle)</span>
-                                            </label>
-                                            <div className="h-72 rounded-2xl overflow-hidden border border-slate-200 shadow-inner z-0">
-                                                <MapContainer
-                                                    center={[formData.location.lat, formData.location.lng]}
-                                                    zoom={13}
-                                                    scrollWheelZoom={false}
-                                                    style={{ height: '100%', width: '100%' }}
-                                                >
-                                                    <TileLayer
-                                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                                    />
-                                                    <LocationPicker location={formData.location} setFormData={setFormData} />
-                                                    <RecenterMap center={formData.location} />
-                                                </MapContainer>
+                                        {/* Address & Map Localization */}
+                                        <div className="space-y-6">
+                                            <div className="field-container">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Search Address</label>
+                                                <AddressAutocomplete
+                                                    value={formData.address?.private || ''}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            address: {
+                                                                ...prev.address,
+                                                                private: val
+                                                            }
+                                                        }));
+                                                    }}
+                                                    onSelect={handleAddressSelect}
+                                                    disabled={isResolvingAddress}
+                                                    placeholder="Start typing to search address..."
+                                                />
                                             </div>
-                                            <p className="text-xs text-slate-400 mt-2">Click on the map to set the property location. A 1km radius will be displayed.</p>
+
+
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                                    <MapPin className="w-4 h-4 text-primary-600" />
+                                                    <span>Confirm Location (1000m visibility circle)</span>
+                                                </label>
+                                                <div
+                                                    className="h-72 rounded-2xl overflow-hidden border border-slate-200 shadow-inner z-10"
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    onTouchStart={(e) => e.stopPropagation()}
+                                                    onTouchMove={(e) => e.stopPropagation()}
+                                                    onTouchEnd={(e) => e.stopPropagation()}
+                                                >
+                                                    <MapContainer
+                                                        center={[formData.address.location.lat, formData.address.location.lng]}
+                                                        zoom={13}
+                                                        scrollWheelZoom={true}
+                                                        dragging={true}
+                                                        style={{ height: '100%', width: '100%' }}
+                                                    >
+                                                        <TileLayer
+                                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                        />
+                                                        <LocationPicker
+                                                            location={formData.address.location}
+                                                            setFormData={setFormData}
+                                                            anchorLocation={anchorLocation}
+                                                            onLocationChange={fetchAddress}
+                                                        />
+                                                        <RecenterMap center={formData.address.location} />
+                                                    </MapContainer>
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-2">Click on the map to set the property location. A 1000m radius will be displayed.</p>
+                                            </div>
                                         </div>
 
                                         {(isMobile || !isMobile) && (
@@ -716,7 +1011,13 @@ const PropertyForm = () => {
                     </AnimatePresence>
                 </form>
             </Motion.div>
-        </div >
+            <ImageLightbox
+                images={lightboxImages}
+                initialIndex={lightboxIndex}
+                isOpen={lightboxOpen}
+                onClose={() => setLightboxOpen(false)}
+            />
+        </div>
     );
 };
 

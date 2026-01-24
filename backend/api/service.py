@@ -5,6 +5,7 @@
 # Standard library imports
 import os
 import sys
+import json
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -13,7 +14,7 @@ import flask
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from firebase_admin import auth
+from firebase_admin import auth, firestore
 
 # Local imports
 from server_utils.ai import AI as AIService
@@ -61,7 +62,7 @@ CORS(app, resources={r"/*": {"origins": origins_list}})
 @app.route("/")
 def home() -> Any:
     """Status endpoint for the backend service."""
-    return "Mugen State Manager API is running", 200
+    return "Vita State Manager API is running", 200
 
 # Initialize Security
 security = Security()
@@ -81,12 +82,59 @@ def before_request_hook() -> Any:
     """Apply security validation before each request."""
     return security.validation()
 
-# Removed home() route to allow serve() to handle the root path
+@app.route("/api/types", methods=["GET"])
+def get_property_types() -> Tuple[flask.Response, int]:
+    """Get list of allowed property types from JSON file."""
+    try:
+        types_file = basedir / "api" / "data" / "property_types.json"
+        with open(types_file, "r") as f:
+            types_list = json.load(f)
+        return jsonify(types_list), 200
+    except Exception as e:
+        print(f"[ERROR_SERVICE] Failed to load types: {e}")
+        return jsonify(["house", "apartment", "villa", "land"]), 200  # Fallback
+
+@app.route("/api/listing-types", methods=["GET"])
+def get_listing_types() -> Tuple[flask.Response, int]:
+    """Get list of allowed listing types from JSON file."""
+    try:
+        types_file = basedir / "api" / "data" / "listing_types.json"
+        with open(types_file, "r") as f:
+            types_list = json.load(f)
+        return jsonify(types_list), 200
+    except Exception as e:
+        print(f"[ERROR_SERVICE] Failed to load listing types: {e}")
+        return jsonify(["sale", "rent"]), 200  # Fallback
+
+@app.route("/api/statuses", methods=["GET"])
+def get_property_statuses() -> Tuple[flask.Response, int]:
+    """Get list of allowed property statuses from JSON file."""
+    try:
+        statuses_file = basedir / "api" / "data" / "property_statuses.json"
+        with open(statuses_file, "r") as f:
+            statuses_list = json.load(f)
+        return jsonify(statuses_list), 200
+    except Exception as e:
+        print(f"[ERROR_SERVICE] Failed to load statuses: {e}")
+        return jsonify(["available", "reserved", "under_option", "sold_rented"]), 200  # Fallback
+
+@app.route("/api/amenities", methods=["GET"])
+def get_amenities() -> Tuple[flask.Response, int]:
+    """Get list of common key amenities from JSON file."""
+    try:
+        amenities_file = basedir / "api" / "data" / "key_amenities.json"
+        with open(amenities_file, "r") as f:
+            amenities_list = json.load(f)
+        return jsonify(amenities_list), 200
+    except Exception as e:
+        print(f"[ERROR_SERVICE] Failed to load amenities: {e}")
+        return jsonify(["Air Conditioning", "Swimming Pool", "Parking", "Garden"]), 200  # Fallback
 
 @app.route("/api/announcements", methods=["GET"])
 def get_announcements() -> Tuple[flask.Response, int]:
     """Get all announcements with filters."""
     filters = request.args.to_dict()
+    # List view always masked (is_owner=False)
     announcements = manager.get_all_announcements(filters)
     return jsonify(announcements), 200
 
@@ -97,13 +145,22 @@ def get_announcement(property_id: str) -> Tuple[flask.Response, int]:
     if not announcement:
         return jsonify({"error": "Announcement not found"}), 404
     
-    # Only include location (coordinates) if explicitly requested (e.g., for editing)
+    # Check ownership
+    user = verify_token()
+    is_owner = False
+    if user and announcement.owner_id == user["uid"]:
+        is_owner = True
+
+    # Only include location if requested AND owner logic handled in model
+    # Note: to_dict now handles location protection if is_owner=False
     include_coords = request.args.get("coords", "false").lower() == "true"
-    data = announcement.to_dict(include_location=include_coords)
+    
+    data = announcement.to_dict(include_location=include_coords, is_owner=is_owner)
     
     # Fetch owner details
     if announcement.owner_id:
-        print(f"[DEBUG] Fetching owner for ID: {announcement.owner_id}")
+        # Optimization: Only fetch owner details if not self? Or always?
+        # Always fetch so we can show "Listed by You" or similar
         try:
             owner_record = auth.get_user(announcement.owner_id)
             data["owner"] = {
@@ -112,12 +169,9 @@ def get_announcement(property_id: str) -> Tuple[flask.Response, int]:
                 "email": owner_record.email,
                 "photo": owner_record.photo_url
             }
-            print(f"[DEBUG] Successfully fetched owner: {owner_record.display_name}")
         except Exception as e:
             print(f"[ERROR_SERVICE] Failed to fetch owner details: {e}")
             data["owner"] = None
-    else:
-        print(f"[DEBUG] No owner_id found for property {property_id}")
             
     return jsonify(data), 200
 
@@ -196,6 +250,43 @@ from firebase_admin import storage
 
 # ... existing code ...
 
+@app.route("/api/upload", methods=["POST"])
+def upload_file() -> Tuple[flask.Response, int]:
+    """Upload a file to Firebase Storage (Auth required)."""
+    user = verify_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        bucket = storage.bucket()
+        import time
+        import uuid
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+        
+        if ext not in allowed_extensions:
+             return jsonify({"error": "Invalid file type"}), 400
+
+        # Folder structure: properties/{uid}/{uuid}.{ext}
+        blob_path = f"properties/{user['uid']}/{uuid.uuid4()}.{ext}"
+        blob = bucket.blob(blob_path)
+        
+        blob.upload_from_file(file.stream, content_type=file.content_type)
+        blob.make_public()
+        
+        return jsonify({"url": blob.public_url}), 200
+
+    except Exception as e:
+        print(f"Generic upload failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/user/profile-image", methods=["POST"])
 def upload_profile_image() -> Tuple[flask.Response, int]:
     """Upload profile image via server-side proxy to bypass CORS."""
@@ -249,6 +340,50 @@ def upload_profile_image() -> Tuple[flask.Response, int]:
 
     except Exception as e:
         print(f"Upload failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/user/profile-photo", methods=["POST"])
+def upload_profile_photo() -> Tuple[flask.Response, int]:
+    """Store compressed profile photo in Firestore."""
+    user = verify_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    if not data or "photoData" not in data:
+        return jsonify({"error": "Missing photo data"}), 400
+    
+    try:
+        # Store compressed photo data in Firestore
+        db = Database()
+        photo_ref = db.collection("user_photos").document(user["uid"])
+        photo_ref.set({
+            "photoData": data["photoData"],
+            "updated_at": firestore.SERVER_TIMESTAMP
+        })
+        
+        # Return a reference string
+        photo_reference = f"profile:{user['uid']}"
+        return jsonify({"photoReference": photo_reference}), 200
+    except Exception as e:
+        print(f"Failed to store profile photo: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/user/profile-photo/<uid>", methods=["GET"])
+def get_profile_photo(uid: str) -> Tuple[flask.Response, int]:
+    """Retrieve compressed profile photo from Firestore."""
+    try:
+        db = Database()
+        photo_ref = db.collection("user_photos").document(uid)
+        photo_doc = photo_ref.get()
+        
+        if not photo_doc.exists:
+            return jsonify({"error": "Photo not found"}), 404
+        
+        photo_data = photo_doc.to_dict()
+        return jsonify({"photoData": photo_data.get("photoData")}), 200
+    except Exception as e:
+        print(f"Failed to retrieve profile photo: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/user/profile", methods=["GET"])

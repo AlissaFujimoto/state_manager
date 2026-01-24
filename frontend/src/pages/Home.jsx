@@ -3,6 +3,22 @@ import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calend
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
+import PropertyStatusBadges from '../components/PropertyStatusBadges';
+import CompressedImage from '../components/CompressedImage';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../utils/databaseAuth';
+
+const maskAddress = (address) => {
+    if (!address) return 'Location not specified';
+    const parts = address.split(',').map(s => s.trim());
+    if (parts.length >= 4) {
+        return `${parts[parts.length - 4]}, ${parts[parts.length - 3]} - ${parts[parts.length - 2]}`;
+    }
+    if (parts.length === 3) {
+        return `${parts[0]} - ${parts[1]}`;
+    }
+    return address;
+};
 
 const variants = {
     enter: (direction) => ({
@@ -21,16 +37,20 @@ const variants = {
     })
 };
 
-const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
+export const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false, onDelete }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [currentImgIndex, setCurrentImgIndex] = useState(0);
+    const [user] = useAuthState(auth);
+
+    const isOwner = user && property.owner_id === user.uid;
 
     // Combine images and layout_image (if exists)
+    // Filter out potential invalid blob URLs that might have been saved erroneously
     const displayImages = [
         ...(property.images || []),
         ...(property.layout_image ? [property.layout_image] : [])
-    ];
+    ].filter(url => url && !url.startsWith('blob:'));
 
     // Fallback if no images
     if (displayImages.length === 0) {
@@ -62,16 +82,23 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
         >
             <div className="relative h-64 overflow-hidden group/image">
                 <AnimatePresence mode="wait">
-                    <Motion.img
+                    <Motion.div
                         key={currentImgIndex}
-                        src={displayImages[currentImgIndex]}
-                        alt={property.title}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-110"
-                    />
+                        className="w-full h-full absolute inset-0"
+                    >
+                        <CompressedImage
+                            src={displayImages[currentImgIndex]}
+                            alt={property.title}
+                            onError={(e) => {
+                                e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80';
+                            }}
+                            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                        />
+                    </Motion.div>
                 </AnimatePresence>
 
                 {/* Navigation Arrows */}
@@ -102,12 +129,46 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
                             ))}
                         </div>
                     </>
+
                 )}
 
-                <div className="absolute top-4 left-4 z-10">
-                    <span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider shadow-sm">
-                        {property.property_type}
-                    </span>
+                {(() => {
+                    const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
+                    if (!statusConfig?.showRibbon) return null;
+
+                    let label = statusConfig.label;
+                    if (property.status === 'sold_rented') {
+                        label = property.listing_type === 'rent' ? 'Rented' : 'Sold';
+                    }
+
+                    const colorMap = {
+                        amber: 'bg-amber-500',
+                        emerald: 'bg-emerald-500',
+                        indigo: 'bg-indigo-500',
+                        rose: 'bg-rose-500',
+                        blue: 'bg-blue-500'
+                    };
+
+                    const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
+
+                    return (
+                        <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-2xl">
+                            <div className={`
+                                ${bgColor}
+                                text-white
+                                text-[10px] font-bold uppercase tracking-wide py-1.5
+                                absolute top-6 -right-12 w-48
+                                transform rotate-45
+                                shadow-sm text-center
+                            `}>
+                                {label}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                <div className="absolute top-4 left-4 z-10 transition-transform duration-300 group-hover:scale-105">
+                    <PropertyStatusBadges property={property} size="sm" />
                 </div>
                 <div className="absolute bottom-4 right-4 z-10">
                     <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg">
@@ -124,7 +185,7 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
                     <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                         <span className="text-xs font-medium line-clamp-1">
-                            {property.address || (property.location ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}` : 'Location not specified')}
+                            {property.display_address || 'Location not specified'}
                         </span>
                     </div>
                     {property.created_at && (
@@ -159,33 +220,20 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Grgs</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
                     </div>
-                    <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Area</span>
-                        <span className="text-slate-700 font-semibold">{property.characteristics?.area || 0}m²</span>
+                    <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">Area / Total</span>
+                        <span className="text-slate-700 font-semibold text-[11px] text-center truncate w-full px-1">
+                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0}m²
+                        </span>
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">
                     {/* View Details button removed, card is clickable */}
 
-                    {showEditAction && (
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Link
-                                to={`/edit-property/${property.id}`}
-                                className="flex-none px-4 py-2 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
-                                title="Edit Details"
-                            >
-                                <Edit className="w-4 h-4" />
-                            </Link>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDelete && onDelete(property.id); }}
-                                className="flex-none px-4 py-2 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all"
-                                title="Delete Listing"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
+                    {/* Action buttons removed - card is clickable to go to details page */}
+                    <div className="flex justify-end gap-3 mt-6">
+                    </div>
                 </div>
             </div>
         </div>
@@ -194,10 +242,14 @@ const PropertyCard = ({ property, showEditAction = false, onDelete }) => {
 
 const Home = () => {
     const [properties, setProperties] = useState([]);
+    const [propertyTypes, setPropertyTypes] = useState([]);
+    const [listingTypes, setListingTypes] = useState([]);
+    const [propertyStatuses, setPropertyStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState({ type: 'all', minPrice: '', maxPrice: '' });
+    const [filter, setFilter] = useState({ type: 'all', listingType: 'all', minPrice: '', maxPrice: '' });
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
@@ -206,19 +258,65 @@ const Home = () => {
     // Minimum swipe distance (in px)
     const minSwipeDistance = 50;
 
+    const ITEMS_PER_PAGE = isMobile ? 6 : 9;
+
+    const filteredProperties = (properties || []).filter(p => {
+        const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
+        const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesType && matchesSearch;
+    });
+
+    const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+
+    const currentItems = filteredProperties.slice(indexOfFirstItem, indexOfLastItem);
+
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const ITEMS_PER_PAGE = isMobile ? 1 : 9;
+
+
+    useEffect(() => {
+        const fetchTypes = async () => {
+            try {
+                const res = await api.get('/types');
+                setPropertyTypes(res.data);
+            } catch (err) {
+                console.error('Failed to fetch property types:', err);
+            }
+        };
+        const fetchListingTypes = async () => {
+            try {
+                const res = await api.get('/listing-types');
+                setListingTypes(res.data);
+            } catch (err) {
+                console.error('Failed to fetch listing types:', err);
+            }
+        };
+        const fetchStatuses = async () => {
+            try {
+                const res = await api.get('/statuses');
+                setPropertyStatuses(res.data);
+            } catch (err) {
+                console.error('Failed to fetch statuses:', err);
+            }
+        };
+        fetchTypes();
+        fetchListingTypes();
+        fetchStatuses();
+    }, []);
 
     useEffect(() => {
         const fetchProperties = async () => {
             try {
                 const params = {};
                 if (filter.type !== 'all') params.type = filter.type;
+                if (filter.listingType !== 'all') params.listing_type = filter.listingType;
                 if (filter.minPrice) params.min_price = filter.minPrice;
                 if (filter.maxPrice) params.max_price = filter.maxPrice;
 
@@ -227,6 +325,9 @@ const Home = () => {
                 setLoading(false);
             } catch (err) {
                 console.error('Failed to fetch properties:', err);
+                if (err.response) {
+                    console.error('Error response:', err.response.status, err.response.data);
+                }
                 setLoading(false);
             }
         };
@@ -247,14 +348,12 @@ const Home = () => {
             setDirection(-1);
             setCurrentPage((prev) => prev - 1);
         }
-        window.scrollTo({ top: 300, behavior: 'smooth' });
     };
 
     const jumpToPage = (page) => {
         const newDirection = page > currentPage ? 1 : -1;
         setDirection(newDirection);
         setCurrentPage(page);
-        window.scrollTo({ top: 300, behavior: 'smooth' });
     };
 
     const onTouchStart = (e) => {
@@ -282,16 +381,7 @@ const Home = () => {
         }
     };
 
-    const filteredProperties = (properties || []).filter(p => {
-        const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
-        const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesType && matchesSearch;
-    });
 
-    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
-    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-    const currentItems = filteredProperties.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
 
     return (
         <div
@@ -325,9 +415,23 @@ const Home = () => {
                             onChange={(e) => setFilter({ ...filter, type: e.target.value })}
                         >
                             <option value="all">All Types</option>
-                            <option value="house">Houses</option>
-                            <option value="apartment">Apartments</option>
-                            <option value="villa">Villas</option>
+                            {propertyTypes.map(type => (
+                                <option key={type} value={type}>
+                                    {type.charAt(0).toUpperCase() + type.slice(1)}s
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            className="bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-primary-500 transition-all outline-none font-bold text-slate-700 appearance-none"
+                            value={filter.listingType}
+                            onChange={(e) => setFilter({ ...filter, listingType: e.target.value })}
+                        >
+                            <option value="all">Sale / Rent</option>
+                            {listingTypes.map(type => (
+                                <option key={type} value={type}>
+                                    For {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                            ))}
                         </select>
                         <button className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center space-x-2">
                             <Filter className="w-5 h-5" />
@@ -353,7 +457,7 @@ const Home = () => {
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full"
                     >
                         {currentItems.map((p) => (
-                            <PropertyCard key={p.id} property={p} />
+                            <PropertyCard key={p.id} property={p} propertyStatuses={propertyStatuses} />
                         ))}
                     </Motion.div>
                 </AnimatePresence>
@@ -466,4 +570,3 @@ const Home = () => {
 };
 
 export default Home;
-export { PropertyCard };

@@ -1,0 +1,30 @@
+[
+    {
+        "id": "available",
+        "label": "Available",
+        "color": "emerald",
+        "textColor": "white",
+        "showRibbon": false
+    },
+    {
+        "id": "reserved",
+        "label": "Reserved",
+        "color": "amber",
+        "textColor": "white",
+        "showRibbon": true
+    },
+    {
+        "id": "under_option",
+        "label": "Under Option",
+        "color": "indigo",
+        "textColor": "white",
+        "showRibbon": true
+    },
+    {
+        "id": "sold_rented",
+        "label": "Sold / Rented",
+        "color": "rose",
+        "textColor": "white",
+        "showRibbon": true
+    }
+]

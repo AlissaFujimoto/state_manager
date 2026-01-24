@@ -5,6 +5,7 @@ import { updateProfile, updatePassword } from 'firebase/auth';
 import { User, Lock, Camera, Save, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
 import ImageEditor from '../components/ImageEditor';
+import CompressedImage from '../components/CompressedImage';
 
 const Profile = () => {
     const [user, loading] = useAuthState(auth);
@@ -20,10 +21,41 @@ const Profile = () => {
     const fileInputRef = useRef(null);
 
     useEffect(() => {
-        if (user) {
-            setDisplayName(user.displayName || '');
-            setPhotoURL(user.photoURL || '');
-        }
+        const loadProfilePhoto = async () => {
+            if (user) {
+                setDisplayName(user.displayName || '');
+
+                // Check if photoURL is a reference to Firestore
+                if (user.photoURL && user.photoURL.startsWith('profile:')) {
+                    try {
+                        const uid = user.photoURL.split(':')[1];
+                        const token = await user.getIdToken();
+                        const apiBase = import.meta.env.API_BASE_URL || 'http://localhost:5000/api';
+                        const response = await fetch(`${apiBase}/user/profile-photo/${uid}`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            setPhotoURL(data.photoData);
+                        } else {
+                            // Fallback to Google photo or empty
+                            setPhotoURL('');
+                        }
+                    } catch (error) {
+                        console.error('Failed to load profile photo:', error);
+                        setPhotoURL('');
+                    }
+                } else {
+                    // Regular URL (Google photo, etc.)
+                    setPhotoURL(user.photoURL || '');
+                }
+            }
+        };
+
+        loadProfilePhoto();
     }, [user]);
 
     const handleUpdateProfile = async (e) => {
@@ -84,16 +116,23 @@ const Profile = () => {
         try {
             if (!user) throw new Error('User not authenticated');
 
-            const token = await user.getIdToken();
-            const formData = new FormData();
-            formData.append('file', blob, 'profile.jpg');
+            // Process profile photo: resize to 512x512 and compress
+            const { processProfilePhoto } = await import('../utils/imageCompression');
 
-            const response = await fetch('/api/user/profile-image', {
+            // Convert blob to File
+            const file = new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+            const compressedData = await processProfilePhoto(file);
+
+            // Send compressed data to backend
+            const token = await user.getIdToken();
+            const apiBase = import.meta.env.API_BASE_URL || 'http://localhost:5000/api';
+            const response = await fetch(`${apiBase}/user/profile-photo`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 },
-                body: formData
+                body: JSON.stringify({ photoData: compressedData })
             });
 
             if (!response.ok) {
@@ -102,17 +141,18 @@ const Profile = () => {
             }
 
             const data = await response.json();
-            const downloadURL = data.url;
+            const photoReference = data.photoReference; // e.g., "profile:uid"
 
-            setPhotoURL(downloadURL);
+            // Update local state with compressed data for immediate display
+            setPhotoURL(compressedData);
 
-            // Update profile with the new URL immediately
-            await updateProfile(user, { photoURL: downloadURL });
+            // Update Firebase profile with reference (not the full data)
+            await updateProfile(user, { photoURL: photoReference });
 
-            setMessage({ type: 'success', text: 'Image uploaded successfully!' });
+            setMessage({ type: 'success', text: 'Profile photo updated successfully!' });
         } catch (error) {
             console.error(error);
-            setMessage({ type: 'error', text: `Failed to upload image: ${error.message}` });
+            setMessage({ type: 'error', text: `Failed to update photo: ${error.message}` });
         } finally {
             setIsUploading(false);
         }
@@ -175,7 +215,7 @@ const Profile = () => {
                                 <div className="flex items-center gap-4">
                                     <div className="relative group cursor-pointer w-20 h-20" onClick={() => fileInputRef.current?.click()}>
                                         {photoURL ? (
-                                            <img src={photoURL} alt="Profile" className="w-full h-full rounded-2xl object-cover border-2 border-slate-200 shadow-sm" />
+                                            <CompressedImage src={photoURL} alt="Profile" className="w-full h-full rounded-2xl object-cover border-2 border-slate-200 shadow-sm" />
                                         ) : (
                                             <div className="w-full h-full rounded-2xl bg-slate-100 flex items-center justify-center border-2 border-slate-200 border-dashed">
                                                 <Camera className="w-8 h-8 text-slate-400" />

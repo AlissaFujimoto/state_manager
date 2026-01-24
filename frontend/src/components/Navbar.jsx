@@ -5,6 +5,7 @@ import { auth } from '../utils/databaseAuth';
 import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import CompressedImage from './CompressedImage';
 
 const Navbar = () => {
     const [user] = useAuthState(auth);
@@ -19,37 +20,30 @@ const Navbar = () => {
                             <div className="bg-primary-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg shadow-primary-200">
                                 <Landmark className="text-white w-6 h-6" />
                             </div>
-                            <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Mugen<span className="text-primary-600 not-italic">State</span></span>
+                            <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Vita<span className="text-primary-600 not-italic">State</span></span>
                         </Link>
 
-                        {/* Desktop Menu */}
-                        <div className="hidden md:flex items-center space-x-8">
-                            <Link to="/" className="text-slate-600 hover:text-primary-600 font-bold transition-colors">Home</Link>
-                            {user ? (
-                                <button
-                                    onClick={() => setIsOpen(!isOpen)}
-                                    className="flex items-center space-x-3 p-1.5 pr-4 rounded-full bg-white border border-slate-200 hover:border-primary-200 hover:shadow-md transition-all ease-in-out duration-300"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                                        <User className="w-5 h-5 text-slate-600" />
-                                    </div>
-                                    <span className="text-sm font-bold text-slate-700">{user.displayName?.split(' ')[0] || 'User'}</span>
-                                </button>
-                            ) : (
+                        {/* Unified Menu Button (Replaces Desktop and Mobile specific buttons) */}
+                        <div className="flex items-center space-x-4">
+                            {!user && (
                                 <Link
                                     to="/auth"
-                                    className="bg-slate-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all flex items-center space-x-2"
+                                    className="hidden md:flex bg-slate-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2"
                                 >
                                     <LogIn className="w-5 h-5" />
                                     <span>Sign In</span>
                                 </Link>
                             )}
+                            <button
+                                className="p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+                                onClick={() => setIsOpen(!isOpen)}
+                                aria-label="Toggle menu"
+                            >
+                                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            </button>
                         </div>
 
-                        {/* Mobile Menu Button */}
-                        <button className="md:hidden p-2 text-slate-600" onClick={() => setIsOpen(!isOpen)}>
-                            {isOpen ? <X /> : <Menu />}
-                        </button>
+
                     </div>
                 </div>
             </nav>
@@ -76,19 +70,16 @@ const Navbar = () => {
                             exit={{ opacity: 0, height: 0 }}
                             className="fixed top-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-8 space-y-6 z-[50] shadow-xl overflow-hidden"
                         >
-                            <Link to="/" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
-                                <Home className="w-6 h-6" />
-                                <span>Home</span>
-                            </Link>
+
                             {user ? (
                                 <>
                                     <Link to="/profile" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                         <Settings className="w-6 h-6" />
                                         <span>Profile Settings</span>
                                     </Link>
-                                    <Link to="/dashboard" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
+                                    <Link to="/my-listings" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                         <LayoutDashboard className="w-6 h-6" />
-                                        <span>Dashboard</span>
+                                        <span>My Listings</span>
                                     </Link>
                                     <Link to="/create-announcement" className="mobile-nav-link primary" onClick={() => setIsOpen(false)}>
                                         <PlusCircle className="w-6 h-6" />
@@ -151,7 +142,7 @@ const Navbar = () => {
                                     </div>
 
                                     <div className="p-4 bg-slate-50 rounded-2xl mb-8 flex items-center space-x-4">
-                                        <img
+                                        <CompressedImage
                                             src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}&background=0ea5e9&color=fff`}
                                             alt="Avatar"
                                             className="w-12 h-12 rounded-full border-2 border-white shadow-sm"
@@ -173,12 +164,12 @@ const Navbar = () => {
                                         </Link>
 
                                         <Link
-                                            to="/dashboard"
+                                            to="/my-listings"
                                             className="drawer-nav-link"
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <LayoutDashboard className="w-5 h-5" />
-                                            <span>Dashboard</span>
+                                            <span>My Listings</span>
                                         </Link>
 
                                         <Link

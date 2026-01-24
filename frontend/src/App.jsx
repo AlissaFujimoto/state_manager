@@ -6,11 +6,10 @@ import { auth } from './utils/databaseAuth';
 // Components
 import Navbar from './components/Navbar';
 import Auth from './components/Auth';
-import ScrollToTop from './components/ScrollToTop';
 
 // Pages
 import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
+import MyListings from './pages/MyListings';
 import PropertyDetails from './pages/PropertyDetails';
 import PropertyForm from './pages/PropertyForm';
 import Profile from './pages/Profile';
@@ -38,13 +37,12 @@ const PublicRoute = ({ children }) => {
     </div>
   );
 
-  return user ? <Navigate to="/dashboard" /> : children;
+  return user ? <Navigate to="/my-listings" /> : children;
 };
 
 function App() {
   return (
     <Router>
-      <ScrollToTop />
       <div className="min-h-screen bg-slate-50">
         <Navbar />
         <main className="animate-fade-in">
@@ -62,10 +60,10 @@ function App() {
 
             {/* Protected Routes */}
             <Route
-              path="/dashboard"
+              path="/my-listings"
               element={
                 <PrivateRoute>
-                  <Dashboard />
+                  <MyListings />
                 </PrivateRoute>
               }
             />
@@ -98,7 +96,7 @@ function App() {
 
         <footer className="bg-white border-t border-slate-100 py-12 mt-20">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-slate-400 font-medium">© 2026 Mugen State Manager. All rights reserved.</p>
+            <p className="text-slate-400 font-medium">© 2026 Vita State Manager. All rights reserved.</p>
             <div className="flex justify-center space-x-6 mt-4">
               <a href="#" className="text-slate-300 hover:text-primary-500 transition-colors">Privacy Policy</a>
               <a href="#" className="text-slate-300 hover:text-primary-500 transition-colors">Terms of Service</a>

@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Shield, LogOut, Settings } from 'lucide-react';
 import { auth } from '../utils/databaseAuth';
+import CompressedImage from './CompressedImage';
 
 const Profile = ({ user }) => {
     const navigate = useNavigate();
@@ -14,7 +15,7 @@ const Profile = ({ user }) => {
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="relative">
                     {user.photoURL ? (
-                        <img
+                        <CompressedImage
                             src={user.photoURL}
                             alt={user.displayName}
                             className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg"
