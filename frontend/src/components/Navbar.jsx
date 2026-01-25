@@ -123,10 +123,10 @@ const Navbar = () => {
                             {!user && (
                                 <Link
                                     to="/auth"
-                                    className={`flex bg-slate-900 text-white px-4 md:px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}
+                                    className={`flex bg-slate-900 text-white p-2.5 md:px-8 md:py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}
                                 >
                                     <LogIn className="w-5 h-5" />
-                                    <span>{t('navbar.login')}</span>
+                                    <span className="hidden md:inline">{t('navbar.login')}</span>
                                 </Link>
                             )}
                             {user && (
@@ -143,10 +143,10 @@ const Navbar = () => {
 
                     </div>
                 </div>
-            </nav>
+            </nav >
 
             {/* Mobile Menu Overlay */}
-            <AnimatePresence>
+            < AnimatePresence >
                 {isOpen && (
                     <div className="md:hidden">
                         {/* Backdrop with Blur */}
@@ -201,11 +201,12 @@ const Navbar = () => {
                             )}
                         </Motion.div>
                     </div>
-                )}
-            </AnimatePresence>
+                )
+                }
+            </AnimatePresence >
 
             {/* Desktop Side Drawer */}
-            <div className="hidden md:block">
+            < div className="hidden md:block" >
                 <AnimatePresence>
                     {isOpen && user && (
                         <>
@@ -296,7 +297,7 @@ const Navbar = () => {
                         </>
                     )}
                 </AnimatePresence>
-            </div>
+            </div >
         </>
     );
 };
