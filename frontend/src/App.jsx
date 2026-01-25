@@ -13,6 +13,7 @@ import MyListings from './pages/MyListings';
 import PropertyDetails from './pages/PropertyDetails';
 import PropertyForm from './pages/PropertyForm';
 import Profile from './pages/Profile';
+import LegalPage from './pages/LegalPage';
 
 // Private Route Wrapper
 const PrivateRoute = ({ children }) => {
@@ -62,6 +63,9 @@ function App() {
                 }
               />
               <Route path="/property/:id" element={<PropertyDetails />} />
+              <Route path="/privacy" element={<LegalPage type="privacy" />} />
+              <Route path="/terms" element={<LegalPage type="terms" />} />
+              <Route path="/cookies" element={<LegalPage type="cookies" />} />
 
               {/* Protected Routes */}
               <Route

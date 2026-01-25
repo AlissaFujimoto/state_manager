@@ -24,10 +24,12 @@ export const LanguageProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        fetchLanguageData();
+        const savedLang = localStorage.getItem('user-language');
+        fetchLanguageData(savedLang || '');
     }, []);
 
     const changeLanguage = (lang) => {
+        localStorage.setItem('user-language', lang);
         fetchLanguageData(lang);
     };
 

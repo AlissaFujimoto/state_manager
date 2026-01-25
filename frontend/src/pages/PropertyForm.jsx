@@ -803,8 +803,8 @@ const PropertyForm = () => {
                                                 { label: t('common.rooms'), name: 'characteristics.rooms' },
                                                 { label: t('common.bathrooms'), name: 'characteristics.bathrooms' },
                                                 { label: t('common.garages'), name: 'characteristics.garages' },
-                                                { label: `${t('common.area')} (${t('common.m2')})`, name: 'characteristics.area' },
-                                                { label: `${t('common.total')} (${t('common.m2')})`, name: 'characteristics.total_area' }
+                                                { label: `${t('common.area')} (${t('common.area_unit')})`, name: 'characteristics.area' },
+                                                { label: `${t('common.total')} (${t('common.area_unit')})`, name: 'characteristics.total_area' }
                                             ].map((field) => (
                                                 <div key={field.name} className="field-container">
                                                     <label className="block text-sm font-bold text-slate-700 mb-2">{field.label}</label>

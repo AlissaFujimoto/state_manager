@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar, ChevronsLeft, ChevronsRight, X, Check } from 'lucide-react';
+import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar, ChevronsLeft, ChevronsRight, X, Check, Languages, Loader2 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import PropertyStatusBadges from '../components/PropertyStatusBadges';
 import CompressedImage from '../components/CompressedImage';
+import PropertyCardSkeleton from '../components/PropertyCardSkeleton';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -22,37 +23,24 @@ const maskAddress = (address, t) => {
     return address;
 };
 
-const variants = {
-    enter: (direction) => ({
-        x: direction > 0 ? 300 : -300,
-        opacity: 0
-    }),
-    center: {
-        zIndex: 1,
-        x: 0,
-        opacity: 1
-    },
-    exit: (direction) => ({
-        zIndex: 0,
-        x: direction < 0 ? 300 : -300,
-        opacity: 0
-    })
-};
 
 export const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false, onDelete }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [currentImgIndex, setCurrentImgIndex] = useState(0);
     const [user] = useAuthState(auth);
-    const { t, formatCurrency } = useLanguage();
+    const { t, formatCurrency, currentLanguage } = useLanguage();
+    const [translations, setTranslations] = useState({
+        title: '',
+        description: '',
+        active: false,
+        loading: false
+    });
 
     const isOwner = user && property.owner_id === user.uid;
 
-    // Combine images and layout_image (if exists)
-    // Filter out potential invalid blob URLs that might have been saved erroneously
     const displayImages = [
-        ...(property.images || []),
-        ...(property.layout_image ? [property.layout_image] : [])
+        ...(property.images || [])
     ].filter(url => url && !url.startsWith('blob:'));
 
     // Fallback if no images
@@ -60,21 +48,86 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
         displayImages.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
     }
 
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
+    const minSwipeDistance = 50;
+
+    // Auto-slide photos every 5 seconds
+    useEffect(() => {
+        if (displayImages.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setCurrentImgIndex((prev) => (prev + 1) % displayImages.length);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [displayImages.length]);
+
     const handleCardClick = () => {
         navigate(`/property/${property.id}`, { state: { from: location.pathname } });
     };
 
     const nextImage = (e) => {
-        e.stopPropagation();
-        if (currentImgIndex < displayImages.length - 1) {
-            setCurrentImgIndex((prev) => prev + 1);
-        }
+        if (e) e.stopPropagation();
+        setCurrentImgIndex((prev) => (prev + 1) % displayImages.length);
     };
 
     const prevImage = (e) => {
+        if (e) e.stopPropagation();
+        setCurrentImgIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
+    };
+
+    const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = (e) => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe || isRightSwipe) {
+            if (e) e.stopPropagation();
+            if (isLeftSwipe) nextImage();
+            if (isRightSwipe) prevImage();
+        }
+    };
+
+    const handleTranslate = async (e) => {
         e.stopPropagation();
-        if (currentImgIndex > 0) {
-            setCurrentImgIndex((prev) => prev - 1);
+        if (translations.active) {
+            setTranslations(prev => ({ ...prev, active: false }));
+            return;
+        }
+
+        if (translations.title && translations.description) {
+            setTranslations(prev => ({ ...prev, active: true }));
+            return;
+        }
+
+        setTranslations(prev => ({ ...prev, loading: true }));
+        try {
+            const targetLang = currentLanguage.split('-')[0];
+            const [titleRes, descRes] = await Promise.all([
+                api.post('/translate', { text: property.title, target_lang: targetLang }),
+                api.post('/translate', { text: property.description, target_lang: targetLang })
+            ]);
+
+            setTranslations({
+                title: titleRes.data.translatedText,
+                description: descRes.data.translatedText,
+                active: true,
+                loading: false
+            });
+        } catch (err) {
+            console.error('Translation failed:', err);
+            setTranslations(prev => ({ ...prev, loading: false }));
         }
     };
 
@@ -83,7 +136,12 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
             onClick={handleCardClick}
             className="glass-card rounded-2xl overflow-hidden group premium-shadow cursor-pointer relative"
         >
-            <div className="relative h-64 overflow-hidden group/image">
+            <div
+                className="relative h-64 overflow-hidden group/image"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
                 <AnimatePresence mode="wait">
                     <Motion.div
                         key={currentImgIndex}
@@ -109,14 +167,12 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                     <>
                         <button
                             onClick={prevImage}
-                            disabled={currentImgIndex === 0}
                             className="carousel-nav-btn left-2 p-1.5 z-10"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button
                             onClick={nextImage}
-                            disabled={currentImgIndex === displayImages.length - 1}
                             className="carousel-nav-btn right-2 p-1.5 z-10"
                         >
                             <ChevronRight className="w-5 h-5" />
@@ -125,14 +181,14 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                         {/* Image Indicator Dots */}
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                             {displayImages.map((_, idx) => (
-                                <div
+                                <button
                                     key={idx}
+                                    onClick={(e) => { e.stopPropagation(); setCurrentImgIndex(idx); }}
                                     className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImgIndex ? 'bg-white w-3' : 'bg-white/50'}`}
                                 />
                             ))}
                         </div>
                     </>
-
                 )}
 
                 {(() => {
@@ -181,10 +237,24 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
             </div>
 
             <div className="p-6">
-                <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors">
-                    {property.title}
-                </h3>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 mt-1.5">
+                <div className="flex justify-between items-start gap-2">
+                    <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors leading-tight">
+                        {translations.active ? translations.title : property.title}
+                    </h3>
+                    <button
+                        onClick={handleTranslate}
+                        disabled={translations.loading}
+                        className={`p-2 rounded-xl transition-all shrink-0 ${translations.active ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                        title={translations.active ? t('common.show_original') : t('common.translate')}
+                    >
+                        {translations.loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Languages className="w-4 h-4" />
+                        )}
+                    </button>
+                </div>
+                <div className="flex flex-col gap-y-1.5 text-slate-500 mt-2">
                     <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                         <span className="text-xs font-medium line-clamp-1">
@@ -192,14 +262,14 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                         </span>
                     </div>
                     {property.created_at && (
-                        <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+                        <div className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
                             <span className="text-xs font-medium">{new Date(property.created_at).toLocaleDateString()}</span>
                         </div>
                     )}
                 </div>
                 <p className="text-slate-500 text-sm mt-2 line-clamp-2">
-                    {property.description}
+                    {translations.active ? translations.description : property.description}
                 </p>
 
                 <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
@@ -225,8 +295,8 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                     </div>
                     <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
-                        <span className="text-slate-700 font-semibold text-[11px] text-center truncate w-full px-1">
-                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0}{t('common.m2')}
+                        <span className="text-slate-700 font-semibold text-center truncate w-full px-1">
+                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0}{t('common.area_unit')}
                         </span>
                     </div>
                 </div>
@@ -275,12 +345,6 @@ const Home = () => {
     const { t, regions, formatCurrency } = useLanguage();
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    const [touchStart, setTouchStart] = useState(null);
-    const [touchEnd, setTouchEnd] = useState(null);
-    const [direction, setDirection] = useState(0);
-
-    // Minimum swipe distance (in px)
-    const minSwipeDistance = 50;
 
     const ITEMS_PER_PAGE = isMobile ? 6 : 9;
 
@@ -352,10 +416,12 @@ const Home = () => {
     }).sort((a, b) => {
         if (filter.sortBy === 'price_asc') return Number(a.price) - Number(b.price);
         if (filter.sortBy === 'price_desc') return Number(b.price) - Number(a.price);
+        if (filter.sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        if (filter.sortBy === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
         if (filter.sortBy === 'beds_desc') return Number(b.characteristics?.bedrooms || 0) - Number(a.characteristics?.bedrooms || 0);
-        if (filter.sortBy === 'area_desc') return Number(b.characteristics?.area || 0) - Number(a.characteristics?.area || 0);
-        // Default: newest (assuming ID or created_at logic, here just fallback)
-        return 0;
+
+        // Default: newest
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
 
     const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
@@ -471,50 +537,19 @@ const Home = () => {
         fetchProperties();
     }, [filter]);
 
-    // Reset page to 1 whenever filters change
+    const jumpToPage = (page) => {
+        setCurrentPage(page);
+    };
+
     useEffect(() => {
         setCurrentPage(1);
-        setDirection(0);
     }, [filter, searchQuery]);
 
     const paginate = (newDirection) => {
         if (newDirection > 0 && currentPage < totalPages) {
-            setDirection(1);
             setCurrentPage((prev) => prev + 1);
         } else if (newDirection < 0 && currentPage > 1) {
-            setDirection(-1);
             setCurrentPage((prev) => prev - 1);
-        }
-    };
-
-    const jumpToPage = (page) => {
-        const newDirection = page > currentPage ? 1 : -1;
-        setDirection(newDirection);
-        setCurrentPage(page);
-    };
-
-    const onTouchStart = (e) => {
-        setTouchEnd(null); // Reset touch end
-        setTouchStart(e.targetTouches[0].clientX);
-    };
-
-    const onTouchMove = (e) => {
-        setTouchEnd(e.targetTouches[0].clientX);
-    };
-
-    const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
-
-        const distance = touchStart - touchEnd;
-        const isLeftSwipe = distance > minSwipeDistance;
-        const isRightSwipe = distance < -minSwipeDistance;
-
-        if (isLeftSwipe) {
-            paginate(1);
-        }
-
-        if (isRightSwipe) {
-            paginate(-1);
         }
     };
 
@@ -523,9 +558,6 @@ const Home = () => {
     return (
         <div
             className="max-w-7xl mx-auto px-4 py-8 min-h-screen"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
         >
             <header className="mb-12">
                 <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
@@ -560,7 +592,7 @@ const Home = () => {
                         </button>
                     </div>
 
-                    <div className="flex md:flex-nowrap flex-wrap gap-3 items-center overflow-visible md:overflow-visible pb-4 md:pb-0 hide-scrollbar">
+                    <div className="flex w-full md:flex-nowrap flex-wrap gap-3 items-center justify-between overflow-visible md:overflow-visible pb-4 md:pb-0 hide-scrollbar">
                         {isMobile ? (
                             <div className="flex gap-2 w-full md:w-auto">
                                 <select
@@ -691,9 +723,9 @@ const Home = () => {
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
                                             { id: 'newest', label: t('common.newest') },
+                                            { id: 'oldest', label: t('common.oldest') || 'Oldest' },
                                             { id: 'price_asc', label: t('common.lower_price') },
-                                            { id: 'price_desc', label: t('common.higher_price') },
-                                            { id: 'area_desc', label: t('common.largest_area') }
+                                            { id: 'price_desc', label: t('common.higher_price') }
                                         ].map((opt) => (
                                             <button
                                                 key={opt.id}
@@ -728,6 +760,33 @@ const Home = () => {
                                                 className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
                                                 value={filter.maxPrice}
                                                 onChange={(e) => setFilter({ ...filter, maxPrice: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Area Section */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.area')}</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.min')} ({t('common.area_unit')})</label>
+                                            <input
+                                                type="number"
+                                                placeholder={t('common.any')}
+                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
+                                                value={filter.minArea}
+                                                onChange={(e) => setFilter({ ...filter, minArea: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.max')} ({t('common.area_unit')})</label>
+                                            <input
+                                                type="number"
+                                                placeholder={t('common.any')}
+                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
+                                                value={filter.maxArea}
+                                                onChange={(e) => setFilter({ ...filter, maxArea: e.target.value })}
                                             />
                                         </div>
                                     </div>
@@ -868,26 +927,16 @@ const Home = () => {
                 )}
             </AnimatePresence>
 
-            <div className="relative">
-                <AnimatePresence initial={false} custom={direction} mode="popLayout">
-                    <Motion.div
-                        key={currentPage}
-                        custom={direction}
-                        variants={variants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{
-                            x: { type: "spring", stiffness: 300, damping: 30 },
-                            opacity: { duration: 0.2 }
-                        }}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full"
-                    >
-                        {currentItems.map((p) => (
-                            <PropertyCard key={p.id} property={p} propertyStatuses={propertyStatuses} />
-                        ))}
-                    </Motion.div>
-                </AnimatePresence>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+                {loading ? (
+                    [...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                        <PropertyCardSkeleton key={`skeleton-${i}`} />
+                    ))
+                ) : (
+                    currentItems.map((p) => (
+                        <PropertyCard key={p.id} property={p} propertyStatuses={propertyStatuses} />
+                    ))
+                )}
             </div>
 
             {filteredProperties.length === 0 && !loading && (

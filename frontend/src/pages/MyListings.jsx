@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import { useLanguage } from '../contexts/LanguageContext';
+import PropertyCardSkeleton from '../components/PropertyCardSkeleton';
 
 const MyListings = () => {
     const { t } = useLanguage();
@@ -123,8 +124,10 @@ const MyListings = () => {
                 </div>
 
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader className="w-8 h-8 text-primary-500 animate-spin" />
+                    <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-4"}>
+                        {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                            <PropertyCardSkeleton key={`skeleton-${i}`} />
+                        ))}
                     </div>
                 ) : (announcements || []).length > 0 ? (
                     <>

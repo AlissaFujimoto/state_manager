@@ -137,8 +137,14 @@ def get_region() -> Tuple[flask.Response, int]:
     # Detect language from query param or Accept-Language header
     lang = request.args.get("lang", "").lower()
     if not lang:
-        header_lang = request.headers.get("Accept-Language", "en-us")
-        lang = "pt-br" if "pt" in header_lang.lower() else "en-us"
+        header_lang = request.headers.get("Accept-Language", "").lower()
+        if "es" in header_lang:
+            lang = "es-es"
+        elif "pt" in header_lang:
+            # Check for pt-pt specifically, else pt-br
+            lang = "pt-pt" if "pt-pt" in header_lang else "pt-br"
+        else:
+            lang = "en-us"
     
     # Dynamic language resolution
     try:

@@ -535,6 +535,8 @@ const PropertyDetails = () => {
         fetchProperty();
     }, [id]);
 
+
+
     if (loading) return <div className="min-h-screen flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
     </div>;
@@ -882,8 +884,8 @@ const PropertyDetails = () => {
                             { label: t('common.rooms'), name: 'characteristics.rooms', icon: Layout },
                             { label: t('common.bathrooms'), name: 'characteristics.bathrooms', icon: BathIcon },
                             { label: t('common.garages'), name: 'characteristics.garages', icon: Car },
-                            { label: t('common.area'), name: 'characteristics.area', icon: Square, unit: t('common.m2') },
-                            { label: t('common.total'), name: 'characteristics.total_area', icon: Square, unit: t('common.m2') }
+                            { label: t('common.area'), name: 'characteristics.area', icon: Square, unit: t('common.area_unit') },
+                            { label: t('common.total'), name: 'characteristics.total_area', icon: Square, unit: t('common.area_unit') }
                         ].map((field) => {
                             const Icon = field.icon;
                             const value = field.name.split('.').reduce((obj, key) => obj?.[key], isEditing ? editData : property) || 0;
@@ -1295,12 +1297,28 @@ const PropertyDetails = () => {
                                 </>
                             ) : (
                                 <>
-                                    <button className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg">
-                                        {t('property_details.contact_agent')}
-                                    </button>
-                                    <button className="w-full bg-primary-500 text-white border-2 border-primary-400/50 py-4 rounded-2xl font-bold hover:bg-primary-400 transition-all text-lg">
-                                        {t('property_details.schedule_tour')}
-                                    </button>
+                                    <div className="relative group/cs">
+                                        <button
+                                            disabled
+                                            className="w-full bg-white/50 text-primary-600/50 py-4 rounded-2xl font-bold border-2 border-white/20 transition-all text-lg cursor-not-allowed"
+                                        >
+                                            {t('property_details.contact_agent')}
+                                        </button>
+                                        <div className="absolute -top-3 -right-2 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
+                                            {t('common.coming_soon')}
+                                        </div>
+                                    </div>
+                                    <div className="relative group/cs">
+                                        <button
+                                            disabled
+                                            className="w-full bg-primary-500/50 text-white/50 border-2 border-primary-400/20 py-4 rounded-2xl font-bold transition-all text-lg cursor-not-allowed"
+                                        >
+                                            {t('property_details.schedule_tour')}
+                                        </button>
+                                        <div className="absolute -top-3 -right-2 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
+                                            {t('common.coming_soon')}
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </div>

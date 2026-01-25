@@ -2,6 +2,7 @@
     "common": {
         "search": "Search",
         "search_placeholder": "Search by location, description, property type...",
+        "coming_soon": "Coming Soon",
         "filters": "Filters",
         "advanced_filters": "Advanced Filters",
         "reset_all": "Reset All",
@@ -21,7 +22,7 @@
         "rooms": "Rooms",
         "garages": "Garages",
         "parking": "Parking",
-        "m2": "sqft",
+        "area_unit": "ft²",
         "any": "Any",
         "back": "Back",
         "translate": "Translate",
@@ -30,9 +31,9 @@
         "min": "Min",
         "max": "Max",
         "newest": "Newest First",
+        "oldest": "Oldest First",
         "lower_price": "Lower Price",
         "higher_price": "Higher Price",
-        "largest_area": "Largest Area",
         "sort_by": "Sort By",
         "amenities": "Amenities",
         "total": "Total",
@@ -50,7 +51,7 @@
     },
     "home": {
         "hero_title": "Find Your",
-        "hero_subtitle": "Browse thousands of premium properties for rent and sale.",
+        "hero_subtitle": "Browse premium properties for rent and sale.",
         "dream_state": "Dream Home",
         "all_properties": "All Properties",
         "houses": "Houses",
@@ -238,5 +239,38 @@
         "walk_in_closet": "Walk-in Closet",
         "storage_unit": "Storage Unit",
         "concierge_service": "Concierge Service"
+    },
+    "privacy": {
+        "title": "Privacy Policy",
+        "last_updated": "Last updated: January 2026",
+        "intro": "At Vita, we take your privacy seriously. This policy describes how we collect, use, and handle your personal information when you use our services.",
+        "section1_title": "1. Information We Collect",
+        "section1_text": "We collect information you provide directly to us, such as when you create an account, list a property, or contact us. This may include your name, email, phone number, and property details.",
+        "section2_title": "2. How We Use Information",
+        "section2_text": "We use the information to provide, maintain, and improve our services, including to facilitate property listings, process transactions, and communicate with you.",
+        "section3_title": "3. Sharing of Information",
+        "section3_text": "We do not share your private information with third parties except as necessary to provide our services, comply with the law, or protect our rights."
+    },
+    "terms": {
+        "title": "Terms of Service",
+        "last_updated": "Last updated: January 2026",
+        "intro": "By using Vita, you agree to the following terms and conditions. Please read them carefully.",
+        "section1_title": "1. User Responsibilities",
+        "section1_text": "Users are responsible for the accuracy of the information they provide and the properties they list. You must have the right to list any property you post on our platform.",
+        "section2_title": "2. Prohibited Activities",
+        "section2_text": "You may not use our services for any illegal purpose or to violate any laws in your jurisdiction. Fraudulent listings are strictly prohibited.",
+        "section3_title": "3. Termination",
+        "section3_text": "We reserve the right to terminate or suspend access to our services at our sole discretion, without notice, for conduct that we believe violates these Terms."
+    },
+    "cookies": {
+        "title": "Cookies Policy",
+        "last_updated": "Last updated: January 2026",
+        "intro": "Vita uses cookies and similar technologies to provide and protect our services and to understand how they are used.",
+        "section1_title": "1. What are Cookies?",
+        "section1_text": "Cookies are small text files that are stored on your device when you visit a website. They help us remember your preferences and improve your experience.",
+        "section2_title": "2. Types of Cookies We Use",
+        "section2_text": "We use essential cookies for authentication and security, and analytical cookies to understand how users interact with our platform.",
+        "section3_title": "3. Managing Cookies",
+        "section3_text": "Most browsers allow you to control cookies through their settings. However, disabling cookies may limit your ability to use certain features of our services."
     }
 }

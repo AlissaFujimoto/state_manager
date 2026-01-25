@@ -21,11 +21,14 @@ const Navbar = () => {
 
     // Back Button Logic
     const isPropertyPage = location.pathname.startsWith('/property/');
+    const isLegalPage = ['/privacy', '/terms', '/cookies'].includes(location.pathname);
+    const showBackButton = isPropertyPage || isLegalPage;
+
     const backLink = location.state?.from || '/';
     const isFromMyListings = location.state?.from && location.state.from.includes('my-listings');
-    const backText = isFromMyListings
-        ? t('property_details.back_to_my_listings')
-        : t('property_details.back_to_results');
+    const backText = isLegalPage
+        ? t('common.back')
+        : (isFromMyListings ? t('property_details.back_to_my_listings') : t('property_details.back_to_results'));
 
     const languages = [
         { code: 'en-us', label: 'English (US)', short: 'EN' },
@@ -55,7 +58,7 @@ const Navbar = () => {
                 <div className="max-w-7xl mx-auto px-4 md:px-8">
                     <div className="flex justify-between items-center h-20">
                         <div className="flex items-center gap-4">
-                            {isPropertyPage && (
+                            {showBackButton && (
                                 <Link
                                     to={backLink}
                                     className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-primary-600 hover:bg-slate-50 transition-all group/back"
