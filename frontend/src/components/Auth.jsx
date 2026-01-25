@@ -6,8 +6,10 @@ import { LogIn, Mail, Lock, User } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Auth = () => {
+    const { t } = useLanguage();
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -68,10 +70,10 @@ const Auth = () => {
             >
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-bold text-slate-800">
-                        {isLogin ? 'Welcome Back' : 'Create Account'}
+                        {isLogin ? t('auth.welcome_back') : t('auth.create_account')}
                     </h2>
                     <p className="text-slate-500 mt-2">
-                        {isLogin ? 'Enter your details to sign in' : 'Join our premium real estate network'}
+                        {isLogin ? t('auth.enter_details') : t('auth.join_network')}
                     </p>
                 </div>
 
@@ -84,7 +86,7 @@ const Auth = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {!isLogin && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('auth.full_name')}</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                                 <input
@@ -92,14 +94,14 @@ const Auth = () => {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all"
-                                    placeholder="John Doe"
+                                    placeholder={t('auth.full_name_placeholder')}
                                     required
                                 />
                             </div>
                         </div>
                     )}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('auth.email_address')}</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                             <input
@@ -107,13 +109,13 @@ const Auth = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all"
-                                placeholder="name@example.com"
+                                placeholder={t('auth.email_placeholder')}
                                 required
                             />
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('auth.password')}</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                             <input
@@ -121,7 +123,7 @@ const Auth = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all"
-                                placeholder="••••••••"
+                                placeholder={t('auth.password_placeholder')}
                                 required
                             />
                         </div>
@@ -132,7 +134,7 @@ const Auth = () => {
                         className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-primary-200 transition-all flex items-center justify-center space-x-2"
                     >
                         <LogIn className="w-5 h-5" />
-                        <span>{isLogin ? 'Sign In' : 'Sign Up'}</span>
+                        <span>{isLogin ? t('auth.sign_in') : t('auth.sign_up')}</span>
                     </button>
                 </form>
 
@@ -141,7 +143,7 @@ const Auth = () => {
                         <div className="w-full border-t border-slate-200"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-slate-500">Or continue with</span>
+                        <span className="px-2 bg-white text-slate-500">{t('auth.or_continue_with')}</span>
                     </div>
                 </div>
 
@@ -169,17 +171,17 @@ const Auth = () => {
                                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                             />
                         </svg>
-                        <span className="font-semibold text-slate-700">Continue with Google</span>
+                        <span className="font-semibold text-slate-700">{t('auth.continue_google')}</span>
                     </Motion.button>
                 </div>
 
                 <p className="mt-8 text-center text-slate-600">
-                    {isLogin ? "Don't have an account? " : "Already have an account? "}
+                    {isLogin ? t('auth.no_account') : t('auth.have_account')}
                     <button
                         onClick={() => setIsLogin(!isLogin)}
                         className="text-primary-600 font-semibold hover:underline"
                     >
-                        {isLogin ? 'Sign up' : 'Sign in'}
+                        {isLogin ? t('auth.sign_up') : t('auth.sign_in')}
                     </button>
                 </p>
             </Motion.div>

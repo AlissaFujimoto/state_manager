@@ -27,6 +27,7 @@ import CompressedImage from '../components/CompressedImage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import ImageLightbox from '../components/ImageLightbox';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -45,6 +46,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 const LocationPicker = ({ location, setFormData, anchorLocation, onLocationChange }) => {
+    const { t } = useLanguage();
     useMapEvents({
         click(e) {
             const { lat, lng } = e.latlng;
@@ -52,7 +54,7 @@ const LocationPicker = ({ location, setFormData, anchorLocation, onLocationChang
             if (anchorLocation) {
                 const dist = calculateDistance(lat, lng, anchorLocation.lat, anchorLocation.lng);
                 if (dist > 1000) {
-                    alert("You cannot move the pin more than 1km from the selected address.");
+                    alert(t('property_form.location_restriction_alert'));
                     return;
                 }
             }
@@ -100,6 +102,7 @@ const RecenterMap = ({ center }) => {
 };
 
 const PropertyForm = () => {
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditMode = !!id;
@@ -421,17 +424,17 @@ const PropertyForm = () => {
 
     const getValidationErrors = () => {
         const errors = [];
-        if (isFieldMissing('title')) errors.push('Title is required');
-        if (isFieldMissing('description')) errors.push('Description is required');
-        if (isFieldMissing('price')) errors.push('Price is required');
-        if (isFieldInvalidValue(formData.price)) errors.push('Price cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.bedrooms)) errors.push('Bedrooms cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.suites)) errors.push('Suites cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.rooms)) errors.push('Rooms cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.bathrooms)) errors.push('Bathrooms cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.garages)) errors.push('Garages cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.area)) errors.push('Area cannot be negative');
-        if (isFieldInvalidValue(formData.characteristics.total_area)) errors.push('Total area cannot be negative');
+        if (isFieldMissing('title')) errors.push(t('common.title_required'));
+        if (isFieldMissing('description')) errors.push(t('common.description_required'));
+        if (isFieldMissing('price')) errors.push(t('common.price_required'));
+        if (isFieldInvalidValue(formData.price)) errors.push(t('common.price_negative'));
+
+        const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
+        charFields.forEach(f => {
+            if (isFieldInvalidValue(formData.characteristics[f])) {
+                errors.push(`${t(`common.${f}`)} ${t('common.field_negative')}`);
+            }
+        });
         return errors;
     };
 
@@ -583,9 +586,9 @@ const PropertyForm = () => {
             {step < 4 && isMobile && (
                 <div className="mb-12">
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Step {step} of 3</span>
+                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t('property_form.step_indicator').replace('{step}', step)}</span>
                         <span className="text-sm font-bold text-primary-600">
-                            {step === 1 ? 'Basic Information' : step === 2 ? 'Characteristics' : 'Media Assets'}
+                            {step === 1 ? t('property_form.basic_info_title') : step === 2 ? t('property_form.characteristics_title') : t('property_form.media_assets_title')}
                         </span>
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -607,7 +610,7 @@ const PropertyForm = () => {
                         <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-fade-in">
                             <Info className="w-5 h-5 text-red-500 mt-0.5" />
                             <div>
-                                <h3 className="text-sm font-bold text-red-800">Please correct the following:</h3>
+                                <h3 className="text-sm font-bold text-red-800">{t('property_form.correct_errors')}</h3>
                                 <ul className="text-sm text-red-600 list-disc list-inside mt-1">
                                     {getValidationErrors().map((err, i) => <li key={i}>{err}</li>)}
                                 </ul>
@@ -625,22 +628,22 @@ const PropertyForm = () => {
                                 <div className="bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
                                     <CheckCircle2 className="w-12 h-12 text-green-600" />
                                 </div>
-                                <h2 className="text-4xl font-black text-slate-800 mb-4">{isEditMode ? 'Listing Updated!' : 'Listing Published!'}</h2>
-                                <p className="text-slate-500 text-lg mb-12">Your property has been successfully {isEditMode ? 'updated' : 'announced'} to the Vita ecosystem.</p>
+                                <h2 className="text-4xl font-black text-slate-800 mb-4">{isEditMode ? t('property_form.listing_updated') : t('property_form.listing_published')}</h2>
+                                <p className="text-slate-500 text-lg mb-12">{isEditMode ? t('property_form.success_msg_updated') : t('property_form.success_msg_published')}</p>
                                 <div className="flex flex-col md:flex-row gap-4 justify-center">
                                     <button
                                         type="button"
                                         onClick={() => navigate('/my-listings')}
                                         className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-800 transition-all"
                                     >
-                                        Go to My Listings
+                                        {t('property_form.go_to_my_listings')}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => navigate('/')}
                                         className="bg-primary-50 text-primary-600 px-10 py-4 rounded-2xl font-bold border border-primary-100 hover:bg-primary-100 transition-all"
                                     >
-                                        View Homepage
+                                        {t('property_form.view_homepage')}
                                     </button>
                                 </div>
                             </Motion.div>
@@ -655,12 +658,12 @@ const PropertyForm = () => {
                                         className="space-y-6"
                                     >
                                         <div className="text-center mb-8">
-                                            <h2 className="text-3xl font-black text-slate-800">Basic Information</h2>
-                                            <p className="text-slate-500 mt-2">Let's start with the core details of your property.</p>
+                                            <h2 className="text-3xl font-black text-slate-800">{t('property_form.basic_info_title')}</h2>
+                                            <p className="text-slate-500 mt-2">{t('property_form.basic_info_subtitle')}</p>
                                         </div>
 
                                         <div className="field-container">
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Announcement Title</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.announcement_title')}</label>
                                             <input
                                                 type="text"
                                                 id="title"
@@ -674,7 +677,7 @@ const PropertyForm = () => {
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Property Type</label>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.property_type')}</label>
                                                 <select
                                                     name="property_type"
                                                     value={formData.property_type}
@@ -683,13 +686,13 @@ const PropertyForm = () => {
                                                 >
                                                     {propertyTypes.map(type => (
                                                         <option key={type} value={type}>
-                                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                            {t(`home.${type}s`).replace(/s$/, '')}
                                                         </option>
                                                     ))}
                                                 </select>
                                             </div>
                                             <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Listing Type</label>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.listing_type')}</label>
                                                 <select
                                                     name="listing_type"
                                                     value={formData.listing_type}
@@ -698,14 +701,14 @@ const PropertyForm = () => {
                                                 >
                                                     {listingTypes.map(type => (
                                                         <option key={type} value={type}>
-                                                            For {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                            {type === 'sale' ? t('common.for_sale') : t('common.for_rent')}
                                                         </option>
                                                     ))}
                                                 </select>
                                             </div>
 
                                             <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.status')}</label>
                                                 <select
                                                     name="status"
                                                     value={formData.status}
@@ -713,9 +716,9 @@ const PropertyForm = () => {
                                                     className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
                                                 >
                                                     {(propertyStatuses || []).map(status => {
-                                                        let label = status.label;
+                                                        let label = t(`property_card.${status.id}`);
                                                         if (status.id === 'sold_rented') {
-                                                            label = formData.listing_type === 'rent' ? 'Rented' : 'Sold';
+                                                            label = formData.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
                                                         }
                                                         return (
                                                             <option key={status.id} value={status.id}>
@@ -728,7 +731,7 @@ const PropertyForm = () => {
                                         </div>
 
                                         <div className="field-container">
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Price ($)</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.price_label')}</label>
                                             <input
                                                 type="number"
                                                 id="price"
@@ -743,7 +746,7 @@ const PropertyForm = () => {
                                         </div>
 
                                         <div className="field-container">
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.description_label')}</label>
                                             <textarea
                                                 id="description"
                                                 name="description"
@@ -751,7 +754,7 @@ const PropertyForm = () => {
                                                 onChange={handleInputChange}
 
                                                 rows="4"
-                                                placeholder="Describe the property's unique features..."
+                                                placeholder={t('property_form.description_placeholder')}
                                                 className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('description') === 'error' ? 'neon-error' : getFieldStatus('description') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                                             ></textarea>
                                         </div>
@@ -763,14 +766,14 @@ const PropertyForm = () => {
                                                     onClick={() => navigate(-1)}
                                                     className="text-slate-400 font-bold flex items-center gap-2 hover:text-red-500 transition-all px-2"
                                                 >
-                                                    <span>Cancel</span>
+                                                    <span>{t('property_form.cancel')}</span>
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={nextStep}
                                                     className={`bg-primary-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-700 transition-all ${!isStepValid(1) ? 'opacity-50 cursor-not-allowed' : ''} ${isShaking ? 'shake' : ''}`}
                                                 >
-                                                    <span>Next Step</span>
+                                                    <span>{t('property_form.next_step')}</span>
                                                     <ArrowRight className="w-5 h-5" />
                                                 </button>
                                             </div>
@@ -789,19 +792,19 @@ const PropertyForm = () => {
                                         className="space-y-6"
                                     >
                                         <div className="text-center mb-8">
-                                            <h2 className="text-3xl font-black text-slate-800">Characteristics</h2>
-                                            <p className="text-slate-500 mt-2">Specify the technical specs of the property.</p>
+                                            <h2 className="text-3xl font-black text-slate-800">{t('property_form.characteristics_title')}</h2>
+                                            <p className="text-slate-500 mt-2">{t('property_form.characteristics_subtitle')}</p>
                                         </div>
 
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                             {[
-                                                { label: 'Bedrooms', name: 'characteristics.bedrooms' },
-                                                { label: 'Suites', name: 'characteristics.suites' },
-                                                { label: 'Rooms', name: 'characteristics.rooms' },
-                                                { label: 'Bathrooms', name: 'characteristics.bathrooms' },
-                                                { label: 'Garages', name: 'characteristics.garages' },
-                                                { label: 'Area (m²)', name: 'characteristics.area' },
-                                                { label: 'Total (m²)', name: 'characteristics.total_area' }
+                                                { label: t('common.bedrooms'), name: 'characteristics.bedrooms' },
+                                                { label: t('common.suites'), name: 'characteristics.suites' },
+                                                { label: t('common.rooms'), name: 'characteristics.rooms' },
+                                                { label: t('common.bathrooms'), name: 'characteristics.bathrooms' },
+                                                { label: t('common.garages'), name: 'characteristics.garages' },
+                                                { label: `${t('common.area')} (${t('common.m2')})`, name: 'characteristics.area' },
+                                                { label: `${t('common.total')} (${t('common.m2')})`, name: 'characteristics.total_area' }
                                             ].map((field) => (
                                                 <div key={field.name} className="field-container">
                                                     <label className="block text-sm font-bold text-slate-700 mb-2">{field.label}</label>
@@ -827,14 +830,14 @@ const PropertyForm = () => {
                                                     className="text-slate-500 font-bold flex items-center gap-2 hover:text-slate-800 transition-all"
                                                 >
                                                     <ArrowLeft className="w-5 h-5" />
-                                                    <span>Go Back</span>
+                                                    <span>{t('property_form.prev_step')}</span>
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={nextStep}
                                                     className={`bg-primary-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-700 transition-all ${!isStepValid(2) ? 'opacity-50 cursor-not-allowed' : ''} ${isShaking ? 'shake' : ''}`}
                                                 >
-                                                    <span>Next Step</span>
+                                                    <span>{t('property_form.next_step')}</span>
                                                     <ArrowRight className="w-5 h-5" />
                                                 </button>
                                             </div>
@@ -853,13 +856,13 @@ const PropertyForm = () => {
                                         className="space-y-8"
                                     >
                                         <div className="text-center mb-8">
-                                            <h2 className="text-3xl font-black text-slate-800">Media Assets</h2>
-                                            <p className="text-slate-500 mt-2">Upload high-quality images and the building layout.</p>
+                                            <h2 className="text-3xl font-black text-slate-800">{t('property_form.media_assets_title')}</h2>
+                                            <p className="text-slate-500 mt-2">{t('property_form.media_assets_subtitle')}</p>
                                         </div>
 
                                         {/* Image Gallery Upload */}
                                         <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-3">Property Gallery</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-3">{t('property_details.property_gallery')}</label>
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 {formData.images.map((url, idx) => (
                                                     <div key={idx} className="relative aspect-square group z-10 bg-slate-100 rounded-2xl cursor-pointer" onClick={() => openLightbox(formData.images, idx)}>
@@ -880,7 +883,7 @@ const PropertyForm = () => {
                                                         <Plus className="w-8 h-8 text-slate-400" />
                                                     )}
                                                     <span className="text-xs font-bold text-slate-400 mt-2 uppercase">
-                                                        {isUploading ? 'Uploading...' : 'Add Photo'}
+                                                        {isUploading ? t('common.uploading') || 'Uploading...' : t('property_form.add_photos')}
                                                     </span>
                                                     <input type="file" multiple onChange={handleImageUpload} className="hidden" disabled={isUploading} />
                                                 </label>
@@ -890,7 +893,7 @@ const PropertyForm = () => {
 
                                         {/* Layout Upload */}
                                         <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-3">Building Layout (Floor Plan)</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-3">{t('property_form.building_layout_title')}</label>
                                             {formData.layout_image ? (
                                                 <div className="relative group bg-slate-100 p-4 border border-slate-200 flex items-center justify-center cursor-pointer" style={{ minHeight: '300px', maxHeight: '500px' }} onClick={() => openLightbox([formData.layout_image], 0)}>
                                                     <CompressedImage src={formData.layout_image} className="max-w-full max-h-full object-contain rounded-2xl transition-transform group-hover:scale-[1.02]" />
@@ -910,7 +913,7 @@ const PropertyForm = () => {
                                                         <Layout className="w-10 h-10 text-slate-400" />
                                                     )}
                                                     <span className="text-sm font-bold text-slate-400 mt-2 uppercase">
-                                                        {isUploading ? 'Uploading...' : 'Upload Floor Plan'}
+                                                        {isUploading ? t('common.uploading') || 'Uploading...' : t('property_form.upload_floor_plan')}
                                                     </span>
                                                     <input type="file" onChange={handleLayoutUpload} className="hidden" disabled={isUploading} />
                                                 </label>
@@ -920,7 +923,7 @@ const PropertyForm = () => {
                                         {/* Address & Map Localization */}
                                         <div className="space-y-6">
                                             <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Search Address</label>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_details.search_address_label')}</label>
                                                 <AddressAutocomplete
                                                     value={formData.address?.private || ''}
                                                     onChange={(e) => {
@@ -935,7 +938,7 @@ const PropertyForm = () => {
                                                     }}
                                                     onSelect={handleAddressSelect}
                                                     disabled={isResolvingAddress}
-                                                    placeholder="Start typing to search address..."
+                                                    placeholder={t('property_details.search_address_placeholder')}
                                                 />
                                             </div>
 
@@ -944,7 +947,7 @@ const PropertyForm = () => {
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
                                                     <MapPin className="w-4 h-4 text-primary-600" />
-                                                    <span>Confirm Location (1000m visibility circle)</span>
+                                                    <span>{t('property_form.confirm_location_title')}</span>
                                                 </label>
                                                 <div
                                                     className="h-72 rounded-2xl overflow-hidden border border-slate-200 shadow-inner z-10"
@@ -973,7 +976,7 @@ const PropertyForm = () => {
                                                         <RecenterMap center={formData.address.location} />
                                                     </MapContainer>
                                                 </div>
-                                                <p className="text-xs text-slate-400 mt-2">Click on the map to set the property location. A 1000m radius will be displayed.</p>
+                                                <p className="text-xs text-slate-400 mt-2">{t('property_details.click_map_to_change')}</p>
                                             </div>
                                         </div>
 
@@ -986,7 +989,7 @@ const PropertyForm = () => {
                                                         className="text-slate-500 font-bold flex items-center gap-2 hover:text-slate-800 transition-all"
                                                     >
                                                         <ArrowLeft className="w-5 h-5" />
-                                                        <span>Go Back</span>
+                                                        <span>{t('property_form.prev_step')}</span>
                                                     </button>
                                                 ) : <div></div>}
                                                 <button
@@ -996,9 +999,9 @@ const PropertyForm = () => {
                                                     className={`bg-primary-600 text-white px-12 py-4 rounded-2xl font-bold shadow-xl flex items-center gap-2 transition-all transform hover:-translate-y-1 ${(!isStepValid(1) || !isStepValid(2)) ? 'opacity-50 cursor-not-allowed hover:bg-primary-700' : 'hover:bg-primary-700'} ${isShaking ? 'shake' : ''}`}
                                                 >
                                                     <span>
-                                                        {loading ? 'Submitting...' :
-                                                            isResolvingAddress ? 'Searching location...' :
-                                                                (isEditMode ? 'Update Listing' : 'Submit Listing')}
+                                                        {loading ? t('common.submitting') :
+                                                            isResolvingAddress ? t('common.searching_location') :
+                                                                (isEditMode ? t('property_form.save_changes') : t('property_form.finish'))}
                                                     </span>
                                                     <CheckCircle2 className="w-5 h-5" />
                                                 </button>

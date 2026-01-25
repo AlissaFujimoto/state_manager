@@ -18,6 +18,7 @@ import PropertyStatusBadges from '../components/PropertyStatusBadges';
 import CompressedImage from '../components/CompressedImage';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ImageLightbox from '../components/ImageLightbox';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Fix for default marker icon in leaflet
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -54,6 +55,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 const LocationPicker = ({ location, setEditData, anchorLocation, onLocationChange }) => {
+    const { t } = useLanguage();
     useMapEvents({
         click(e) {
             const { lat, lng } = e.latlng;
@@ -61,7 +63,7 @@ const LocationPicker = ({ location, setEditData, anchorLocation, onLocationChang
             if (anchorLocation) {
                 const dist = calculateDistance(lat, lng, anchorLocation.lat, anchorLocation.lng);
                 if (dist > 1000) {
-                    alert("You cannot move the pin more than 1km from the selected address.");
+                    alert(t('property_form.location_restriction_alert'));
                     return;
                 }
             }
@@ -106,8 +108,8 @@ const RecenterMap = ({ center }) => {
 };
 import api from '../api';
 
-const maskAddress = (address) => {
-    if (!address) return 'Location not specified';
+const maskAddress = (address, defaultText = 'Location not specified') => {
+    if (!address) return defaultText;
     const parts = address.split(',').map(s => s.trim());
     if (parts.length >= 4) {
         return `${parts[parts.length - 4]}, ${parts[parts.length - 3]} - ${parts[parts.length - 2]}`;
@@ -119,6 +121,7 @@ const maskAddress = (address) => {
 };
 
 const PropertyDetails = () => {
+    const { t, formatCurrency } = useLanguage();
     const { id } = useParams();
     const location = useLocation();
     const [property, setProperty] = useState(null);
@@ -170,13 +173,14 @@ const PropertyDetails = () => {
 
     const validate = () => {
         const newErrors = {};
-        if (!editData.title.trim()) newErrors.title = 'Title is required';
-        if (parseFloat(editData.price) < 0) newErrors.price = 'Price cannot be negative';
+        if (!editData.title.trim()) newErrors.title = t('common.title_required');
+        if (!editData.price && editData.price !== 0) newErrors.price = t('common.price_required');
+        else if (parseFloat(editData.price) < 0) newErrors.price = t('common.price_negative');
 
         const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
         charFields.forEach(field => {
             if (parseFloat(editData.characteristics?.[field]) < 0) {
-                newErrors[`characteristics.${field}`] = 'Cannot be negative';
+                newErrors[`characteristics.${field}`] = t('common.field_negative');
             }
         });
 
@@ -384,7 +388,7 @@ const PropertyDetails = () => {
     };
 
     const backLink = location.state?.from === '/my-listings' ? '/my-listings' : '/';
-    const backText = location.state?.from === '/my-listings' ? 'Back to My Listings' : 'Back to results';
+    const backText = location.state?.from === '/my-listings' ? t('property_details.back_to_my_listings') : t('property_details.back_to_results');
 
     useEffect(() => {
         const fetchTypes = async () => {
@@ -424,6 +428,7 @@ const PropertyDetails = () => {
                 setLoading(false);
             } catch (err) {
                 console.error('Failed to fetch property:', err);
+                setProperty(null);
                 setLoading(false);
             }
         };
@@ -433,7 +438,7 @@ const PropertyDetails = () => {
     if (loading) return <div className="min-h-screen flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
     </div>;
-    if (!property) return <div className="min-h-screen flex items-center justify-center text-slate-500">Property not found</div>;
+    if (!property) return <div className="min-h-screen flex items-center justify-center text-slate-500">{t('property_details.not_found')}</div>;
 
     const nextImage = () => {
         if (activeImage < (property.images?.length || 0) - 1) {
@@ -494,7 +499,7 @@ const PropertyDetails = () => {
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                                     <ImageIcon className="w-5 h-5 text-primary-600" />
-                                    Property Gallery
+                                    {t('property_details.property_gallery')}
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     {editData.images?.map((url, idx) => (
@@ -513,7 +518,7 @@ const PropertyDetails = () => {
                                         <div className="bg-slate-50 group-hover:bg-primary-50 p-3 rounded-full transition-colors">
                                             <Plus className="w-6 h-6 text-slate-400 group-hover:text-primary-500" />
                                         </div>
-                                        <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">Add Photo</span>
+                                        <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">{t('property_details.add_photo')}</span>
                                         <input type="file" multiple onChange={handleImageUpload} className="hidden" />
                                     </label>
                                 </div>
@@ -522,7 +527,7 @@ const PropertyDetails = () => {
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                                     <Layout className="w-5 h-5 text-primary-600" />
-                                    Building Layout
+                                    {t('property_details.building_layout')}
                                 </h3>
                                 {editData?.layout_image ? (
                                     <div className="relative w-full group bg-slate-900 p-4 border border-slate-200 flex items-center justify-center cursor-pointer rounded-3xl" style={{ minHeight: '400px', maxHeight: '700px' }} onClick={() => openLightbox([editData.layout_image], 0)}>
@@ -538,7 +543,7 @@ const PropertyDetails = () => {
                                 ) : (
                                     <label className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-primary-300 transition-all bg-white group">
                                         <Plus className="w-6 h-6 text-slate-400 group-hover:text-primary-500" />
-                                        <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">Upload Floor Plan</span>
+                                        <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">{t('property_details.upload_floor_plan')}</span>
                                         <input type="file" onChange={handleLayoutUpload} className="hidden" />
                                     </label>
                                 )}
@@ -583,9 +588,9 @@ const PropertyDetails = () => {
                                         const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
                                         if (!statusConfig?.showRibbon) return null;
 
-                                        let label = statusConfig.label;
+                                        let label = t(`property_card.${statusConfig.id}`);
                                         if (property.status === 'sold_rented') {
-                                            label = property.listing_type === 'rent' ? 'Rented' : 'Sold';
+                                            label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
                                         }
 
                                         const colorMap = {
@@ -661,7 +666,7 @@ const PropertyDetails = () => {
                                         >
                                             {propertyTypes.map(type => (
                                                 <option key={type} value={type}>
-                                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                    {t(`home.${type}s`).replace(/s$/, '')}
                                                 </option>
                                             ))}
                                         </select>
@@ -673,7 +678,7 @@ const PropertyDetails = () => {
                                         >
                                             {listingTypes.map(type => (
                                                 <option key={type} value={type}>
-                                                    For {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                    {type === 'sale' ? t('common.for_sale') : t('common.for_rent')}
                                                 </option>
                                             ))}
                                         </select>
@@ -684,9 +689,9 @@ const PropertyDetails = () => {
                                             className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
                                         >
                                             {propertyStatuses.map(status => {
-                                                let label = status.label;
+                                                let label = t(`property_card.${status.id}`);
                                                 if (status.id === 'sold_rented') {
-                                                    label = property.listing_type === 'rent' ? 'Rented' : 'Sold';
+                                                    label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
                                                 }
                                                 return (
                                                     <option key={status.id} value={status.id}>
@@ -700,7 +705,7 @@ const PropertyDetails = () => {
                                     <PropertyStatusBadges property={property} />
                                 )}
                                 <span className="text-slate-400 font-medium whitespace-nowrap">
-                                    • {property.created_at ? new Date(property.created_at).toLocaleDateString() : 'Recently'}
+                                    • {property.created_at ? new Date(property.created_at).toLocaleDateString() : t('property_details.recently')}
                                 </span>
                             </div>
                             {isEditing ? (
@@ -711,7 +716,7 @@ const PropertyDetails = () => {
                                         value={editData?.title || ''}
                                         onChange={handleInputChange}
                                         className={`text-4xl font-extrabold text-slate-900 border-b-2 bg-transparent outline-none w-full transition-all ${errors.title ? 'border-red-500' : 'border-primary-500 focus:border-primary-600'}`}
-                                        placeholder="Property Title"
+                                        placeholder={t('property_details.property_title_placeholder')}
                                     />
                                     {errors.title && <p className="text-red-500 text-xs font-bold">{errors.title}</p>}
                                 </div>
@@ -721,12 +726,12 @@ const PropertyDetails = () => {
                             <div className="flex items-center text-slate-500 mt-3">
                                 <MapPin className="w-5 h-5 mr-2 text-primary-500" />
                                 <span className="font-medium">
-                                    {property.display_address || 'Location not specified'}
+                                    {isOwner ? (property.display_address || t('property_card.location_not_specified')) : maskAddress(property.display_address, t('property_card.location_not_specified'))}
                                 </span>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">Asking Price</p>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">{t('property_details.asking_price')}</p>
                             <div className="text-4xl font-black text-primary-600">
                                 {isEditing ? (
                                     <div className="flex flex-col items-end">
@@ -743,7 +748,7 @@ const PropertyDetails = () => {
                                         {errors.price && <p className="text-red-500 text-xs font-bold mt-1">{errors.price}</p>}
                                     </div>
                                 ) : (
-                                    `$${Number(property.price).toLocaleString()}`
+                                    formatCurrency(property.price)
                                 )}
                             </div>
                         </div>
@@ -752,13 +757,13 @@ const PropertyDetails = () => {
                     {/* Characteristics Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                         {[
-                            { label: 'Bedrooms', name: 'characteristics.bedrooms', icon: Bed },
-                            { label: 'Suites', name: 'characteristics.suites', icon: DoorOpen },
-                            { label: 'Rooms', name: 'characteristics.rooms', icon: Layout },
-                            { label: 'Baths', name: 'characteristics.bathrooms', icon: BathIcon },
-                            { label: 'Garages', name: 'characteristics.garages', icon: Car },
-                            { label: 'Area', name: 'characteristics.area', icon: Square, unit: 'm²' },
-                            { label: 'Total', name: 'characteristics.total_area', icon: Square, unit: 'm²' }
+                            { label: t('common.bedrooms'), name: 'characteristics.bedrooms', icon: Bed },
+                            { label: t('common.suites'), name: 'characteristics.suites', icon: DoorOpen },
+                            { label: t('common.rooms'), name: 'characteristics.rooms', icon: Layout },
+                            { label: t('common.bathrooms'), name: 'characteristics.bathrooms', icon: BathIcon },
+                            { label: t('common.garages'), name: 'characteristics.garages', icon: Car },
+                            { label: t('common.area'), name: 'characteristics.area', icon: Square, unit: t('common.m2') },
+                            { label: t('common.total'), name: 'characteristics.total_area', icon: Square, unit: t('common.m2') }
                         ].map((field) => {
                             const Icon = field.icon;
                             const value = field.name.split('.').reduce((obj, key) => obj?.[key], isEditing ? editData : property) || 0;
@@ -790,7 +795,7 @@ const PropertyDetails = () => {
 
                     {/* Description */}
                     <div>
-                        <h3 className="text-2xl font-bold text-slate-800 mb-4">About this property</h3>
+                        <h3 className="text-2xl font-bold text-slate-800 mb-4">{t('property_details.about_property')}</h3>
                         {isEditing ? (
                             <textarea
                                 name="description"
@@ -798,7 +803,7 @@ const PropertyDetails = () => {
                                 onChange={handleInputChange}
                                 rows="6"
                                 className="w-full p-4 bg-slate-50 border-2 border-primary-100 rounded-2xl text-slate-600 leading-relaxed text-lg outline-none focus:border-primary-500 transition-all resize-none"
-                                placeholder="Describe the property..."
+                                placeholder={t('property_details.describe_property_placeholder')}
                             />
                         ) : (
                             <p className="text-slate-600 leading-relaxed text-lg">
@@ -810,10 +815,10 @@ const PropertyDetails = () => {
                     {/* Amenities Section */}
                     <div className="py-8 border-t border-slate-100">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-bold text-slate-800">Key Amenities</h3>
+                            <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
                             {isEditing && (
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
-                                    Drag to reorder
+                                    {t('property_details.drag_to_reorder')}
                                 </span>
                             )}
                         </div>
@@ -826,13 +831,13 @@ const PropertyDetails = () => {
                                         <button
                                             onClick={() => setShowAmenitySuggestions(!showAmenitySuggestions)}
                                             className={`p-1 rounded-lg transition-colors ${showAmenitySuggestions ? 'bg-primary-50 text-primary-600' : 'text-primary-500 hover:bg-slate-50'}`}
-                                            title="View all amenities"
+                                            title={t('property_details.view_all_amenities') || 'View all amenities'}
                                         >
                                             <Plus className={`w-5 h-5 transition-transform duration-300 ${showAmenitySuggestions ? 'rotate-45' : ''}`} />
                                         </button>
                                         <input
                                             type="text"
-                                            placeholder="Add amenity (e.g. Smart Lock, Pool...)"
+                                            placeholder={t('property_details.add_amenity_placeholder')}
                                             className="flex-1 bg-transparent outline-none text-slate-700 font-medium"
                                             value={amenityInput}
                                             onChange={(e) => {
@@ -852,7 +857,7 @@ const PropertyDetails = () => {
                                                 onClick={() => addAmenity(amenityInput)}
                                                 className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors"
                                             >
-                                                Add
+                                                {t('common.add') || 'Add'}
                                             </button>
                                         )}
                                     </div>
@@ -891,8 +896,8 @@ const PropertyDetails = () => {
                                                     {availableAmenities.filter(a => (amenityInput ? a.toLowerCase().includes(amenityInput.toLowerCase()) : true) && !editData.amenities.includes(a)).length === 0 && (
                                                         <div className="px-4 py-3 text-slate-400 text-sm italic">
                                                             {amenityInput
-                                                                ? `Press Enter to add "${amenityInput}" as a custom amenity`
-                                                                : "No more amenities available. Add a custom one by typing!"
+                                                                ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
+                                                                : t('property_details.no_more_amenities')
                                                             }
                                                         </div>
                                                     )}
@@ -929,7 +934,7 @@ const PropertyDetails = () => {
 
                                 {(!editData.amenities || editData.amenities.length === 0) && (
                                     <div className="text-center py-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-medium">
-                                        No amenities added yet. Start by typing above!
+                                        {t('property_details.no_amenities_yet')}
                                     </div>
                                 )}
                             </div>
@@ -952,7 +957,7 @@ const PropertyDetails = () => {
                                     </Motion.div>
                                 ))}
                                 {(!property.amenities || property.amenities.length === 0) && (
-                                    <p className="text-slate-400 italic col-span-full">No specific amenities listed for this property.</p>
+                                    <p className="text-slate-400 italic col-span-full">{t('common.no_amenities_listed') || 'No specific amenities listed for this property.'}</p>
                                 )}
                             </div>
                         )}
@@ -963,7 +968,7 @@ const PropertyDetails = () => {
                         <div>
                             <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
                                 <MapPin className="w-6 h-6 mr-2 text-primary-600" />
-                                Location
+                                {t('property_details.location') || 'Location'}
                             </h3>
                             <div
                                 className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-10 relative group"
@@ -1014,26 +1019,26 @@ const PropertyDetails = () => {
                                         ? `${Number(editData.location.lat).toFixed(4)}, ${Number(editData.location.lng).toFixed(4)}`
                                         : (isOwner
                                             ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}`
-                                            : 'Approximate Location'
+                                            : t('property_details.approximate_location')
                                         )
                                     }
                                 </div>
                                 {isEditing && (
                                     <div className="absolute top-4 left-4 bg-primary-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg z-[400] pointer-events-none animate-pulse">
-                                        Click map to change location
+                                        {t('property_details.click_map_to_change')}
                                     </div>
                                 )}
                             </div>
                             {isEditing && (
                                 <div className="mt-4 space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter ml-1">Property Address</label>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter ml-1">{t('property_details.property_address')}</label>
                                     <AddressAutocomplete
                                         name="address.private"
                                         value={editData.address?.private || ''}
                                         onChange={handleInputChange}
                                         onSelect={handleAddressSelect}
                                         disabled={isResolvingAddress}
-                                        placeholder="Start typing to search address..."
+                                        placeholder={t('property_details.search_address_placeholder')}
                                     />
                                 </div>
                             )}
@@ -1045,9 +1050,9 @@ const PropertyDetails = () => {
                         <div>
                             <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
                                 <Layout className="w-7 h-7 mr-3 text-primary-600" />
-                                Building Layout
+                                {t('property_details.building_layout')}
                             </h3>
-                            <p className="text-slate-500 mb-6 text-sm">Detailed architectural floor plan of the property.</p>
+                            <p className="text-slate-500 mb-6 text-sm">{t('property_details.floor_plan_description')}</p>
                             <div className="glass-card p-6 rounded-3xl overflow-hidden flex items-center justify-center bg-slate-900" style={{ minHeight: '400px', maxHeight: '800px' }}>
                                 <CompressedImage
                                     src={property.layout_image}
@@ -1079,13 +1084,13 @@ const PropertyDetails = () => {
                                     onClick={() => openLightbox([(property.owner && property.owner.photo) || `https://ui-avatars.com/api/?name=${encodeURIComponent((property.owner && property.owner.name) || 'Owner')}&background=random`], 0)}
                                 />
                                 <div>
-                                    <p className="text-primary-100 text-xs font-bold uppercase tracking-widest mb-1">Listed by</p>
-                                    <h4 className="text-xl font-bold text-white leading-tight">{property.owner.name || 'Property Owner'}</h4>
+                                    <p className="text-primary-100 text-xs font-bold uppercase tracking-widest mb-1">{t('property_details.listed_by')}</p>
+                                    <h4 className="text-xl font-bold text-white leading-tight">{property.owner.name || t('property_details.property_owner') || 'Property Owner'}</h4>
                                 </div>
                             </div>
                         )}
                         <h3 className="text-2xl font-bold mb-6 italic relative z-10">
-                            {isOwner ? 'Manage Listing' : 'Interested?'}
+                            {isOwner ? t('property_details.manage_listing') : t('property_details.interested')}
                         </h3>
                         <div className="space-y-4 relative z-10">
                             {isOwner ? (
@@ -1098,7 +1103,7 @@ const PropertyDetails = () => {
                                                 className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2"
                                             >
                                                 {saving ? <Loader className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                                <span>Save Changes</span>
+                                                <span>{t('property_details.save_changes')}</span>
                                             </button>
                                             <button
                                                 onClick={() => { setIsEditing(false); setErrors({}); }}
@@ -1106,7 +1111,7 @@ const PropertyDetails = () => {
                                                 className="w-full bg-primary-500 text-white border-2 border-primary-400/50 py-4 rounded-2xl font-bold hover:bg-primary-400 transition-all text-lg flex items-center justify-center gap-2"
                                             >
                                                 <Undo2 className="w-5 h-5" />
-                                                <span>Cancel Edit</span>
+                                                <span>{t('property_details.cancel_edit')}</span>
                                             </button>
                                         </div>
                                     ) : (
@@ -1116,14 +1121,14 @@ const PropertyDetails = () => {
                                                 className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2"
                                             >
                                                 <Edit className="w-5 h-5" />
-                                                <span>Edit Listing</span>
+                                                <span>{t('property_details.edit_listing')}</span>
                                             </button>
                                             <button
                                                 onClick={() => setIsDeleteModalOpen(true)}
                                                 className="w-full bg-red-500 text-white border-2 border-red-400/50 py-4 rounded-2xl font-bold hover:bg-red-600 transition-all text-lg flex items-center justify-center gap-2"
                                             >
                                                 <Trash2 className="w-5 h-5" />
-                                                <span>Delete Listing</span>
+                                                <span>{t('property_details.delete_listing')}</span>
                                             </button>
                                         </div>
                                     )}
@@ -1131,10 +1136,10 @@ const PropertyDetails = () => {
                             ) : (
                                 <>
                                     <button className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg">
-                                        Contact Agent
+                                        {t('property_details.contact_agent')}
                                     </button>
                                     <button className="w-full bg-primary-500 text-white border-2 border-primary-400/50 py-4 rounded-2xl font-bold hover:bg-primary-400 transition-all text-lg">
-                                        Schedule a Tour
+                                        {t('property_details.schedule_tour')}
                                     </button>
                                 </>
                             )}
@@ -1164,9 +1169,9 @@ const PropertyDetails = () => {
                                 <div className="bg-red-50 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 rotate-12">
                                     <Trash2 className="w-10 h-10 text-red-500" />
                                 </div>
-                                <h3 className="text-3xl font-black text-slate-800 mb-3 tracking-tight">Delete listing?</h3>
+                                <h3 className="text-3xl font-black text-slate-800 mb-3 tracking-tight">{t('property_details.delete_confirmation_title')}</h3>
                                 <p className="text-slate-500 mb-10 leading-relaxed text-lg">
-                                    This will permanently remove <span className="font-bold text-slate-700">"{property.title}"</span> from the ecosystem. This action cannot be undone.
+                                    {t('property_details.delete_confirmation_text').replace('{title}', property.title)}
                                 </p>
                                 <div className="flex gap-4">
                                     <button
@@ -1174,7 +1179,7 @@ const PropertyDetails = () => {
                                         disabled={isDeleting}
                                         className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition-all disabled:opacity-50"
                                     >
-                                        Cancel
+                                        {t('property_details.cancel')}
                                     </button>
                                     <button
                                         onClick={handleDelete}
@@ -1186,7 +1191,7 @@ const PropertyDetails = () => {
                                         ) : (
                                             <>
                                                 <Trash2 className="w-5 h-5" />
-                                                <span>Delete Forever</span>
+                                                <span>{t('property_details.delete_forever')}</span>
                                             </>
                                         )}
                                     </button>

@@ -132,8 +132,36 @@ def get_amenities() -> Tuple[flask.Response, int]:
 
 @app.route("/api/region", methods=["GET"])
 def get_region() -> Tuple[flask.Response, int]:
-    """Get list of supported countries."""
-    return jsonify(["Brazil"]), 200
+    """Get list of supported countries and their language packs."""
+    # Detect language from query param or Accept-Language header
+    lang = request.args.get("lang", "").lower()
+    if not lang:
+        header_lang = request.headers.get("Accept-Language", "en-us")
+        lang = "pt-br" if "pt" in header_lang.lower() else "en-us"
+    
+    # Normalize language keys
+    lang = "pt-br" if "pt" in lang else "en-us"
+    
+    try:
+        lang_file = basedir / "api" / "data" / "languages" / f"{lang}.json"
+        if not lang_file.exists():
+            lang_file = basedir / "api" / "data" / "languages" / "en-us.json"
+            
+        with open(lang_file, "r", encoding="utf-8") as f:
+            lang_pack = json.load(f)
+            
+        return jsonify({
+            "regions": ["Brazil"],
+            "language": lang,
+            "languagePack": lang_pack
+        }), 200
+    except Exception as e:
+        print(f"[ERROR_SERVICE] Failed to load language pack {lang}: {e}")
+        return jsonify({
+            "regions": ["Brazil"],
+            "language": "en-us",
+            "languagePack": {}
+        }), 200
 
 @app.route("/api/announcements", methods=["GET"])
 def get_announcements() -> Tuple[flask.Response, int]:

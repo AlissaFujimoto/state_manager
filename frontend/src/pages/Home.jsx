@@ -7,9 +7,10 @@ import PropertyStatusBadges from '../components/PropertyStatusBadges';
 import CompressedImage from '../components/CompressedImage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
+import { useLanguage } from '../contexts/LanguageContext';
 
-const maskAddress = (address) => {
-    if (!address) return 'Location not specified';
+const maskAddress = (address, t) => {
+    if (!address) return t('property_card.location_not_specified');
     const parts = address.split(',').map(s => s.trim());
     if (parts.length >= 4) {
         return `${parts[parts.length - 4]}, ${parts[parts.length - 3]} - ${parts[parts.length - 2]}`;
@@ -42,6 +43,7 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
     const location = useLocation();
     const [currentImgIndex, setCurrentImgIndex] = useState(0);
     const [user] = useAuthState(auth);
+    const { t, formatCurrency } = useLanguage();
 
     const isOwner = user && property.owner_id === user.uid;
 
@@ -136,9 +138,9 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                     const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
                     if (!statusConfig?.showRibbon) return null;
 
-                    let label = statusConfig.label;
+                    let label = t(`property_card.${statusConfig.id}`);
                     if (property.status === 'sold_rented') {
-                        label = property.listing_type === 'rent' ? 'Rented' : 'Sold';
+                        label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
                     }
 
                     const colorMap = {
@@ -172,7 +174,7 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                 </div>
                 <div className="absolute bottom-4 right-4 z-10">
                     <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg">
-                        ${Number(property.price).toLocaleString()}
+                        {formatCurrency(property.price)}
                     </div>
                 </div>
             </div>
@@ -185,7 +187,7 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                     <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                         <span className="text-xs font-medium line-clamp-1">
-                            {property.display_address || 'Location not specified'}
+                            {property.display_address || t('property_card.location_not_specified')}
                         </span>
                     </div>
                     {property.created_at && (
@@ -201,29 +203,29 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
 
                 <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
                     <div className="flex flex-col items-center">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Beds</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bedrooms')}</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.bedrooms || 0}</span>
                     </div>
                     <div className="flex flex-col items-center border-x border-slate-100">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Suites</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.suites')}</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.suites || 0}</span>
                     </div>
                     <div className="flex flex-col items-center">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Rooms</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.rooms')}</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.rooms || 0}</span>
                     </div>
                     <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Baths</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bathrooms')}</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.bathrooms || 0}</span>
                     </div>
                     <div className="flex flex-col items-center pt-2 mt-2 border-x border-t border-slate-50">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Grgs</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.garages')}</span>
                         <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
                     </div>
                     <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">Area / Total</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
                         <span className="text-slate-700 font-semibold text-[11px] text-center truncate w-full px-1">
-                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0}m²
+                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0}{t('common.m2')}
                         </span>
                     </div>
                 </div>
@@ -267,9 +269,9 @@ const Home = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [availableAmenities, setAvailableAmenities] = useState([]);
-    const [regions, setRegions] = useState(null);
     const [brazilianStates, setBrazilianStates] = useState([]);
     const [brazilianCities, setBrazilianCities] = useState([]);
+    const { t, regions, formatCurrency } = useLanguage();
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [touchStart, setTouchStart] = useState(null);
@@ -506,9 +508,9 @@ const Home = () => {
         >
             <header className="mb-12">
                 <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
-                    Find Your <span className="text-primary-600">Dream State</span>
+                    {t('home.hero_title')} <span className="text-primary-600">{t('home.dream_state')}</span>
                 </h1>
-                <p className="text-slate-500 mt-4 text-lg">Browse thousands of premium properties for rent and sale.</p>
+                <p className="text-slate-500 mt-4 text-lg">{t('home.hero_subtitle')}</p>
 
                 <div className="mt-8 flex flex-col gap-6">
                     <div className="flex flex-col md:flex-row gap-4">
@@ -516,7 +518,7 @@ const Home = () => {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                             <input
                                 type="text"
-                                placeholder="Search by location, title or style..."
+                                placeholder={t('common.search') + "..."}
                                 className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -528,7 +530,7 @@ const Home = () => {
                             className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center space-x-2 group"
                         >
                             <Filter className="w-5 h-5" />
-                            <span>Advanced Filters</span>
+                            <span>{t('common.advanced_filters')}</span>
                             {Object.values(filter).filter(v => v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
                                 <span className="bg-white text-primary-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
                                     {Object.values(filter).filter(v => v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length}
@@ -537,14 +539,14 @@ const Home = () => {
                         </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex md:flex-nowrap flex-wrap gap-3 items-center overflow-x-auto md:overflow-visible pb-4 md:pb-0 hide-scrollbar">
                         {/* Listing Types Pills */}
-                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
                             <button
                                 onClick={() => setFilter({ ...filter, listingType: 'all' })}
                                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === 'all' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
-                                All
+                                {t('common.all')}
                             </button>
                             {listingTypes.map(type => (
                                 <button
@@ -552,42 +554,42 @@ const Home = () => {
                                     onClick={() => setFilter({ ...filter, listingType: type })}
                                     className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                    {t(`common.${type}`)}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="h-8 w-px bg-slate-200 self-center hidden md:block" />
+                        <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
 
                         {/* Property Type Pills */}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex md:flex-nowrap flex-wrap gap-2 shrink-0">
                             <button
                                 onClick={() => setFilter({ ...filter, type: 'all' })}
-                                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${filter.type === 'all' ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === 'all' ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
                             >
-                                All Properties
+                                {t('home.all_properties')}
                             </button>
                             {propertyTypes.map(type => (
                                 <button
                                     key={type}
                                     onClick={() => setFilter({ ...filter, type: type })}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${filter.type === type ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === type ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
                                 >
-                                    {type.charAt(0).toUpperCase() + type.slice(1)}s
+                                    {t(`home.${type}s`)}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="h-8 w-px bg-slate-200 self-center hidden lg:block" />
+                        <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
 
                         {/* Region Selectors */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0">
                             <select
                                 value={filter.state}
                                 onChange={(e) => setFilter({ ...filter, state: e.target.value, city: 'all' })}
                                 className="px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
                             >
-                                <option value="all">All States</option>
+                                <option value="all">{t('home.all_states')}</option>
                                 {brazilianStates.map(s => (
                                     <option key={s.id} value={s.nome}>{s.nome}</option>
                                 ))}
@@ -599,7 +601,7 @@ const Home = () => {
                                 disabled={filter.state === 'all'}
                                 className={`px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 shadow-sm outline-none transition-all cursor-pointer ${filter.state === 'all' ? 'border-slate-50 text-slate-300 bg-slate-50/50' : 'border-slate-100 text-slate-700 hover:border-slate-200 focus:border-primary-500'}`}
                             >
-                                <option value="all">All Cities</option>
+                                <option value="all">{t('home.all_cities')}</option>
                                 {brazilianCities.map(city => (
                                     <option key={city} value={city}>{city}</option>
                                 ))}
@@ -628,7 +630,7 @@ const Home = () => {
                             className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] overflow-hidden flex flex-col"
                         >
                             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Advanced <span className="text-primary-600">Filters</span></h2>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">{t('common.advanced_filters')}</h2>
                                 <button
                                     onClick={() => setIsFilterOpen(false)}
                                     className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
@@ -640,13 +642,13 @@ const Home = () => {
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
                                 {/* Sort Section */}
                                 <section>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Sort By</h3>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.sort_by')}</h3>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
-                                            { id: 'newest', label: 'Newest First' },
-                                            { id: 'price_asc', label: 'Lower Price' },
-                                            { id: 'price_desc', label: 'Higher Price' },
-                                            { id: 'area_desc', label: 'Largest Area' }
+                                            { id: 'newest', label: t('common.newest') },
+                                            { id: 'price_asc', label: t('common.lower_price') },
+                                            { id: 'price_desc', label: t('common.higher_price') },
+                                            { id: 'area_desc', label: t('common.largest_area') }
                                         ].map((opt) => (
                                             <button
                                                 key={opt.id}
@@ -661,23 +663,23 @@ const Home = () => {
 
                                 {/* Price Range Section */}
                                 <section>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Price Range</h3>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.price')}</h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 ml-1">Min Price ($)</label>
+                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.min')} ({t('common.currency_symbol')})</label>
                                             <input
                                                 type="number"
-                                                placeholder="Any"
+                                                placeholder={t('common.any')}
                                                 className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
                                                 value={filter.minPrice}
                                                 onChange={(e) => setFilter({ ...filter, minPrice: e.target.value })}
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 ml-1">Max Price ($)</label>
+                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.max')} ({t('common.currency_symbol')})</label>
                                             <input
                                                 type="number"
-                                                placeholder="Any"
+                                                placeholder={t('common.any')}
                                                 className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
                                                 value={filter.maxPrice}
                                                 onChange={(e) => setFilter({ ...filter, maxPrice: e.target.value })}
@@ -688,65 +690,65 @@ const Home = () => {
 
                                 {/* Characteristics */}
                                 <section>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Characteristics</h3>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.rooms')}</h3>
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Bedrooms</label>
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.bedrooms')}</label>
                                             {['', '1', '2', '3', '4', '5+'].map((val) => (
                                                 <button
                                                     key={val}
                                                     onClick={() => setFilter({ ...filter, minBedrooms: val === '5+' ? '5' : val })}
                                                     className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minBedrooms === '') || (val === '5+' && filter.minBedrooms === '5') || (val !== '' && val !== '5+' && filter.minBedrooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
                                                 >
-                                                    {val || 'Any'}
+                                                    {val || t('common.any')}
                                                 </button>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Bathrooms</label>
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.bathrooms')}</label>
                                             {['', '1', '2', '3', '4', '5+'].map((val) => (
                                                 <button
                                                     key={val}
                                                     onClick={() => setFilter({ ...filter, minBathrooms: val === '5+' ? '5' : val })}
                                                     className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minBathrooms === '') || (val === '5+' && filter.minBathrooms === '5') || (val !== '' && val !== '5+' && filter.minBathrooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
                                                 >
-                                                    {val || 'Any'}
+                                                    {val || t('common.any')}
                                                 </button>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Suites</label>
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.suites')}</label>
                                             {['', '1', '2', '3', '4', '5+'].map((val) => (
                                                 <button
                                                     key={val}
                                                     onClick={() => setFilter({ ...filter, minSuites: val === '5+' ? '5' : val })}
                                                     className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minSuites === '') || (val === '5+' && filter.minSuites === '5') || (val !== '' && val !== '5+' && filter.minSuites === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
                                                 >
-                                                    {val || 'Any'}
+                                                    {val || t('common.any')}
                                                 </button>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Rooms (Total)</label>
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.rooms')}</label>
                                             {['', '1', '2', '3', '4', '5+'].map((val) => (
                                                 <button
                                                     key={val}
                                                     onClick={() => setFilter({ ...filter, minRooms: val === '5+' ? '5' : val })}
                                                     className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minRooms === '') || (val === '5+' && filter.minRooms === '5') || (val !== '' && val !== '5+' && filter.minRooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
                                                 >
-                                                    {val || 'Any'}
+                                                    {val || t('common.any')}
                                                 </button>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Parking Spots</label>
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.garages')}</label>
                                             {['', '1', '2', '3', '4', '5+'].map((val) => (
                                                 <button
                                                     key={val}
                                                     onClick={() => setFilter({ ...filter, minGarages: val === '5+' ? '5' : val })}
                                                     className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minGarages === '') || (val === '5+' && filter.minGarages === '5') || (val !== '' && val !== '5+' && filter.minGarages === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
                                                 >
-                                                    {val || 'Any'}
+                                                    {val || t('common.any')}
                                                 </button>
                                             ))}
                                         </div>
@@ -755,7 +757,7 @@ const Home = () => {
 
                                 {/* Amenities Section */}
                                 <section>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Amenities</h3>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.amenities')}</h3>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                                         {availableAmenities.map((amenity) => (
                                             <label key={amenity} className="flex items-center gap-3 cursor-pointer group">
@@ -802,13 +804,13 @@ const Home = () => {
                                     })}
                                     className="py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all border-2 border-slate-100"
                                 >
-                                    Reset All
+                                    {t('common.reset_all')}
                                 </button>
                                 <button
                                     onClick={() => setIsFilterOpen(false)}
                                     className="py-4 bg-primary-600 text-white rounded-2xl font-bold shadow-xl shadow-primary-200 hover:bg-primary-700 transition-all"
                                 >
-                                    Show {filteredProperties.length} Results
+                                    {t('common.show_results').replace('{count}', filteredProperties.length)}
                                 </button>
                             </div>
                         </Motion.div>
@@ -843,8 +845,8 @@ const Home = () => {
                     <div className="bg-slate-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Search className="text-slate-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-700">No properties found</h3>
-                    <p className="text-slate-500 mt-2">Try adjusting your filters or search terms.</p>
+                    <h3 className="text-xl font-bold text-slate-700">{t('common.no_properties')}</h3>
+                    <p className="text-slate-500 mt-2">{t('common.try_adjusting')}</p>
                 </div>
             )}
 

@@ -40,72 +40,69 @@ const PublicRoute = ({ children }) => {
   return user ? <Navigate to="/my-listings" /> : children;
 };
 
+import { LanguageProvider } from './contexts/LanguageContext';
+
+import Footer from './components/Footer';
+
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-slate-50">
-        <Navbar />
-        <main className="animate-fade-in">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route
-              path="/auth"
-              element={
-                <PublicRoute>
-                  <Auth />
-                </PublicRoute>
-              }
-            />
-            <Route path="/property/:id" element={<PropertyDetails />} />
+    <LanguageProvider>
+      <Router>
+        <div className="min-h-screen bg-slate-50">
+          <Navbar />
+          <main className="animate-fade-in">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route
+                path="/auth"
+                element={
+                  <PublicRoute>
+                    <Auth />
+                  </PublicRoute>
+                }
+              />
+              <Route path="/property/:id" element={<PropertyDetails />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/my-listings"
-              element={
-                <PrivateRoute>
-                  <MyListings />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/create-announcement"
-              element={
-                <PrivateRoute>
-                  <PropertyForm />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/edit-property/:id"
-              element={
-                <PrivateRoute>
-                  <PropertyForm />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute>
-                  <Profile />
-                </PrivateRoute>
-              }
-            />
-          </Routes>
-        </main>
+              {/* Protected Routes */}
+              <Route
+                path="/my-listings"
+                element={
+                  <PrivateRoute>
+                    <MyListings />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/create-announcement"
+                element={
+                  <PrivateRoute>
+                    <PropertyForm />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/edit-property/:id"
+                element={
+                  <PrivateRoute>
+                    <PropertyForm />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <PrivateRoute>
+                    <Profile />
+                  </PrivateRoute>
+                }
+              />
+            </Routes>
+          </main>
 
-        <footer className="bg-white border-t border-slate-100 py-12 mt-20">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-slate-400 font-medium">© 2026 Vita State Manager. All rights reserved.</p>
-            <div className="flex justify-center space-x-6 mt-4">
-              <a href="#" className="text-slate-300 hover:text-primary-500 transition-colors">Privacy Policy</a>
-              <a href="#" className="text-slate-300 hover:text-primary-500 transition-colors">Terms of Service</a>
-              <a href="#" className="text-slate-300 hover:text-primary-500 transition-colors">Cookies</a>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </Router>
+          <Footer />
+        </div>
+      </Router>
+    </LanguageProvider>
   );
 }
 

@@ -48,6 +48,15 @@ body {
   @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
 }
 
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {

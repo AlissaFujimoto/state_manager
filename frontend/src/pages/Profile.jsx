@@ -6,8 +6,10 @@ import { User, Lock, Camera, Save, AlertCircle, CheckCircle, Upload } from 'luci
 import { motion as Motion } from 'framer-motion';
 import ImageEditor from '../components/ImageEditor';
 import CompressedImage from '../components/CompressedImage';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Profile = () => {
+    const { t } = useLanguage();
     const [user, loading] = useAuthState(auth);
     const [displayName, setDisplayName] = useState('');
     const [photoURL, setPhotoURL] = useState('');
@@ -68,7 +70,7 @@ const Profile = () => {
                 displayName,
                 photoURL
             });
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            setMessage({ type: 'success', text: t('profile.success_update') });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -85,12 +87,12 @@ const Profile = () => {
 
         try {
             await updatePassword(user, newPassword);
-            setMessage({ type: 'success', text: 'Password updated successfully!' });
+            setMessage({ type: 'success', text: t('profile.success_password') });
             setNewPassword('');
         } catch (error) {
             // Re-authentication might be needed for sensitive operations
             if (error.code === 'auth/requires-recent-login') {
-                setMessage({ type: 'error', text: 'Please sign out and sign in again to change your password.' });
+                setMessage({ type: 'error', text: t('profile.reauth_required') });
             } else {
                 setMessage({ type: 'error', text: error.message });
             }
@@ -149,7 +151,7 @@ const Profile = () => {
             // Update Firebase profile with reference (not the full data)
             await updateProfile(user, { photoURL: photoReference });
 
-            setMessage({ type: 'success', text: 'Profile photo updated successfully!' });
+            setMessage({ type: 'success', text: t('profile.photo_updated') });
         } catch (error) {
             console.error(error);
             setMessage({ type: 'error', text: `Failed to update photo: ${error.message}` });
@@ -172,8 +174,8 @@ const Profile = () => {
                 className="grid gap-8"
             >
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-                    <h1 className="text-3xl font-bold text-slate-800 mb-2">Profile Settings</h1>
-                    <p className="text-slate-500">Manage your account preferences and details</p>
+                    <h1 className="text-3xl font-bold text-slate-800 mb-2">{t('profile.title')}</h1>
+                    <p className="text-slate-500">{t('profile.subtitle')}</p>
                 </div>
 
                 {message.text && (
@@ -195,23 +197,23 @@ const Profile = () => {
                             <div className="bg-primary-50 p-3 rounded-full">
                                 <User className="w-6 h-6 text-primary-600" />
                             </div>
-                            <h2 className="text-xl font-bold text-slate-800">Public Profile</h2>
+                            <h2 className="text-xl font-bold text-slate-800">{t('profile.public_profile')}</h2>
                         </div>
 
                         <form onSubmit={handleUpdateProfile} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Display Name</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">{t('profile.display_name')}</label>
                                 <input
                                     type="text"
                                     value={displayName}
                                     onChange={(e) => setDisplayName(e.target.value)}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                    placeholder="Your Name"
+                                    placeholder={t('profile.display_name_placeholder')}
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Profile Picture</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">{t('profile.profile_picture')}</label>
                                 <div className="flex items-center gap-4">
                                     <div className="relative group cursor-pointer w-20 h-20" onClick={() => fileInputRef.current?.click()}>
                                         {photoURL ? (
@@ -241,9 +243,9 @@ const Profile = () => {
                                             disabled={isUploading}
                                             className="px-4 py-2 bg-slate-100 text-slate-600 font-semibold rounded-lg text-sm hover:bg-slate-200 transition-all disabled:opacity-50"
                                         >
-                                            {isUploading ? 'Uploading...' : 'Change Photo'}
+                                            {isUploading ? t('common.uploading') : t('profile.change_photo')}
                                         </button>
-                                        <p className="text-xs text-slate-400 mt-2">Recommended: Square JPG, max 2MB.</p>
+                                        <p className="text-xs text-slate-400 mt-2">{t('profile.photo_recommendation')}</p>
                                     </div>
                                 </div>
                             </div>
@@ -258,7 +260,7 @@ const Profile = () => {
                                 ) : (
                                     <>
                                         <Save className="w-5 h-5" />
-                                        <span>Save Changes</span>
+                                        <span>{t('property_form.save_changes')}</span>
                                     </>
                                 )}
                             </button>
@@ -271,18 +273,18 @@ const Profile = () => {
                             <div className="bg-orange-50 p-3 rounded-full">
                                 <Lock className="w-6 h-6 text-orange-600" />
                             </div>
-                            <h2 className="text-xl font-bold text-slate-800">Security</h2>
+                            <h2 className="text-xl font-bold text-slate-800">{t('profile.security')}</h2>
                         </div>
 
                         <form onSubmit={handleUpdatePassword} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">{t('profile.new_password')}</label>
                                 <input
                                     type="password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                    placeholder="Min. 6 characters"
+                                    placeholder={t('profile.password_placeholder')}
                                     minLength={6}
                                 />
                             </div>
@@ -297,7 +299,7 @@ const Profile = () => {
                                 ) : (
                                     <>
                                         <Save className="w-5 h-5" />
-                                        <span>Update Password</span>
+                                        <span>{t('profile.update_password')}</span>
                                     </>
                                 )}
                             </button>

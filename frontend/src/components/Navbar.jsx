@@ -1,15 +1,21 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
-import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User } from 'lucide-react';
+import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User, Globe } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import CompressedImage from './CompressedImage';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Navbar = () => {
     const [user] = useAuthState(auth);
     const [isOpen, setIsOpen] = useState(false);
+    const { t, changeLanguage, currentLanguage } = useLanguage();
+    const location = useLocation();
+    const isAuthPage = location.pathname === '/auth';
+    const isHomePage = location.pathname === '/';
+    const shouldHideMenu = !user && (isAuthPage || isHomePage);
 
     return (
         <>
@@ -23,24 +29,41 @@ const Navbar = () => {
                             <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Vita<span className="text-primary-600 not-italic">State</span></span>
                         </Link>
 
-                        {/* Unified Menu Button (Replaces Desktop and Mobile specific buttons) */}
-                        <div className="flex items-center space-x-4">
+                        {/* Unified Menu Button and Language Switcher */}
+                        <div className="flex items-center space-x-2 md:space-x-4">
+                            <div className={`flex bg-slate-100 p-1 rounded-xl transition-opacity duration-300 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}>
+                                <button
+                                    onClick={() => changeLanguage('pt-br')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLanguage === 'pt-br' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    PT
+                                </button>
+                                <button
+                                    onClick={() => changeLanguage('en-us')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLanguage === 'en-us' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    EN
+                                </button>
+                            </div>
+
                             {!user && (
                                 <Link
                                     to="/auth"
-                                    className="hidden md:flex bg-slate-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2"
+                                    className={`hidden md:flex bg-slate-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}
                                 >
                                     <LogIn className="w-5 h-5" />
-                                    <span>Sign In</span>
+                                    <span>{t('navbar.login')}</span>
                                 </Link>
                             )}
-                            <button
-                                className="p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
-                                onClick={() => setIsOpen(!isOpen)}
-                                aria-label="Toggle menu"
-                            >
-                                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                            </button>
+                            {!shouldHideMenu && (
+                                <button
+                                    className="p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+                                    onClick={() => setIsOpen(!isOpen)}
+                                    aria-label="Toggle menu"
+                                >
+                                    {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                                </button>
+                            )}
                         </div>
 
 
@@ -75,15 +98,15 @@ const Navbar = () => {
                                 <>
                                     <Link to="/profile" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                         <Settings className="w-6 h-6" />
-                                        <span>Profile Settings</span>
+                                        <span>{t('navbar.profile')}</span>
                                     </Link>
                                     <Link to="/my-listings" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
                                         <LayoutDashboard className="w-6 h-6" />
-                                        <span>My Listings</span>
+                                        <span>{t('navbar.my_listings')}</span>
                                     </Link>
                                     <Link to="/create-announcement" className="mobile-nav-link primary" onClick={() => setIsOpen(false)}>
                                         <PlusCircle className="w-6 h-6" />
-                                        <span>List Property</span>
+                                        <span>{t('navbar.list_property')}</span>
                                     </Link>
 
                                     <div className="border-t border-slate-100 pt-6 mt-6">
@@ -92,14 +115,14 @@ const Navbar = () => {
                                             className="w-full flex items-center space-x-3 text-left text-xl font-bold text-red-500"
                                         >
                                             <LogOut className="w-6 h-6" />
-                                            <span>Sign Out</span>
+                                            <span>{t('navbar.logout')}</span>
                                         </button>
                                     </div>
                                 </>
                             ) : (
                                 <Link to="/auth" className="mobile-nav-link text-primary-600" onClick={() => setIsOpen(false)}>
                                     <LogIn className="w-6 h-6" />
-                                    <span>Sign In</span>
+                                    <span>{t('navbar.login')}</span>
                                 </Link>
                             )}
                         </Motion.div>
@@ -132,7 +155,7 @@ const Navbar = () => {
                             >
                                 <div className="flex flex-col h-full p-6">
                                     <div className="flex justify-between items-center mb-8">
-                                        <span className="text-xl font-bold text-slate-800">Menu</span>
+                                        <span className="text-xl font-bold text-slate-800">{t('navbar.menu')}</span>
                                         <button
                                             onClick={() => setIsOpen(false)}
                                             className="p-2 hover:bg-slate-100 rounded-full transition-colors"
@@ -160,7 +183,7 @@ const Navbar = () => {
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <Settings className="w-5 h-5" />
-                                            <span>Profile Settings</span>
+                                            <span>{t('navbar.profile')}</span>
                                         </Link>
 
                                         <Link
@@ -169,7 +192,7 @@ const Navbar = () => {
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <LayoutDashboard className="w-5 h-5" />
-                                            <span>My Listings</span>
+                                            <span>{t('navbar.my_listings')}</span>
                                         </Link>
 
                                         <Link
@@ -178,7 +201,7 @@ const Navbar = () => {
                                             onClick={() => setIsOpen(false)}
                                         >
                                             <PlusCircle className="w-5 h-5" />
-                                            <span>List Property</span>
+                                            <span>{t('navbar.list_property')}</span>
                                         </Link>
                                     </div>
 
@@ -191,7 +214,7 @@ const Navbar = () => {
                                             className="w-full flex items-center space-x-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
                                         >
                                             <LogOut className="w-5 h-5" />
-                                            <span>Sign Out</span>
+                                            <span>{t('navbar.logout')}</span>
                                         </button>
                                     </div>
                                 </div>
