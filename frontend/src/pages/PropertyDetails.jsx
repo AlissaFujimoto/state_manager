@@ -1136,14 +1136,10 @@ const PropertyDetails = () => {
                             </h3>
                             <div
                                 className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-10 relative group"
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onTouchStart={(e) => e.stopPropagation()}
-                                onTouchMove={(e) => e.stopPropagation()}
-                                onTouchEnd={(e) => e.stopPropagation()}
                             >
                                 <MapContainer
                                     center={[Number(editData?.location?.lat || property.location.lat), Number(editData?.location?.lng || property.location.lng)]}
-                                    zoom={15}
+                                    zoom={14}
                                     scrollWheelZoom={true}
                                     dragging={true}
                                     style={{ height: '100%', width: '100%' }}

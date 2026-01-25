@@ -951,16 +951,13 @@ const PropertyForm = () => {
                                                 </label>
                                                 <div
                                                     className="h-72 rounded-2xl overflow-hidden border border-slate-200 shadow-inner z-10"
-                                                    onMouseDown={(e) => e.stopPropagation()}
-                                                    onTouchStart={(e) => e.stopPropagation()}
-                                                    onTouchMove={(e) => e.stopPropagation()}
-                                                    onTouchEnd={(e) => e.stopPropagation()}
                                                 >
                                                     <MapContainer
                                                         center={[formData.address.location.lat, formData.address.location.lng]}
-                                                        zoom={13}
+                                                        zoom={12}
                                                         scrollWheelZoom={true}
                                                         dragging={true}
+                                                        tap={false}
                                                         style={{ height: '100%', width: '100%' }}
                                                     >
                                                         <TileLayer
