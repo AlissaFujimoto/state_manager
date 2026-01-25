@@ -367,7 +367,7 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                 </div>
                 <div className="absolute bottom-4 right-4 z-10">
                     <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg">
-                        {formatCurrency(property.price)}
+                        {formatCurrency(property.price, property.currency)}
                     </div>
                 </div>
             </div>
@@ -431,9 +431,28 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                     </div>
                     <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
-                        <span className="text-slate-700 font-semibold text-center truncate w-full px-1">
-                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0}{t('common.area_unit')}
-                        </span>
+                        <div className="text-slate-700 font-semibold text-center w-full px-1">
+                            {(() => {
+                                const areaUnit = t(`common.area_units.${property.characteristics?.area_unit}`) || property.characteristics?.area_unit || t('common.area_unit');
+                                const totalUnit = t(`common.area_units.${property.characteristics?.total_area_unit}`) || property.characteristics?.total_area_unit || t('common.area_unit');
+                                const sameUnit = property.characteristics?.area_unit === property.characteristics?.total_area_unit;
+
+                                if (sameUnit) {
+                                    return (
+                                        <span>
+                                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0} {areaUnit}
+                                        </span>
+                                    );
+                                } else {
+                                    return (
+                                        <div className="flex flex-col leading-tight -mt-0.5">
+                                            <span className="text-[11px]">{property.characteristics?.area || 0} {areaUnit} /</span>
+                                            <span className="text-[11px]">{property.characteristics?.total_area || 0} {totalUnit}</span>
+                                        </div>
+                                    );
+                                }
+                            })()}
+                        </div>
                     </div>
                 </div>
 

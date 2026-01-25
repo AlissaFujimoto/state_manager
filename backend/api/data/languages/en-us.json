@@ -14,7 +14,13 @@
         "sale": "Sale",
         "rent": "Rent",
         "price": "Price",
+        "currency": "Currency",
         "currency_symbol": "$",
+        "currencies": {
+            "BRL": "Real (R$)",
+            "EUR": "Euro (€)",
+            "USD": "Dollar ($)"
+        },
         "area": "Area",
         "bedrooms": "Bedrooms",
         "bathrooms": "Bathrooms",
@@ -22,7 +28,16 @@
         "rooms": "Rooms",
         "garages": "Garages",
         "parking": "Parking",
-        "area_unit": "ft²",
+        "area_unit": "m²",
+        "area_unit_label": "Area Unit",
+        "total_area_unit_label": "Total Area Unit",
+        "area_units": {
+            "m2": "m²",
+            "km2": "km²",
+            "ha": "hectares",
+            "ac": "acres",
+            "ft2": "ft²"
+        },
         "any": "Any",
         "back": "Back",
         "translate": "Translate",

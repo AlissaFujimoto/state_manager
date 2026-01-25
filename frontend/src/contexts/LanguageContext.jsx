@@ -44,20 +44,26 @@ export const LanguageProvider = ({ children }) => {
         return result;
     };
 
-    const formatCurrency = (amount) => {
+    const formatCurrency = (amount, customCurrency) => {
         const value = Number(amount) || 0;
         let locale = 'en-US';
-        let currency = 'USD';
+        let currency = customCurrency || 'USD';
 
-        if (currentLanguage === 'pt-br') {
-            locale = 'pt-BR';
-            currency = 'BRL';
-        } else if (currentLanguage === 'es-es') {
-            locale = 'es-ES';
-            currency = 'EUR';
-        } else if (currentLanguage === 'pt-pt') {
-            locale = 'pt-PT';
-            currency = 'EUR';
+        if (!customCurrency) {
+            if (currentLanguage === 'pt-br') {
+                locale = 'pt-BR';
+                currency = 'BRL';
+            } else if (currentLanguage === 'es-es') {
+                locale = 'es-ES';
+                currency = 'EUR';
+            } else if (currentLanguage === 'pt-pt') {
+                locale = 'pt-PT';
+                currency = 'EUR';
+            }
+        } else {
+            if (currentLanguage === 'pt-br') locale = 'pt-BR';
+            else if (currentLanguage === 'es-es') locale = 'es-ES';
+            else if (currentLanguage === 'pt-pt') locale = 'pt-PT';
         }
 
         return new Intl.NumberFormat(locale, {

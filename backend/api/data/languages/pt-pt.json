@@ -14,7 +14,13 @@
         "sale": "Venda",
         "rent": "Arrendamento",
         "price": "Preço",
+        "currency": "Moeda",
         "currency_symbol": "€",
+        "currencies": {
+            "BRL": "Real (R$)",
+            "EUR": "Euro (€)",
+            "USD": "Dólar ($)"
+        },
         "area": "Área",
         "bedrooms": "Quartos",
         "bathrooms": "Casas de Banho",
@@ -23,6 +29,15 @@
         "garages": "Garagens",
         "parking": "Estacionamento",
         "area_unit": "m²",
+        "area_unit_label": "Unidade de Área",
+        "total_area_unit_label": "Unidade de Área Total",
+        "area_units": {
+            "m2": "m²",
+            "km2": "km²",
+            "ha": "hectares",
+            "ac": "acres",
+            "ft2": "ft²"
+        },
         "any": "Qualquer",
         "back": "Voltar",
         "translate": "Traduzir",

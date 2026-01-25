@@ -869,8 +869,17 @@ const PropertyDetails = () => {
                             <div className="text-4xl font-black text-primary-600">
                                 {isEditing ? (
                                     <div className="flex flex-col items-end">
-                                        <div className="flex items-center">
-                                            <span className="text-2xl mr-1">$</span>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                name="currency"
+                                                value={editData.currency || 'BRL'}
+                                                onChange={handleInputChange}
+                                                className="text-2xl font-black text-primary-600 bg-transparent border-b-2 border-primary-500 outline-none p-1 cursor-pointer"
+                                            >
+                                                {Object.entries(t('common.currencies') || {}).map(([code, label]) => (
+                                                    <option key={code} value={code} className="text-slate-800 text-sm font-bold">{code}</option>
+                                                ))}
+                                            </select>
                                             <input
                                                 type="number"
                                                 name="price"
@@ -882,7 +891,7 @@ const PropertyDetails = () => {
                                         {errors.price && <p className="text-red-500 text-xs font-bold mt-1">{errors.price}</p>}
                                     </div>
                                 ) : (
-                                    formatCurrency(property.price)
+                                    formatCurrency(property.price, property.currency)
                                 )}
                             </div>
                         </div>
@@ -896,12 +905,15 @@ const PropertyDetails = () => {
                             { label: t('common.rooms'), name: 'characteristics.rooms', icon: Layout },
                             { label: t('common.bathrooms'), name: 'characteristics.bathrooms', icon: BathIcon },
                             { label: t('common.garages'), name: 'characteristics.garages', icon: Car },
-                            { label: t('common.area'), name: 'characteristics.area', icon: Square, unit: t('common.area_unit') },
-                            { label: t('common.total'), name: 'characteristics.total_area', icon: Square, unit: t('common.area_unit') }
+                            { label: t('common.area'), name: 'characteristics.area', icon: Square },
+                            { label: t('common.total'), name: 'characteristics.total_area', icon: Square }
                         ].map((field) => {
                             const Icon = field.icon;
-                            const value = field.name.split('.').reduce((obj, key) => obj?.[key], isEditing ? editData : property) || 0;
+                            let value = field.name.split('.').reduce((obj, key) => obj?.[key], isEditing ? editData : property);
+                            // Ensure 0 is treated as 0 and not empty
+                            if (value === undefined || value === null) value = 0;
                             const hasError = errors[field.name];
+                            const isAreaField = field.name.includes('area');
 
                             return (
                                 <div key={field.name} className={`glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all ${hasError ? 'border-red-500 bg-red-50' : ''}`}>
@@ -911,15 +923,31 @@ const PropertyDetails = () => {
                                     <div className="flex-1">
                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{field.label}</p>
                                         {isEditing ? (
-                                            <input
-                                                type="number"
-                                                name={field.name}
-                                                value={value}
-                                                onChange={handleInputChange}
-                                                className={`text-xl font-bold text-slate-800 bg-transparent border-b outline-none w-full ${hasError ? 'border-red-500 focus:border-red-600' : 'border-primary-200 focus:border-primary-500'}`}
-                                            />
+                                            <div className="space-y-2">
+                                                <input
+                                                    type="number"
+                                                    name={field.name}
+                                                    value={value}
+                                                    onChange={handleInputChange}
+                                                    className={`text-xl font-bold text-slate-800 bg-transparent border-b outline-none w-full ${hasError ? 'border-red-500 focus:border-red-600' : 'border-primary-200 focus:border-primary-500'}`}
+                                                />
+                                                {isAreaField && (
+                                                    <select
+                                                        name={field.name === 'characteristics.area' ? "characteristics.area_unit" : "characteristics.total_area_unit"}
+                                                        value={field.name === 'characteristics.area' ? (editData.characteristics?.area_unit || 'm2') : (editData.characteristics?.total_area_unit || 'm2')}
+                                                        onChange={handleInputChange}
+                                                        className="text-[10px] font-bold text-primary-600 uppercase bg-primary-50 px-2 py-1 rounded-md outline-none"
+                                                    >
+                                                        {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
+                                                            <option key={code} value={code}>{label}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
                                         ) : (
-                                            <p className="text-xl font-bold text-slate-800">{value}{field.unit || ''}</p>
+                                            <p className="text-xl font-bold text-slate-800">
+                                                {value} {isAreaField ? (t(`common.area_units.${field.name === 'characteristics.area' ? property.characteristics?.area_unit : property.characteristics?.total_area_unit}`) || (field.name === 'characteristics.area' ? property.characteristics?.area_unit : property.characteristics?.total_area_unit) || t('common.area_unit')) : ''}
+                                            </p>
                                         )}
                                     </div>
                                 </div>

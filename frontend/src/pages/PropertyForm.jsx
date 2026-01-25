@@ -126,6 +126,7 @@ const PropertyForm = () => {
         property_type: 'house',
         listing_type: 'sale',
         status: 'available',
+        currency: 'BRL',
         characteristics: {
             bedrooms: 0,
             suites: 0,
@@ -133,7 +134,9 @@ const PropertyForm = () => {
             bathrooms: 0,
             garages: 0,
             area: 0,
-            total_area: 0
+            total_area: 0,
+            area_unit: 'm2',
+            total_area_unit: 'm2'
         },
         images: [],
         layout_image: null,
@@ -221,8 +224,9 @@ const PropertyForm = () => {
                         property_type: data.property_type || 'house',
                         listing_type: data.listing_type || 'sale',
                         status: data.status || 'available',
+                        currency: data.currency || 'BRL',
                         characteristics: data.characteristics || {
-                            bedrooms: 0, suites: 0, rooms: 0, bathrooms: 0, garages: 0, area: 0, total_area: 0
+                            bedrooms: 0, suites: 0, rooms: 0, bathrooms: 0, garages: 0, area: 0, total_area: 0, area_unit: 'm2', total_area_unit: 'm2'
                         },
                         images: data.images || [],
                         layout_image: data.layout_image,
@@ -730,19 +734,32 @@ const PropertyForm = () => {
                                             </div>
                                         </div>
 
-                                        <div className="field-container">
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.price_label')}</label>
-                                            <input
-                                                type="number"
-                                                id="price"
-                                                name="price"
-                                                value={formData.price}
-                                                onChange={handleInputChange}
-
-
-                                                placeholder="500,000"
-                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('price') === 'error' ? 'neon-error' : getFieldStatus('price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
-                                            />
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                            <div className="field-container md:col-span-3">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.price_label')}</label>
+                                                <input
+                                                    type="number"
+                                                    id="price"
+                                                    name="price"
+                                                    value={formData.price}
+                                                    onChange={handleInputChange}
+                                                    placeholder="500,000"
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('price') === 'error' ? 'neon-error' : getFieldStatus('price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                />
+                                            </div>
+                                            <div className="field-container">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.currency') || 'Currency'}</label>
+                                                <select
+                                                    name="currency"
+                                                    value={formData.currency}
+                                                    onChange={handleInputChange}
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                >
+                                                    {Object.entries(t('common.currencies') || {}).map(([code, label]) => (
+                                                        <option key={code} value={code}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
 
                                         <div className="field-container">
@@ -802,9 +819,7 @@ const PropertyForm = () => {
                                                 { label: t('common.suites'), name: 'characteristics.suites' },
                                                 { label: t('common.rooms'), name: 'characteristics.rooms' },
                                                 { label: t('common.bathrooms'), name: 'characteristics.bathrooms' },
-                                                { label: t('common.garages'), name: 'characteristics.garages' },
-                                                { label: `${t('common.area')} (${t('common.area_unit')})`, name: 'characteristics.area' },
-                                                { label: `${t('common.total')} (${t('common.area_unit')})`, name: 'characteristics.total_area' }
+                                                { label: t('common.garages'), name: 'characteristics.garages' }
                                             ].map((field) => (
                                                 <div key={field.name} className="field-container">
                                                     <label className="block text-sm font-bold text-slate-700 mb-2">{field.label}</label>
@@ -814,12 +829,58 @@ const PropertyForm = () => {
                                                         name={field.name}
                                                         value={field.name.split('.').reduce((obj, key) => obj[key], formData)}
                                                         onChange={handleInputChange}
-
-
                                                         className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus(field.name) === 'error' ? 'neon-error' : getFieldStatus(field.name) === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                                                     />
                                                 </div>
                                             ))}
+
+                                            <div className="field-container">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.area_unit_label') || 'Area Unit'}</label>
+                                                <select
+                                                    name="characteristics.area_unit"
+                                                    value={formData.characteristics.area_unit}
+                                                    onChange={handleInputChange}
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                >
+                                                    {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
+                                                        <option key={code} value={code}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="field-container">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.area')}</label>
+                                                <input
+                                                    type="number"
+                                                    name="characteristics.area"
+                                                    value={formData.characteristics.area}
+                                                    onChange={handleInputChange}
+                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('characteristics.area') === 'error' ? 'neon-error' : getFieldStatus('characteristics.area') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                />
+                                            </div>
+
+                                            <div className="field-container">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.total')}</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="number"
+                                                        name="characteristics.total_area"
+                                                        value={formData.characteristics.total_area}
+                                                        onChange={handleInputChange}
+                                                        className={`flex-1 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('characteristics.total_area') === 'error' ? 'neon-error' : getFieldStatus('characteristics.total_area') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                    />
+                                                    <select
+                                                        name="characteristics.total_area_unit"
+                                                        value={formData.characteristics.total_area_unit}
+                                                        onChange={handleInputChange}
+                                                        className={`w-32 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                    >
+                                                        {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
+                                                            <option key={code} value={code}>{label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {isMobile && (

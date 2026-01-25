@@ -25,6 +25,8 @@ class PropertyCharacteristics:
     garages: int = 0
     area: float = 0.0
     total_area: float = 0.0
+    area_unit: str = "m2"
+    total_area_unit: str = "m2"
 
 @dataclass
 class PropertyData:
@@ -35,6 +37,7 @@ class PropertyData:
     property_type: str = "house"
     listing_type: str = "sale"
     status: str = "available"
+    currency: str = "BRL"
     
     # Nested Data Classes
     characteristics: PropertyCharacteristics = field(default_factory=PropertyCharacteristics)
@@ -100,7 +103,9 @@ class Property:
             "rooms": c.rooms,
             "garages": c.garages,
             "area": c.area,
-            "total_area": c.total_area
+            "total_area": c.total_area,
+            "area_unit": c.area_unit,
+            "total_area_unit": c.total_area_unit
         }
         
         # Base Dict
@@ -125,6 +130,7 @@ class Property:
             "address": addr_dict,
             "display_address": display_str,
             "location": addr_dict["location"],
+            "currency": d.currency,
             "owner_id": d.owner_id,
             "created_at": None
         }
@@ -159,7 +165,9 @@ class Property:
             rooms=int(get_stat("rooms")),
             garages=int(get_stat("garages")),
             area=float(get_stat("area", 0.0)),
-            total_area=float(get_stat("total_area") or get_stat("total") or 0.0)
+            total_area=float(get_stat("total_area") or get_stat("total") or 0.0),
+            area_unit=data.get("area_unit") or raw_chars.get("area_unit") or "m2",
+            total_area_unit=data.get("total_area_unit") or raw_chars.get("total_area_unit") or data.get("area_unit") or raw_chars.get("area_unit") or "m2"
         )
 
         # 2. Parse Features (Extras)
@@ -202,6 +210,7 @@ class Property:
             property_type=data.get("property_type", "house"),
             listing_type=data.get("listing_type", "sale"),
             status=data.get("status", "available"),
+            currency=data.get("currency", "BRL"),
             characteristics=stats,
             address=addr,
             features=features,
