@@ -130,6 +130,11 @@ def get_amenities() -> Tuple[flask.Response, int]:
         print(f"[ERROR_SERVICE] Failed to load amenities: {e}")
         return jsonify(["Air Conditioning", "Swimming Pool", "Parking", "Garden"]), 200  # Fallback
 
+@app.route("/api/region", methods=["GET"])
+def get_region() -> Tuple[flask.Response, int]:
+    """Get list of supported countries."""
+    return jsonify(["Brazil"]), 200
+
 @app.route("/api/announcements", methods=["GET"])
 def get_announcements() -> Tuple[flask.Response, int]:
     """Get all announcements with filters."""

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Search, Filter, MapPin, ChevronRight, ChevronLeft, Trash2, Edit, Calendar, ChevronsLeft, ChevronsRight, X, Check } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
@@ -246,9 +246,30 @@ const Home = () => {
     const [listingTypes, setListingTypes] = useState([]);
     const [propertyStatuses, setPropertyStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState({ type: 'all', listingType: 'all', minPrice: '', maxPrice: '' });
+    const [filter, setFilter] = useState({
+        type: 'all',
+        listingType: 'all',
+        minPrice: '',
+        maxPrice: '',
+        minBedrooms: '',
+        minBathrooms: '',
+        minSuites: '',
+        minRooms: '',
+        minGarages: '',
+        minArea: '',
+        maxArea: '',
+        state: 'all',
+        city: 'all',
+        amenities: [],
+        sortBy: 'newest'
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [availableAmenities, setAvailableAmenities] = useState([]);
+    const [regions, setRegions] = useState(null);
+    const [brazilianStates, setBrazilianStates] = useState([]);
+    const [brazilianCities, setBrazilianCities] = useState([]);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [touchStart, setTouchStart] = useState(null);
@@ -262,8 +283,49 @@ const Home = () => {
 
     const filteredProperties = (properties || []).filter(p => {
         const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
-        const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesType && matchesSearch;
+        const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = p.title.toLowerCase().includes(query) ||
+            p.description?.toLowerCase().includes(query) ||
+            p.display_address?.toLowerCase().includes(query) ||
+            p.address?.public?.toLowerCase().includes(query);
+
+        const price = Number(p.price);
+        const matchesMinPrice = filter.minPrice === '' || price >= Number(filter.minPrice);
+        const matchesMaxPrice = filter.maxPrice === '' || price <= Number(filter.maxPrice);
+
+        const chars = p.characteristics || {};
+        const matchesBedrooms = filter.minBedrooms === '' || Number(chars.bedrooms) >= Number(filter.minBedrooms);
+        const matchesBathrooms = filter.minBathrooms === '' || Number(chars.bathrooms) >= Number(filter.minBathrooms);
+        const matchesSuites = filter.minSuites === '' || Number(chars.suites) >= Number(filter.minSuites);
+        const matchesRooms = filter.minRooms === '' || Number(chars.rooms) >= Number(filter.minRooms);
+        const matchesGarages = filter.minGarages === '' || Number(chars.garages) >= Number(filter.minGarages);
+
+        const area = Number(chars.area || 0);
+        const matchesMinArea = filter.minArea === '' || area >= Number(filter.minArea);
+        const matchesMaxArea = filter.maxArea === '' || area <= Number(filter.maxArea);
+
+        const matchesAmenities = filter.amenities.length === 0 ||
+            filter.amenities.every(a => (p.amenities || []).includes(a));
+
+        const matchesState = filter.state === 'all' ||
+            p.display_address?.toLowerCase().includes(filter.state.toLowerCase()) ||
+            p.address?.public?.toLowerCase().includes(filter.state.toLowerCase());
+
+        const matchesCity = filter.city === 'all' ||
+            p.display_address?.toLowerCase().includes(filter.city.toLowerCase()) ||
+            p.address?.public?.toLowerCase().includes(filter.city.toLowerCase());
+
+        return matchesType && matchesListingType && matchesSearch && matchesMinPrice && matchesMaxPrice &&
+            matchesBedrooms && matchesBathrooms && matchesSuites && matchesRooms && matchesGarages &&
+            matchesMinArea && matchesMaxArea && matchesAmenities && matchesState && matchesCity;
+    }).sort((a, b) => {
+        if (filter.sortBy === 'price_asc') return Number(a.price) - Number(b.price);
+        if (filter.sortBy === 'price_desc') return Number(b.price) - Number(a.price);
+        if (filter.sortBy === 'beds_desc') return Number(b.characteristics?.bedrooms || 0) - Number(a.characteristics?.bedrooms || 0);
+        if (filter.sortBy === 'area_desc') return Number(b.characteristics?.area || 0) - Number(a.characteristics?.area || 0);
+        // Default: newest (assuming ID or created_at logic, here just fallback)
+        return 0;
     });
 
     const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
@@ -306,10 +368,62 @@ const Home = () => {
                 console.error('Failed to fetch statuses:', err);
             }
         };
+        const fetchAmenities = async () => {
+            try {
+                const res = await api.get('/amenities');
+                setAvailableAmenities(res.data);
+            } catch (err) {
+                console.error('Failed to fetch amenities:', err);
+            }
+        };
+        const fetchRegions = async () => {
+            try {
+                const res = await api.get('/region');
+                setRegions(res.data);
+            } catch (err) {
+                console.error('Failed to fetch regions:', err);
+            }
+        };
+
+        const fetchIBGEStates = async () => {
+            try {
+                const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+                const data = await res.json();
+                setBrazilianStates(data.map(s => ({ id: s.id, sigla: s.sigla, nome: s.nome })));
+            } catch (err) {
+                console.error('Failed to fetch IBGE states:', err);
+            }
+        };
+
         fetchTypes();
         fetchListingTypes();
         fetchStatuses();
+        fetchAmenities();
+        fetchRegions();
+        fetchIBGEStates();
     }, []);
+
+    // Fetch cities when state changes
+    useEffect(() => {
+        const fetchIBGECities = async () => {
+            if (filter.state === 'all') {
+                setBrazilianCities([]);
+                return;
+            }
+
+            const stateObj = brazilianStates.find(s => s.nome === filter.state);
+            if (!stateObj) return;
+
+            try {
+                const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateObj.id}/municipios?orderBy=nome`);
+                const data = await res.json();
+                setBrazilianCities(data.map(c => c.nome));
+            } catch (err) {
+                console.error('Failed to fetch IBGE cities:', err);
+            }
+        };
+        fetchIBGECities();
+    }, [filter.state, brazilianStates]);
 
     useEffect(() => {
         const fetchProperties = async () => {
@@ -396,50 +510,311 @@ const Home = () => {
                 </h1>
                 <p className="text-slate-500 mt-4 text-lg">Browse thousands of premium properties for rent and sale.</p>
 
-                <div className="mt-8 flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                        <input
-                            type="text"
-                            placeholder="Search by location, title or style..."
-                            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                <div className="mt-8 flex flex-col gap-6">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search by location, title or style..."
+                                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        <button
+                            onClick={() => setIsFilterOpen(true)}
+                            className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center space-x-2 group"
+                        >
+                            <Filter className="w-5 h-5" />
+                            <span>Advanced Filters</span>
+                            {Object.values(filter).filter(v => v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
+                                <span className="bg-white text-primary-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                                    {Object.values(filter).filter(v => v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length}
+                                </span>
+                            )}
+                        </button>
                     </div>
 
-                    <div className="flex gap-4">
-                        <select
-                            className="px-6 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 transition-all font-medium text-slate-700"
-                            value={filter.type}
-                            onChange={(e) => setFilter({ ...filter, type: e.target.value })}
-                        >
-                            <option value="all">All Types</option>
-                            {propertyTypes.map(type => (
-                                <option key={type} value={type}>
-                                    {type.charAt(0).toUpperCase() + type.slice(1)}s
-                                </option>
-                            ))}
-                        </select>
-                        <select
-                            className="bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-primary-500 transition-all outline-none font-bold text-slate-700 appearance-none"
-                            value={filter.listingType}
-                            onChange={(e) => setFilter({ ...filter, listingType: e.target.value })}
-                        >
-                            <option value="all">Sale / Rent</option>
+                    <div className="flex flex-wrap gap-3">
+                        {/* Listing Types Pills */}
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => setFilter({ ...filter, listingType: 'all' })}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === 'all' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                All
+                            </button>
                             {listingTypes.map(type => (
-                                <option key={type} value={type}>
-                                    For {type.charAt(0).toUpperCase() + type.slice(1)}
-                                </option>
+                                <button
+                                    key={type}
+                                    onClick={() => setFilter({ ...filter, listingType: type })}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </button>
                             ))}
-                        </select>
-                        <button className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center space-x-2">
-                            <Filter className="w-5 h-5" />
-                            <span>Filters</span>
-                        </button>
+                        </div>
+
+                        <div className="h-8 w-px bg-slate-200 self-center hidden md:block" />
+
+                        {/* Property Type Pills */}
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setFilter({ ...filter, type: 'all' })}
+                                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${filter.type === 'all' ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                            >
+                                All Properties
+                            </button>
+                            {propertyTypes.map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setFilter({ ...filter, type: type })}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${filter.type === type ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                >
+                                    {type.charAt(0).toUpperCase() + type.slice(1)}s
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="h-8 w-px bg-slate-200 self-center hidden lg:block" />
+
+                        {/* Region Selectors */}
+                        <div className="flex gap-2">
+                            <select
+                                value={filter.state}
+                                onChange={(e) => setFilter({ ...filter, state: e.target.value, city: 'all' })}
+                                className="px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
+                            >
+                                <option value="all">All States</option>
+                                {brazilianStates.map(s => (
+                                    <option key={s.id} value={s.nome}>{s.nome}</option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={filter.city}
+                                onChange={(e) => setFilter({ ...filter, city: e.target.value })}
+                                disabled={filter.state === 'all'}
+                                className={`px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 shadow-sm outline-none transition-all cursor-pointer ${filter.state === 'all' ? 'border-slate-50 text-slate-300 bg-slate-50/50' : 'border-slate-100 text-slate-700 hover:border-slate-200 focus:border-primary-500'}`}
+                            >
+                                <option value="all">All Cities</option>
+                                {brazilianCities.map(city => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
             </header>
+
+            {/* Advanced Filter Drawer */}
+            <AnimatePresence>
+                {isFilterOpen && (
+                    <>
+                        <Motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsFilterOpen(false)}
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+                        />
+                        <Motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] overflow-hidden flex flex-col"
+                        >
+                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Advanced <span className="text-primary-600">Filters</span></h2>
+                                <button
+                                    onClick={() => setIsFilterOpen(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                                >
+                                    <X className="w-6 h-6 text-slate-500" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
+                                {/* Sort Section */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Sort By</h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { id: 'newest', label: 'Newest First' },
+                                            { id: 'price_asc', label: 'Lower Price' },
+                                            { id: 'price_desc', label: 'Higher Price' },
+                                            { id: 'area_desc', label: 'Largest Area' }
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setFilter({ ...filter, sortBy: opt.id })}
+                                                className={`px-4 py-3 rounded-xl text-sm font-bold transition-all border-2 ${filter.sortBy === opt.id ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                {/* Price Range Section */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Price Range</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 ml-1">Min Price ($)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="Any"
+                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
+                                                value={filter.minPrice}
+                                                onChange={(e) => setFilter({ ...filter, minPrice: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 ml-1">Max Price ($)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="Any"
+                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
+                                                value={filter.maxPrice}
+                                                onChange={(e) => setFilter({ ...filter, maxPrice: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Characteristics */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Characteristics</h3>
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Bedrooms</label>
+                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setFilter({ ...filter, minBedrooms: val === '5+' ? '5' : val })}
+                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minBedrooms === '') || (val === '5+' && filter.minBedrooms === '5') || (val !== '' && val !== '5+' && filter.minBedrooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
+                                                >
+                                                    {val || 'Any'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Bathrooms</label>
+                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setFilter({ ...filter, minBathrooms: val === '5+' ? '5' : val })}
+                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minBathrooms === '') || (val === '5+' && filter.minBathrooms === '5') || (val !== '' && val !== '5+' && filter.minBathrooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
+                                                >
+                                                    {val || 'Any'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Suites</label>
+                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setFilter({ ...filter, minSuites: val === '5+' ? '5' : val })}
+                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minSuites === '') || (val === '5+' && filter.minSuites === '5') || (val !== '' && val !== '5+' && filter.minSuites === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
+                                                >
+                                                    {val || 'Any'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Rooms (Total)</label>
+                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setFilter({ ...filter, minRooms: val === '5+' ? '5' : val })}
+                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minRooms === '') || (val === '5+' && filter.minRooms === '5') || (val !== '' && val !== '5+' && filter.minRooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
+                                                >
+                                                    {val || 'Any'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">Min Parking Spots</label>
+                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setFilter({ ...filter, minGarages: val === '5+' ? '5' : val })}
+                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minGarages === '') || (val === '5+' && filter.minGarages === '5') || (val !== '' && val !== '5+' && filter.minGarages === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
+                                                >
+                                                    {val || 'Any'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Amenities Section */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Amenities</h3>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                                        {availableAmenities.map((amenity) => (
+                                            <label key={amenity} className="flex items-center gap-3 cursor-pointer group">
+                                                <div
+                                                    onClick={() => {
+                                                        const isSelected = filter.amenities.includes(amenity);
+                                                        setFilter({
+                                                            ...filter,
+                                                            amenities: isSelected
+                                                                ? filter.amenities.filter(a => a !== amenity)
+                                                                : [...filter.amenities, amenity]
+                                                        });
+                                                    }}
+                                                    className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filter.amenities.includes(amenity) ? 'bg-primary-600 border-primary-600' : 'border-slate-200 group-hover:border-primary-300'}`}
+                                                >
+                                                    {filter.amenities.includes(amenity) && <Check className="w-4 h-4 text-white" />}
+                                                </div>
+                                                <span className={`text-sm font-medium transition-colors ${filter.amenities.includes(amenity) ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>{amenity}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </section>
+                            </div>
+
+                            {/* Sticky Footer Action Buttons */}
+                            <div className="p-6 border-t border-slate-100 bg-white/80 backdrop-blur-md absolute bottom-0 left-0 right-0 grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setFilter({
+                                        type: 'all',
+                                        listingType: 'all',
+                                        minPrice: '',
+                                        maxPrice: '',
+                                        minBedrooms: '',
+                                        minBathrooms: '',
+                                        minSuites: '',
+                                        minRooms: '',
+                                        minGarages: '',
+                                        minArea: '',
+                                        maxArea: '',
+                                        state: 'all',
+                                        city: 'all',
+                                        amenities: [],
+                                        sortBy: 'newest'
+                                    })}
+                                    className="py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all border-2 border-slate-100"
+                                >
+                                    Reset All
+                                </button>
+                                <button
+                                    onClick={() => setIsFilterOpen(false)}
+                                    className="py-4 bg-primary-600 text-white rounded-2xl font-bold shadow-xl shadow-primary-200 hover:bg-primary-700 transition-all"
+                                >
+                                    Show {filteredProperties.length} Results
+                                </button>
+                            </div>
+                        </Motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             <div className="relative">
                 <AnimatePresence initial={false} custom={direction} mode="popLayout">
