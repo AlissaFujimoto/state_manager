@@ -1,7 +1,7 @@
 {
     "common": {
         "search": "Search",
-        "search_placeholder": "Search by location, description, property type...",
+        "search_placeholder": "Search by location, description...",
         "coming_soon": "Coming Soon",
         "filters": "Filters",
         "advanced_filters": "Advanced Filters",

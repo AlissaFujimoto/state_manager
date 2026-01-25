@@ -168,7 +168,7 @@ const Navbar = () => {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="fixed top-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-8 space-y-6 z-[50] shadow-xl overflow-hidden"
+                            className="fixed top-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-8 space-y-6 z-[50] shadow-xl overflow-y-auto max-h-[calc(100vh-80px)] custom-scrollbar"
                         >
 
                             {user ? (
@@ -229,9 +229,9 @@ const Navbar = () => {
                                 animate={{ x: 0 }}
                                 exit={{ x: '100%' }}
                                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                className="fixed top-0 right-0 h-full w-80 bg-white/95 backdrop-blur-xl shadow-2xl z-[70] border-l border-white/20"
+                                className="fixed top-0 right-0 h-full w-80 bg-white/95 backdrop-blur-xl shadow-2xl z-[70] border-l border-white/20 overflow-y-auto custom-scrollbar"
                             >
-                                <div className="flex flex-col h-full p-6">
+                                <div className="flex flex-col min-h-full p-6">
                                     <div className="flex justify-between items-center mb-8">
                                         <span className="text-xl font-bold text-slate-800">{t('navbar.menu')}</span>
                                         <button

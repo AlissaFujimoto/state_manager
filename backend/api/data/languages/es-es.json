@@ -1,7 +1,7 @@
 {
     "common": {
         "search": "Buscar",
-        "search_placeholder": "Buscar por ubicación, descripción, tipo de propiedad...",
+        "search_placeholder": "Buscar por ubicación, descripción...",
         "coming_soon": "Próximamente",
         "filters": "Filtros",
         "advanced_filters": "Filtros Avanzados",

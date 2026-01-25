@@ -23,6 +23,141 @@ const maskAddress = (address, t) => {
     return address;
 };
 
+const SlideFilter = ({ label, value, max, onChange, t }) => {
+    const handleInputChange = (e) => {
+        let val = e.target.value === '' ? '' : parseInt(e.target.value);
+        if (val !== '' && val > max) val = max;
+        if (val !== '' && val < 0) val = 0;
+        onChange(val === '' ? '' : val.toString());
+    };
+
+    const handleSliderChange = (e) => {
+        onChange(e.target.value);
+    };
+
+    return (
+        <div className="space-y-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:border-primary-200 transition-all group/sf hover:bg-white hover:shadow-xl hover:shadow-slate-200/50">
+            <div className="flex justify-between items-center">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest group-hover/sf:text-primary-600 transition-colors">{label}</label>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t('common.min')}</span>
+                    <input
+                        type="number"
+                        min="0"
+                        max={max}
+                        value={value}
+                        onChange={handleInputChange}
+                        className="w-16 px-2 py-1.5 bg-white border-2 border-slate-100 rounded-lg text-sm font-bold text-primary-600 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-center shadow-sm transition-all"
+                    />
+                </div>
+            </div>
+            <div className="relative pt-2">
+                <input
+                    type="range"
+                    min="0"
+                    max={max}
+                    value={value || 0}
+                    onChange={handleSliderChange}
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600 focus:outline-none"
+                    style={{
+                        background: `linear-gradient(to right, #0284c7 0%, #0284c7 ${(value / max) * 100}%, #e2e8f0 ${(value / max) * 100}%, #e2e8f0 100%)`
+                    }}
+                />
+            </div>
+            <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest px-0.5">
+                <span>0</span>
+                <span>{max}</span>
+            </div>
+        </div>
+    );
+};
+
+const RangeSlideFilter = ({ label, minVal, maxVal, max, onChange, t, unit }) => {
+    const handleMinInputChange = (e) => {
+        let val = e.target.value === '' ? '' : Math.max(0, Math.min(max, parseInt(e.target.value)));
+        onChange(val === '' ? '' : val.toString(), maxVal);
+    };
+
+    const handleMaxInputChange = (e) => {
+        let val = e.target.value === '' ? '' : Math.max(0, Math.min(max, parseInt(e.target.value)));
+        onChange(minVal, val === '' ? '' : val.toString());
+    };
+
+    return (
+        <div className="space-y-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:border-primary-200 transition-all group/sf hover:bg-white hover:shadow-xl hover:shadow-slate-200/50">
+            <div className="flex justify-between items-center">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest group-hover/sf:text-primary-600 transition-colors">
+                    {label} {unit && `(${unit})`}
+                </label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter ml-1">{t('common.min')}</span>
+                    <input
+                        type="number"
+                        min="0"
+                        max={max}
+                        value={minVal}
+                        onChange={handleMinInputChange}
+                        className="w-full px-2 py-1.5 bg-white border-2 border-slate-100 rounded-lg text-sm font-bold text-primary-600 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-center shadow-sm transition-all"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter ml-1">{t('common.max')}</span>
+                    <input
+                        type="number"
+                        min="0"
+                        max={max}
+                        value={maxVal}
+                        onChange={handleMaxInputChange}
+                        className="w-full px-2 py-1.5 bg-white border-2 border-slate-100 rounded-lg text-sm font-bold text-primary-600 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-center shadow-sm transition-all"
+                    />
+                </div>
+            </div>
+
+            <div className="relative pt-2 h-6">
+                <input
+                    type="range"
+                    min="0"
+                    max={max}
+                    value={minVal || 0}
+                    onChange={(e) => {
+                        const val = Math.min(Number(e.target.value), Number(maxVal || max) - 1);
+                        onChange(val.toString(), maxVal);
+                    }}
+                    className="absolute w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600 focus:outline-none z-10 range-slider-input"
+                    style={{
+                        background: 'transparent'
+                    }}
+                />
+                <input
+                    type="range"
+                    min="0"
+                    max={max}
+                    value={maxVal || max}
+                    onChange={(e) => {
+                        const val = Math.max(Number(e.target.value), Number(minVal || 0) + 1);
+                        onChange(minVal, val.toString());
+                    }}
+                    className="absolute w-full h-1.5 bg-transparent rounded-lg appearance-none cursor-pointer accent-primary-600 focus:outline-none z-20 range-slider-input"
+                />
+                <div
+                    className="absolute h-1.5 bg-primary-600 rounded-lg z-0"
+                    style={{
+                        left: `${((minVal || 0) / max) * 100}%`,
+                        right: `${100 - (((maxVal || max) / max) * 100)}%`
+                    }}
+                />
+            </div>
+            <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest px-0.5">
+                <span>0</span>
+                <span>{max.toLocaleString()}</span>
+            </div>
+        </div>
+    );
+};
+
 
 export const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false, onDelete }) => {
     const navigate = useNavigate();
@@ -347,6 +482,19 @@ const Home = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     const ITEMS_PER_PAGE = isMobile ? 6 : 9;
+
+    const maxValues = React.useMemo(() => {
+        if (!properties || properties.length === 0) return { bedrooms: 10, bathrooms: 10, suites: 10, rooms: 15, garages: 10, price: 10000000, area: 5000 };
+        return {
+            bedrooms: Math.max(...properties.map(p => Number(p.characteristics?.bedrooms || 0)), 1),
+            bathrooms: Math.max(...properties.map(p => Number(p.characteristics?.bathrooms || 0)), 1),
+            suites: Math.max(...properties.map(p => Number(p.characteristics?.suites || 0)), 1),
+            rooms: Math.max(...properties.map(p => Number(p.characteristics?.rooms || 0)), 1),
+            garages: Math.max(...properties.map(p => Number(p.characteristics?.garages || 0)), 1),
+            price: Math.max(...properties.map(p => Number(p.price || 0)), 100000),
+            area: Math.max(...properties.map(p => Number(p.characteristics?.area || 0)), 100),
+        };
+    }, [properties]);
 
     const filteredProperties = (properties || []).filter(p => {
         const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
@@ -740,122 +888,69 @@ const Home = () => {
 
                                 {/* Price Range Section */}
                                 <section>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.price')}</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.min')} ({t('common.currency_symbol')})</label>
-                                            <input
-                                                type="number"
-                                                placeholder={t('common.any')}
-                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
-                                                value={filter.minPrice}
-                                                onChange={(e) => setFilter({ ...filter, minPrice: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.max')} ({t('common.currency_symbol')})</label>
-                                            <input
-                                                type="number"
-                                                placeholder={t('common.any')}
-                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
-                                                value={filter.maxPrice}
-                                                onChange={(e) => setFilter({ ...filter, maxPrice: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
+                                    <RangeSlideFilter
+                                        label={t('common.price')}
+                                        minVal={filter.minPrice}
+                                        maxVal={filter.maxPrice}
+                                        max={maxValues.price}
+                                        unit={t('common.currency_symbol')}
+                                        onChange={(min, max) => setFilter({ ...filter, minPrice: min, maxPrice: max })}
+                                        t={t}
+                                    />
                                 </section>
 
                                 {/* Area Section */}
                                 <section>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.area')}</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.min')} ({t('common.area_unit')})</label>
-                                            <input
-                                                type="number"
-                                                placeholder={t('common.any')}
-                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
-                                                value={filter.minArea}
-                                                onChange={(e) => setFilter({ ...filter, minArea: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 ml-1">{t('common.max')} ({t('common.area_unit')})</label>
-                                            <input
-                                                type="number"
-                                                placeholder={t('common.any')}
-                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-primary-500 transition-all font-bold"
-                                                value={filter.maxArea}
-                                                onChange={(e) => setFilter({ ...filter, maxArea: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
+                                    <RangeSlideFilter
+                                        label={t('common.area')}
+                                        minVal={filter.minArea}
+                                        maxVal={filter.maxArea}
+                                        max={maxValues.area}
+                                        unit={t('common.area_unit')}
+                                        onChange={(min, max) => setFilter({ ...filter, minArea: min, maxArea: max })}
+                                        t={t}
+                                    />
                                 </section>
 
                                 {/* Characteristics */}
                                 <section>
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.rooms')}</h3>
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.bedrooms')}</label>
-                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setFilter({ ...filter, minBedrooms: val === '5+' ? '5' : val })}
-                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minBedrooms === '') || (val === '5+' && filter.minBedrooms === '5') || (val !== '' && val !== '5+' && filter.minBedrooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
-                                                >
-                                                    {val || t('common.any')}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.bathrooms')}</label>
-                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setFilter({ ...filter, minBathrooms: val === '5+' ? '5' : val })}
-                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minBathrooms === '') || (val === '5+' && filter.minBathrooms === '5') || (val !== '' && val !== '5+' && filter.minBathrooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
-                                                >
-                                                    {val || t('common.any')}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.suites')}</label>
-                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setFilter({ ...filter, minSuites: val === '5+' ? '5' : val })}
-                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minSuites === '') || (val === '5+' && filter.minSuites === '5') || (val !== '' && val !== '5+' && filter.minSuites === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
-                                                >
-                                                    {val || t('common.any')}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.rooms')}</label>
-                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setFilter({ ...filter, minRooms: val === '5+' ? '5' : val })}
-                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minRooms === '') || (val === '5+' && filter.minRooms === '5') || (val !== '' && val !== '5+' && filter.minRooms === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
-                                                >
-                                                    {val || t('common.any')}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <label className="col-span-3 text-xs font-bold text-slate-500 ml-1">{t('common.garages')}</label>
-                                            {['', '1', '2', '3', '4', '5+'].map((val) => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setFilter({ ...filter, minGarages: val === '5+' ? '5' : val })}
-                                                    className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${((val === '' && filter.minGarages === '') || (val === '5+' && filter.minGarages === '5') || (val !== '' && val !== '5+' && filter.minGarages === val)) ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-100 text-slate-500'}`}
-                                                >
-                                                    {val || t('common.any')}
-                                                </button>
-                                            ))}
-                                        </div>
+                                    <div className="space-y-4">
+                                        <SlideFilter
+                                            label={t('common.bedrooms')}
+                                            value={filter.minBedrooms}
+                                            max={maxValues.bedrooms}
+                                            onChange={(val) => setFilter({ ...filter, minBedrooms: val })}
+                                            t={t}
+                                        />
+                                        <SlideFilter
+                                            label={t('common.bathrooms')}
+                                            value={filter.minBathrooms}
+                                            max={maxValues.bathrooms}
+                                            onChange={(val) => setFilter({ ...filter, minBathrooms: val })}
+                                            t={t}
+                                        />
+                                        <SlideFilter
+                                            label={t('common.suites')}
+                                            value={filter.minSuites}
+                                            max={maxValues.suites}
+                                            onChange={(val) => setFilter({ ...filter, minSuites: val })}
+                                            t={t}
+                                        />
+                                        <SlideFilter
+                                            label={t('common.rooms')}
+                                            value={filter.minRooms}
+                                            max={maxValues.rooms}
+                                            onChange={(val) => setFilter({ ...filter, minRooms: val })}
+                                            t={t}
+                                        />
+                                        <SlideFilter
+                                            label={t('common.garages')}
+                                            value={filter.minGarages}
+                                            max={maxValues.garages}
+                                            onChange={(val) => setFilter({ ...filter, minGarages: val })}
+                                            t={t}
+                                        />
                                     </div>
                                 </section>
 

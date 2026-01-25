@@ -1,7 +1,7 @@
 {
     "common": {
         "search": "Buscar",
-        "search_placeholder": "Busque por localização, descrição, tipo de imóvel...",
+        "search_placeholder": "Busque por localização, descrição...",
         "coming_soon": "Em Breve",
         "filters": "Faltros",
         "advanced_filters": "Filtros Avançados",
@@ -20,7 +20,7 @@
         "bathrooms": "Banheiros",
         "suites": "Suítes",
         "rooms": "Cômodos",
-        "garages": "Vagas",
+        "garages": "Garagens",
         "parking": "Estacionamento",
         "area_unit": "m²",
         "any": "Qualquer",
