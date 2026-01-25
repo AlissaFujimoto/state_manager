@@ -10,6 +10,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { useLanguage } from '../contexts/LanguageContext';
 import SearchableSelect from '../components/SearchableSelect';
+import ReactGA from 'react-ga4';
 
 const maskAddress = (address, t) => {
     if (!address) return t('property_card.location_not_specified');
@@ -454,6 +455,13 @@ const Home = () => {
     const [listingTypes, setListingTypes] = useState([]);
     const [propertyStatuses, setPropertyStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (import.meta.env.MEASUREMENT_ID) {
+            ReactGA.send({ hitType: "pageview", page: window.location.pathname, title: "Home Page" });
+        }
+    }, []);
+
     const [filter, setFilter] = useState({
         type: 'all',
         listingType: 'all',

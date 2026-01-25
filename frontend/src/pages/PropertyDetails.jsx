@@ -19,6 +19,7 @@ import CompressedImage from '../components/CompressedImage';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ImageLightbox from '../components/ImageLightbox';
 import { useLanguage } from '../contexts/LanguageContext';
+import ReactGA from 'react-ga4';
 
 // Fix for default marker icon in leaflet
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -125,6 +126,17 @@ const PropertyDetails = () => {
     const { id } = useParams();
     const location = useLocation();
     const [property, setProperty] = useState(null);
+
+    useEffect(() => {
+        if (property && import.meta.env.MEASUREMENT_ID) {
+            ReactGA.send({
+                hitType: "pageview",
+                page: window.location.pathname,
+                title: property.title || "Property Details"
+            });
+        }
+    }, [property]);
+
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
     const [touchStart, setTouchStart] = useState(null);

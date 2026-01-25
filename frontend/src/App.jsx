@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './utils/databaseAuth';
+import ReactGA from 'react-ga4';
 
 // Components
 import Navbar from './components/Navbar';
@@ -45,7 +46,18 @@ import { LanguageProvider } from './contexts/LanguageContext';
 
 import Footer from './components/Footer';
 
+const GA_MEASUREMENT_ID = import.meta.env.MEASUREMENT_ID;
+if (GA_MEASUREMENT_ID) {
+  ReactGA.initialize(GA_MEASUREMENT_ID);
+}
+
 function App() {
+  React.useEffect(() => {
+    if (GA_MEASUREMENT_ID) {
+      ReactGA.send({ hitType: "pageview", page: window.location.pathname });
+    }
+  }, []);
+
   return (
     <LanguageProvider>
       <Router>

@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    envPrefix: ['VITE_', 'DATABASE_', 'API_'],
+    envPrefix: ['VITE_', 'DATABASE_', 'API_', 'MEASUREMENT_'],
     plugins: [react()],
     server: {
       port: 5173,
