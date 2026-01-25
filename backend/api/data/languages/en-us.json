@@ -1,6 +1,7 @@
 {
     "common": {
         "search": "Search",
+        "search_placeholder": "Search by location, description, property type...",
         "filters": "Filters",
         "advanced_filters": "Advanced Filters",
         "reset_all": "Reset All",
@@ -22,6 +23,7 @@
         "parking": "Parking",
         "m2": "sqft",
         "any": "Any",
+        "back": "Back",
         "min": "Min",
         "max": "Max",
         "newest": "Newest First",
@@ -55,7 +57,11 @@
         "state_placeholder": "State",
         "city_placeholder": "City",
         "all_states": "All States",
-        "all_cities": "All Cities"
+        "all_cities": "All Cities",
+        "house": "House",
+        "apartment": "Apartment",
+        "villa": "Villa",
+        "land": "Land"
     },
     "navbar": {
         "menu": "Menu",
@@ -207,5 +213,27 @@
         "continue_google": "Continue with Google",
         "no_account": "Don't have an account? ",
         "have_account": "Already have an account? "
+    },
+    "amenities": {
+        "air_conditioning": "Air Conditioning",
+        "swimming_pool": "Swimming Pool",
+        "gym_fitness_center": "Gym / Fitness Center",
+        "high_speed_wi_fi": "High-speed Wi-Fi",
+        "sauna_spa": "Sauna / Spa",
+        "24_7_security": "24/7 Security",
+        "balcony_terrace": "Balcony / Terrace",
+        "garden_backyard": "Garden / Backyard",
+        "elevator": "Elevator",
+        "furnished": "Furnished",
+        "pet_friendly": "Pet Friendly",
+        "laundry_room_in_unit_washer": "Laundry Room / In-unit Washer",
+        "smart_home_technology": "Smart Home Technology",
+        "bbq_area": "BBQ Area",
+        "dishwasher": "Dishwasher",
+        "central_heating": "Central Heating",
+        "fireplace": "Fireplace",
+        "walk_in_closet": "Walk-in Closet",
+        "storage_unit": "Storage Unit",
+        "concierge_service": "Concierge Service"
     }
 }

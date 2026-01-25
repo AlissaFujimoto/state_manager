@@ -217,6 +217,42 @@ const PropertyDetails = () => {
         }
     };
 
+    const getAmenityLabel = (item) => {
+        if (!item) return '';
+        const key = item.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        const translationKey = `amenities.${key}`;
+        const translated = t(translationKey);
+        // If the translation returns the key itself (meaning no translation found), use the original item
+        return translated === translationKey ? item : translated;
+    };
+
+    const handleEditStart = async () => {
+        // Initialize edit data
+        setEditData({ ...property });
+
+        // Determine anchor location from private address to ensure constraints follow the address
+        let initialAnchor = property.location;
+        const privateAddr = property.address?.private;
+
+        if (privateAddr) {
+            try {
+                // Show a loading state if manageable, or just rely on the slight delay
+                // Ideally, we'd have a specific loading state for this button, but for now we execute directly
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(privateAddr)}&limit=1`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    initialAnchor = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                }
+            } catch (e) {
+                console.error("Error geocoding anchor:", e);
+                // Fallback to current pin location is already set
+            }
+        }
+
+        setAnchorLocation(initialAnchor);
+        setIsEditing(true);
+    };
+
     useEffect(() => {
         const fetchAmenities = async () => {
             try {
@@ -263,7 +299,7 @@ const PropertyDetails = () => {
         setAnchorLocation(data.location);
 
         let finalAddress = data.address;
-        const currentInput = editData.address || '';
+        const currentInput = editData.address?.private || ''; // Access .private safely
         // Look for a number pattern like ", 123" or " 123 " or just "123" if it's significant
         // A safe bet for Brazilian addresses is comma followed by number
         const numberMatch = currentInput.match(/,\s*(\d+)/);
@@ -484,10 +520,7 @@ const PropertyDetails = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
-            <Link to={backLink} className="inline-flex items-center text-slate-500 hover:text-primary-600 transition-colors mb-6 font-medium">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                {backText}
-            </Link>
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                 {/* Left Column: Media & Content */}
@@ -878,29 +911,37 @@ const PropertyDetails = () => {
                                                     className="absolute z-[100] left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto p-2"
                                                 >
                                                     {availableAmenities
-                                                        .filter(a =>
-                                                            (amenityInput ? a.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
-                                                            !editData.amenities.includes(a)
-                                                        )
-                                                        .map((suggestion, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                onClick={() => addAmenity(suggestion)}
-                                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-slate-600 font-medium transition-colors flex items-center justify-between group"
-                                                            >
-                                                                <span>{suggestion}</span>
-                                                                <Plus className="w-4 h-4 text-slate-300 group-hover:text-primary-500" />
-                                                            </button>
-                                                        ))
+                                                        .filter(a => {
+                                                            const translatedName = getAmenityLabel(a);
+                                                            return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
+                                                                !editData.amenities.includes(a);
+                                                        })
+                                                        .map((suggestion, idx) => {
+                                                            const translatedName = getAmenityLabel(suggestion);
+                                                            return (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => addAmenity(suggestion)}
+                                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-slate-600 font-medium transition-colors flex items-center justify-between group"
+                                                                >
+                                                                    <span>{translatedName}</span>
+                                                                    <Plus className="w-4 h-4 text-slate-300 group-hover:text-primary-500" />
+                                                                </button>
+                                                            );
+                                                        })
                                                     }
-                                                    {availableAmenities.filter(a => (amenityInput ? a.toLowerCase().includes(amenityInput.toLowerCase()) : true) && !editData.amenities.includes(a)).length === 0 && (
-                                                        <div className="px-4 py-3 text-slate-400 text-sm italic">
-                                                            {amenityInput
-                                                                ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
-                                                                : t('property_details.no_more_amenities')
-                                                            }
-                                                        </div>
-                                                    )}
+                                                    {availableAmenities.filter(a => {
+                                                        const translatedName = getAmenityLabel(a);
+                                                        return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
+                                                            !editData.amenities.includes(a);
+                                                    }).length === 0 && (
+                                                            <div className="px-4 py-3 text-slate-400 text-sm italic">
+                                                                {amenityInput
+                                                                    ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
+                                                                    : t('property_details.no_more_amenities')
+                                                                }
+                                                            </div>
+                                                        )}
                                                 </Motion.div>
                                             </>
                                         )}
@@ -914,22 +955,25 @@ const PropertyDetails = () => {
                                     onReorder={reorderAmenities}
                                     className="space-y-2"
                                 >
-                                    {(editData.amenities || []).map((item) => (
-                                        <Reorder.Item
-                                            key={item}
-                                            value={item}
-                                            className="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-primary-200 transition-colors"
-                                        >
-                                            <GripVertical className="w-5 h-5 text-slate-300 group-hover:text-slate-400" />
-                                            <span className="flex-1 font-medium text-slate-700">{item}</span>
-                                            <button
-                                                onClick={() => removeAmenity(item)}
-                                                className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
+                                    {(editData.amenities || []).map((item) => {
+                                        const translatedName = getAmenityLabel(item);
+                                        return (
+                                            <Reorder.Item
+                                                key={item}
+                                                value={item}
+                                                className="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-primary-200 transition-colors"
                                             >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </Reorder.Item>
-                                    ))}
+                                                <GripVertical className="w-5 h-5 text-slate-300 group-hover:text-slate-400" />
+                                                <span className="flex-1 font-medium text-slate-700">{translatedName}</span>
+                                                <button
+                                                    onClick={() => removeAmenity(item)}
+                                                    className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </Reorder.Item>
+                                        );
+                                    })}
                                 </Reorder.Group>
 
                                 {(!editData.amenities || editData.amenities.length === 0) && (
@@ -940,22 +984,26 @@ const PropertyDetails = () => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {(property.amenities || []).map((item, idx) => (
-                                    <Motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className="flex items-center gap-3 group"
-                                    >
-                                        <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-green-200">
-                                            <Check className="w-4 h-4 text-white" />
-                                        </div>
-                                        <span className="text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
-                                            {item}
-                                        </span>
-                                    </Motion.div>
-                                ))}
+                                {(property.amenities || []).map((item, idx) => {
+                                    const translatedName = getAmenityLabel(item);
+
+                                    return (
+                                        <Motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.05 }}
+                                            className="flex items-center gap-3 group"
+                                        >
+                                            <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-green-200">
+                                                <Check className="w-4 h-4 text-white" />
+                                            </div>
+                                            <span className="text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
+                                                {translatedName}
+                                            </span>
+                                        </Motion.div>
+                                    );
+                                })}
                                 {(!property.amenities || property.amenities.length === 0) && (
                                     <p className="text-slate-400 italic col-span-full">{t('common.no_amenities_listed') || 'No specific amenities listed for this property.'}</p>
                                 )}
@@ -1117,7 +1165,7 @@ const PropertyDetails = () => {
                                     ) : (
                                         <div className="flex flex-col gap-3">
                                             <button
-                                                onClick={() => { setEditData({ ...property }); setIsEditing(true); }}
+                                                onClick={handleEditStart}
                                                 className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2"
                                             >
                                                 <Edit className="w-5 h-5" />

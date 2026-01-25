@@ -1,6 +1,7 @@
 {
     "common": {
         "search": "Buscar",
+        "search_placeholder": "Busque por localização, descrição, tipo de imóvel...",
         "filters": "Faltros",
         "advanced_filters": "Filtros Avançados",
         "reset_all": "Limpar Tudo",
@@ -22,6 +23,7 @@
         "parking": "Estacionamento",
         "m2": "m²",
         "any": "Qualquer",
+        "back": "Voltar",
         "min": "Mín",
         "max": "Máx",
         "newest": "Mais recentes",
@@ -46,7 +48,7 @@
     "home": {
         "hero_title": "Encontre Seu",
         "hero_subtitle": "Navegue por milhares de propriedades premium para alugar e vender.",
-        "dream_state": "Estado dos Sonhos",
+        "dream_state": "Lar dos Sonhos",
         "all_properties": "Todas as Propriedades",
         "houses": "Casas",
         "apartments": "Apartamentos",
@@ -55,7 +57,11 @@
         "state_placeholder": "Estado",
         "city_placeholder": "Cidade",
         "all_states": "Todos os Estados",
-        "all_cities": "Todas as Cidades"
+        "all_cities": "Todas as Cidades",
+        "house": "Casa",
+        "apartment": "Apartamento",
+        "villa": "Villa",
+        "land": "Terreno"
     },
     "navbar": {
         "menu": "Menu",
@@ -207,5 +213,27 @@
         "continue_google": "Continuar com Google",
         "no_account": "Não tem uma conta? ",
         "have_account": "Já tem uma conta? "
+    },
+    "amenities": {
+        "air_conditioning": "Ar Condicionado",
+        "swimming_pool": "Piscina",
+        "gym_fitness_center": "Academia / Fitness",
+        "high_speed_wi_fi": "Wi-Fi de Alta Velocidade",
+        "sauna_spa": "Sauna / Spa",
+        "24_7_security": "Segurança 24h",
+        "balcony_terrace": "Varanda / Terraço",
+        "garden_backyard": "Jardim / Quintal",
+        "elevator": "Elevador",
+        "furnished": "Mobiliado",
+        "pet_friendly": "Aceita Animais",
+        "laundry_room_in_unit_washer": "Lavanderia / Máquina Integrada",
+        "smart_home_technology": "Casa Inteligente",
+        "bbq_area": "Área de Churrasqueira",
+        "dishwasher": "Lava-louças",
+        "central_heating": "Aquecimento Central",
+        "fireplace": "Lareira",
+        "walk_in_closet": "Closet",
+        "storage_unit": "Depósito",
+        "concierge_service": "Portaria / Concierge"
     }
 }

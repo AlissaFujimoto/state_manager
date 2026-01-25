@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
-import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User, Globe } from 'lucide-react';
+import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User, Globe, ChevronDown, ArrowLeft } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import CompressedImage from './CompressedImage';
@@ -11,51 +11,107 @@ import { useLanguage } from '../contexts/LanguageContext';
 const Navbar = () => {
     const [user] = useAuthState(auth);
     const [isOpen, setIsOpen] = useState(false);
+    const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
     const { t, changeLanguage, currentLanguage } = useLanguage();
     const location = useLocation();
     const isAuthPage = location.pathname === '/auth';
     const isHomePage = location.pathname === '/';
     const shouldHideMenu = !user && (isAuthPage || isHomePage);
 
+    // Back Button Logic
+    const isPropertyPage = location.pathname.startsWith('/property/');
+    const backLink = location.state?.from || '/';
+    const isFromMyListings = location.state?.from && location.state.from.includes('my-listings');
+    const backText = isFromMyListings
+        ? t('property_details.back_to_my_listings')
+        : t('property_details.back_to_results');
+
+    const languages = [
+        { code: 'en-us', label: 'English (US)', short: 'EN' },
+        { code: 'pt-br', label: 'Português (BR)', short: 'BR' },
+        { code: 'pt-pt', label: 'Português (EU)', short: 'PT' },
+        { code: 'es-es', label: 'Español (EU)', short: 'ES' },
+    ];
+
     return (
         <>
             <nav className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 md:px-8">
                     <div className="flex justify-between items-center h-20">
-                        <Link to="/" className="flex items-center space-x-2 group">
-                            <div className="bg-primary-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg shadow-primary-200">
-                                <Landmark className="text-white w-6 h-6" />
-                            </div>
-                            <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Vita<span className="text-primary-600 not-italic">State</span></span>
-                        </Link>
+                        <div className="flex items-center gap-4">
+                            {isPropertyPage && (
+                                <Link
+                                    to={backLink}
+                                    className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-primary-600 hover:bg-slate-50 transition-all group/back"
+                                    title={backText}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <ArrowLeft className="w-5 h-5 group-hover/back:-translate-x-1 transition-transform" />
+                                        <span className="font-bold text-sm hidden sm:block">{t('common.back')}</span>
+                                    </div>
+                                </Link>
+                            )}
+                            <Link to="/" className="flex items-center space-x-2 group">
+                                <div className="bg-primary-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg shadow-primary-200">
+                                    <Landmark className="text-white w-6 h-6" />
+                                </div>
+                                <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Vita<span className="text-primary-600 not-italic">State</span></span>
+                            </Link>
+                        </div>
 
                         {/* Unified Menu Button and Language Switcher */}
                         <div className="flex items-center space-x-2 md:space-x-4">
-                            <div className={`flex bg-slate-100 p-1 rounded-xl transition-opacity duration-300 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}>
+                            {/* Language Dropdown */}
+                            <div className="relative">
                                 <button
-                                    onClick={() => changeLanguage('pt-br')}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLanguage === 'pt-br' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-colors"
                                 >
-                                    PT
+                                    <Globe className="w-4 h-4 text-slate-600" />
+                                    <span className="text-sm font-bold text-slate-700">{languages.find(l => l.code === currentLanguage)?.short || 'EN'}</span>
+                                    <ChevronDown className="w-3 h-3 text-slate-400" />
                                 </button>
-                                <button
-                                    onClick={() => changeLanguage('en-us')}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLanguage === 'en-us' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    EN
-                                </button>
+
+                                <AnimatePresence>
+                                    {isLangMenuOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setIsLangMenuOpen(false)}></div>
+                                            <Motion.div
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                transition={{ duration: 0.1 }}
+                                                className="absolute top-full right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden py-1 z-50 origin-top-right"
+                                            >
+                                                {languages.map(lang => (
+                                                    <button
+                                                        key={lang.code}
+                                                        onClick={() => {
+                                                            changeLanguage(lang.code);
+                                                            setIsLangMenuOpen(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors flex items-center justify-between ${currentLanguage === lang.code ? 'text-primary-600 bg-primary-50' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`}
+                                                    >
+                                                        <span>{lang.label}</span>
+                                                        {currentLanguage === lang.code && <div className="w-1.5 h-1.5 rounded-full bg-primary-600"></div>}
+                                                    </button>
+                                                ))}
+                                            </Motion.div>
+                                        </>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
                             {!user && (
                                 <Link
                                     to="/auth"
-                                    className={`hidden md:flex bg-slate-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}
+                                    className={`flex bg-slate-900 text-white px-4 md:px-8 py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2 ${isOpen ? 'md:opacity-0 md:pointer-events-none' : 'opacity-100'}`}
                                 >
                                     <LogIn className="w-5 h-5" />
                                     <span>{t('navbar.login')}</span>
                                 </Link>
                             )}
-                            {!shouldHideMenu && (
+                            {user && (
                                 <button
                                     className="p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
                                     onClick={() => setIsOpen(!isOpen)}

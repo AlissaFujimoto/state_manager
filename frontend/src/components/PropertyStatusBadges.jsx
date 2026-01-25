@@ -1,6 +1,8 @@
 import React from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PropertyStatusBadges = ({ property, size = 'md' }) => {
+    const { t } = useLanguage();
     const height = size === 'sm' ? 'h-6' : 'h-8';
     const fontSize = size === 'sm' ? 'text-[9px]' : 'text-[11px]';
     const padding = size === 'sm' ? 'px-2.5' : 'px-3';
@@ -13,12 +15,12 @@ const PropertyStatusBadges = ({ property, size = 'md' }) => {
         <div className={`flex items-center ${gap}`}>
             {/* Property Type Badge */}
             <div className={`${badgeBase} bg-white/95 text-slate-700 shadow-sm`}>
-                {property.property_type || 'Property'}
+                {property.property_type ? t(`home.${property.property_type.toLowerCase()}`) : 'Property'}
             </div>
 
             {/* Listing Type Badge */}
             <div className={`${badgeBase} ${property.listing_type === 'rent' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'} shadow-sm`}>
-                {property.listing_type === 'rent' ? 'For Rent' : 'For Sale'}
+                {property.listing_type === 'rent' ? t('common.for_rent') : t('common.for_sale')}
             </div>
         </div>
     );

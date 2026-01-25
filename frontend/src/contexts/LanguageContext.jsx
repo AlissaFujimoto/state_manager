@@ -44,8 +44,19 @@ export const LanguageProvider = ({ children }) => {
 
     const formatCurrency = (amount) => {
         const value = Number(amount) || 0;
-        const locale = currentLanguage === 'pt-br' ? 'pt-BR' : 'en-US';
-        const currency = currentLanguage === 'pt-br' ? 'BRL' : 'USD';
+        let locale = 'en-US';
+        let currency = 'USD';
+
+        if (currentLanguage === 'pt-br') {
+            locale = 'pt-BR';
+            currency = 'BRL';
+        } else if (currentLanguage === 'es-es') {
+            locale = 'es-ES';
+            currency = 'EUR';
+        } else if (currentLanguage === 'pt-pt') {
+            locale = 'pt-PT';
+            currency = 'EUR';
+        }
 
         return new Intl.NumberFormat(locale, {
             style: 'currency',

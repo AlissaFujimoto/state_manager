@@ -8,6 +8,7 @@ import CompressedImage from '../components/CompressedImage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { useLanguage } from '../contexts/LanguageContext';
+import SearchableSelect from '../components/SearchableSelect';
 
 const maskAddress = (address, t) => {
     if (!address) return t('property_card.location_not_specified');
@@ -287,10 +288,37 @@ const Home = () => {
         const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
         const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
         const query = searchQuery.toLowerCase();
+        // Localized values for search
+        const typeTranslated = p.property_type ? t(`home.${p.property_type.toLowerCase()}`).toLowerCase() : '';
+        const listingTypeTranslated = p.listing_type ? t(`common.${p.listing_type.toLowerCase()}`).toLowerCase() : '';
+        const listingTypeForTranslated = p.listing_type ? t(`common.for_${p.listing_type.toLowerCase()}`).toLowerCase() : '';
+
+        let statusTranslated = '';
+        if (p.status) {
+            if (p.status === 'sold_rented') {
+                statusTranslated = p.listing_type === 'rent' ? t('property_card.rented').toLowerCase() : t('property_card.sold').toLowerCase();
+            } else {
+                statusTranslated = t(`property_card.${p.status.toLowerCase()}`).toLowerCase();
+            }
+        }
+
+        const propertyAmenitiesTranslated = (p.amenities || []).map(a => {
+            const key = a.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            return t(`amenities.${key}`).toLowerCase();
+        });
+
         const matchesSearch = p.title.toLowerCase().includes(query) ||
             p.description?.toLowerCase().includes(query) ||
             p.display_address?.toLowerCase().includes(query) ||
-            p.address?.public?.toLowerCase().includes(query);
+            p.address?.public?.toLowerCase().includes(query) ||
+            p.property_type?.toLowerCase().includes(query) ||
+            p.listing_type?.toLowerCase().includes(query) ||
+            p.status?.toLowerCase().includes(query) ||
+            typeTranslated.includes(query) ||
+            listingTypeTranslated.includes(query) ||
+            listingTypeForTranslated.includes(query) ||
+            statusTranslated.includes(query) ||
+            propertyAmenitiesTranslated.some(a => a.includes(query));
 
         const price = Number(p.price);
         const matchesMinPrice = filter.minPrice === '' || price >= Number(filter.minPrice);
@@ -518,7 +546,7 @@ const Home = () => {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                             <input
                                 type="text"
-                                placeholder={t('common.search') + "..."}
+                                placeholder={t('common.search_placeholder')}
                                 className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -539,73 +567,97 @@ const Home = () => {
                         </button>
                     </div>
 
-                    <div className="flex md:flex-nowrap flex-wrap gap-3 items-center overflow-x-auto md:overflow-visible pb-4 md:pb-0 hide-scrollbar">
-                        {/* Listing Types Pills */}
-                        <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
-                            <button
-                                onClick={() => setFilter({ ...filter, listingType: 'all' })}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === 'all' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                {t('common.all')}
-                            </button>
-                            {listingTypes.map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setFilter({ ...filter, listingType: type })}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    <div className="flex md:flex-nowrap flex-wrap gap-3 items-center overflow-visible md:overflow-visible pb-4 md:pb-0 hide-scrollbar">
+                        {isMobile ? (
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <select
+                                    value={filter.listingType}
+                                    onChange={(e) => setFilter({ ...filter, listingType: e.target.value })}
+                                    className="flex-1 px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
                                 >
-                                    {t(`common.${type}`)}
-                                </button>
-                            ))}
-                        </div>
+                                    <option value="all">{t('common.all')}</option>
+                                    {listingTypes.map(type => (
+                                        <option key={type} value={type}>{t(`common.${type}`)}</option>
+                                    ))}
+                                </select>
 
-                        <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
-
-                        {/* Property Type Pills */}
-                        <div className="flex md:flex-nowrap flex-wrap gap-2 shrink-0">
-                            <button
-                                onClick={() => setFilter({ ...filter, type: 'all' })}
-                                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === 'all' ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                            >
-                                {t('home.all_properties')}
-                            </button>
-                            {propertyTypes.map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setFilter({ ...filter, type: type })}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === type ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                <select
+                                    value={filter.type}
+                                    onChange={(e) => setFilter({ ...filter, type: e.target.value })}
+                                    className="flex-1 px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
                                 >
-                                    {t(`home.${type}s`)}
-                                </button>
-                            ))}
-                        </div>
+                                    <option value="all">{t('home.all_properties')}</option>
+                                    {propertyTypes.map(type => (
+                                        <option key={type} value={type}>{t(`home.${type}s`)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Listing Types Pills */}
+                                <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+                                    <button
+                                        onClick={() => setFilter({ ...filter, listingType: 'all' })}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === 'all' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        {t('common.all')}
+                                    </button>
+                                    {listingTypes.map(type => (
+                                        <button
+                                            key={type}
+                                            onClick={() => setFilter({ ...filter, listingType: type })}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            {t(`common.${type}`)}
+                                        </button>
+                                    ))}
+                                </div>
 
-                        <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
+                                <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
+
+                                {/* Property Type Pills */}
+                                <div className="flex md:flex-nowrap flex-wrap gap-2 shrink-0">
+                                    <button
+                                        onClick={() => setFilter({ ...filter, type: 'all' })}
+                                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === 'all' ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                    >
+                                        {t('home.all_properties')}
+                                    </button>
+                                    {propertyTypes.map(type => (
+                                        <button
+                                            key={type}
+                                            onClick={() => setFilter({ ...filter, type: type })}
+                                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === type ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                        >
+                                            {t(`home.${type}s`)}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
+                            </>
+                        )}
 
                         {/* Region Selectors */}
-                        <div className="flex gap-2 shrink-0">
-                            <select
+                        <div className="flex gap-2 shrink-0 w-full md:w-auto">
+                            <SearchableSelect
                                 value={filter.state}
-                                onChange={(e) => setFilter({ ...filter, state: e.target.value, city: 'all' })}
-                                className="px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
-                            >
-                                <option value="all">{t('home.all_states')}</option>
-                                {brazilianStates.map(s => (
-                                    <option key={s.id} value={s.nome}>{s.nome}</option>
-                                ))}
-                            </select>
+                                onChange={(val) => setFilter({ ...filter, state: val, city: 'all' })}
+                                options={brazilianStates.map(s => ({ value: s.nome, label: s.nome }))}
+                                placeholder={t('home.all_states')}
+                                allLabel={t('home.all_states')}
+                                className="flex-1 md:flex-none md:w-50"
+                            />
 
-                            <select
+                            <SearchableSelect
                                 value={filter.city}
-                                onChange={(e) => setFilter({ ...filter, city: e.target.value })}
+                                onChange={(val) => setFilter({ ...filter, city: val })}
+                                options={brazilianCities.map(c => ({ value: c, label: c }))}
+                                placeholder={t('home.all_cities')}
+                                allLabel={t('home.all_cities')}
                                 disabled={filter.state === 'all'}
-                                className={`px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 shadow-sm outline-none transition-all cursor-pointer ${filter.state === 'all' ? 'border-slate-50 text-slate-300 bg-slate-50/50' : 'border-slate-100 text-slate-700 hover:border-slate-200 focus:border-primary-500'}`}
-                            >
-                                <option value="all">{t('home.all_cities')}</option>
-                                {brazilianCities.map(city => (
-                                    <option key={city} value={city}>{city}</option>
-                                ))}
-                            </select>
+                                className="flex-1 md:flex-none md:w-42"
+                            />
                         </div>
                     </div>
                 </div>
@@ -759,25 +811,30 @@ const Home = () => {
                                 <section>
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.amenities')}</h3>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                                        {availableAmenities.map((amenity) => (
-                                            <label key={amenity} className="flex items-center gap-3 cursor-pointer group">
-                                                <div
-                                                    onClick={() => {
-                                                        const isSelected = filter.amenities.includes(amenity);
-                                                        setFilter({
-                                                            ...filter,
-                                                            amenities: isSelected
-                                                                ? filter.amenities.filter(a => a !== amenity)
-                                                                : [...filter.amenities, amenity]
-                                                        });
-                                                    }}
-                                                    className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filter.amenities.includes(amenity) ? 'bg-primary-600 border-primary-600' : 'border-slate-200 group-hover:border-primary-300'}`}
-                                                >
-                                                    {filter.amenities.includes(amenity) && <Check className="w-4 h-4 text-white" />}
-                                                </div>
-                                                <span className={`text-sm font-medium transition-colors ${filter.amenities.includes(amenity) ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>{amenity}</span>
-                                            </label>
-                                        ))}
+                                        {availableAmenities.map((amenity) => {
+                                            const key = amenity.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                                            const translatedName = t(`amenities.${key}`);
+
+                                            return (
+                                                <label key={amenity} className="flex items-center gap-3 cursor-pointer group">
+                                                    <div
+                                                        onClick={() => {
+                                                            const isSelected = filter.amenities.includes(amenity);
+                                                            setFilter({
+                                                                ...filter,
+                                                                amenities: isSelected
+                                                                    ? filter.amenities.filter(a => a !== amenity)
+                                                                    : [...filter.amenities, amenity]
+                                                            });
+                                                        }}
+                                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filter.amenities.includes(amenity) ? 'bg-primary-600 border-primary-600' : 'border-slate-200 group-hover:border-primary-300'}`}
+                                                    >
+                                                        {filter.amenities.includes(amenity) && <Check className="w-4 h-4 text-white" />}
+                                                    </div>
+                                                    <span className={`text-sm font-medium transition-colors ${filter.amenities.includes(amenity) ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>{translatedName}</span>
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </section>
                             </div>
