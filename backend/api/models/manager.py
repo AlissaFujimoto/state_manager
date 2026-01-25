@@ -9,6 +9,9 @@ from dataclasses import dataclass, field
 
 # Local imports
 from server_utils.database import Database
+import flask
+
+INTERNAL_KEYS = {"bedrooms", "bathrooms", "suites", "rooms", "garages", "area", "total", "total_area", "area_unit", "total_area_unit"}
 
 @dataclass
 class PropertyAddress:
@@ -34,6 +37,9 @@ class PropertyData:
     title: str = ""
     description: str = ""
     price: float = 0.0
+    sale_price: Optional[float] = None
+    rent_price: Optional[float] = None
+    vacation_price: Optional[float] = None
     property_type: str = "house"
     listing_type: str = "sale"
     status: str = "available"
@@ -114,6 +120,9 @@ class Property:
             "title": d.title,
             "description": d.description,
             "price": d.price,
+            "sale_price": d.sale_price,
+            "rent_price": d.rent_price,
+            "vacation_price": d.vacation_price,
             "property_type": d.property_type,
             "listing_type": d.listing_type,
             "status": d.status,
@@ -122,8 +131,8 @@ class Property:
             "characteristics": characteristics_dict,
             
             # Features (Extras)
-            "features": d.features,
-            "amenities": d.amenities if d.amenities else [k for k, v in d.features.items() if v],
+            "features": {k: v for k, v in d.features.items() if k not in INTERNAL_KEYS},
+            "amenities": [a for a in d.amenities if a not in INTERNAL_KEYS] if d.amenities else [k for k, v in d.features.items() if v and k not in INTERNAL_KEYS],
             
             "images": d.images,
             "layout_image": d.layout_image,
@@ -173,13 +182,16 @@ class Property:
         # 2. Parse Features (Extras)
         # If 'features' exists, use it. Else extract from 'characteristics' excluding stats.
         if raw_features:
-            features = raw_features
+            features = {k: v for k, v in raw_features.items() if (k not in INTERNAL_KEYS and isinstance(v, bool))}
         else:
-            stats_keys = {"bedrooms", "bathrooms", "suites", "rooms", "garages", "area", "total", "total_area"}
-            features = {k: v for k, v in raw_chars.items() if k not in stats_keys}
+            features = {k: v for k, v in raw_chars.items() if (k not in INTERNAL_KEYS and isinstance(v, bool))}
         
         # New amenities list (ordered)
         amenities = data.get("amenities")
+        if isinstance(amenities, list):
+            # Filter specifically for the problematic keys
+            amenities = [a for a in amenities if a not in INTERNAL_KEYS]
+        
         if not amenities and features:
             amenities = [k for k, v in features.items() if v]
         if not amenities:
@@ -202,13 +214,40 @@ class Property:
                 location=data.get("location")
             )
 
+        # Parse Prices with safety for empty strings
+        def safe_float(val):
+            if val is None or (isinstance(val, str) and not val.strip()):
+                return None
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return None
+
+        sale_price = safe_float(data.get("sale_price"))
+        rent_price = safe_float(data.get("rent_price"))
+        vacation_price = safe_float(data.get("vacation_price"))
+        
+        # Primary price logic based on listing_type
+        listing_type = data.get("listing_type", "sale")
+        price = safe_float(data.get("price")) or 0.0
+        
+        if listing_type in ["sale", "both", "sale_rent"] and sale_price is not None:
+            price = sale_price
+        elif listing_type == "rent" and rent_price is not None:
+            price = rent_price
+        elif listing_type == "vacation" and vacation_price is not None:
+            price = vacation_price
+
         prop_data = PropertyData(
             id=data.get("id", str(uuid.uuid4())),
             title=data.get("title", ""),
             description=data.get("description", ""),
-            price=float(data.get("price") or 0.0),
+            price=price,
+            sale_price=sale_price,
+            rent_price=rent_price,
+            vacation_price=vacation_price,
             property_type=data.get("property_type", "house"),
-            listing_type=data.get("listing_type", "sale"),
+            listing_type=listing_type,
             status=data.get("status", "available"),
             currency=data.get("currency", "BRL"),
             characteristics=stats,

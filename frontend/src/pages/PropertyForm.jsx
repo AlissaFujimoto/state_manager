@@ -123,6 +123,9 @@ const PropertyForm = () => {
         title: '',
         description: '',
         price: '',
+        sale_price: '',
+        rent_price: '',
+        vacation_price: '',
         property_type: 'house',
         listing_type: 'sale',
         status: 'available',
@@ -225,6 +228,9 @@ const PropertyForm = () => {
                         listing_type: data.listing_type || 'sale',
                         status: data.status || 'available',
                         currency: data.currency || 'BRL',
+                        sale_price: (data.sale_price !== undefined && data.sale_price !== null) ? data.sale_price : (data.listing_type === 'sale' ? (data.price || '') : ''),
+                        rent_price: (data.rent_price !== undefined && data.rent_price !== null) ? data.rent_price : (data.listing_type === 'rent' ? (data.price || '') : ''),
+                        vacation_price: (data.vacation_price !== undefined && data.vacation_price !== null) ? data.vacation_price : (data.listing_type === 'vacation' ? (data.price || '') : ''),
                         characteristics: data.characteristics || {
                             bedrooms: 0, suites: 0, rooms: 0, bathrooms: 0, garages: 0, area: 0, total_area: 0, area_unit: 'm2', total_area_unit: 'm2'
                         },
@@ -259,17 +265,27 @@ const PropertyForm = () => {
         const neighborhood = details.neighborhood || '';
         const city = details.city || '';
         const state = details.state || '';
+        const country = details.country || '';
 
-        let public_addr = [neighborhood, city].filter(Boolean).join(', ');
-        if (state) public_addr += ` - ${state}`;
+        let public_parts = [neighborhood, city, state].filter(Boolean);
+        let public_addr = public_parts.join(', ');
+
+        if (country) public_addr += ` - ${country}`;
+
+        // Ensure private address also mentions country if not present (heuristic)
+        let private_addr = data.address;
+        if (country && !private_addr.toLowerCase().includes(country.toLowerCase())) {
+            private_addr += `, ${country}`;
+        }
 
         setFormData(prev => ({
             ...prev,
             address: {
                 ...prev.address,
                 location: data.location,
-                private: data.address,
-                public: public_addr
+                private: private_addr,
+                public: public_addr,
+                country: country // Persist country specifically
             }
         }));
     };
@@ -289,16 +305,20 @@ const PropertyForm = () => {
                 const region = suburb || neighbourhood || quarter || village || '';
                 const cityPart = city || town || municipality || '';
                 const stateName = state || '';
+                const countryName = country || '';
 
-                let public_addr = [region, cityPart].filter(Boolean).join(', ');
-                if (stateName) public_addr += ` - ${stateName}`;
+                let public_parts = [region, cityPart, stateName].filter(Boolean);
+                let public_addr = public_parts.join(', ');
+
+                if (countryName) public_addr += ` - ${countryName}`;
 
                 setFormData(prev => ({
                     ...prev,
                     address: {
                         ...prev.address,
                         private: data.display_name,
-                        public: public_addr
+                        public: public_addr,
+                        country: countryName
                     }
                 }));
             }
@@ -379,9 +399,21 @@ const PropertyForm = () => {
     };
 
     const isFieldMissing = (name) => {
-        if (name === 'title' || name === 'description' || name === 'price') {
-            return !formData[name] && formData[name] !== 0;
+        if (name === 'title' || name === 'description') {
+            return !formData[name];
         }
+
+        // Price validation depends on listing type
+        if (name === 'sale_price') {
+            return (formData.listing_type === 'sale' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent') && (!formData.sale_price && formData.sale_price !== 0);
+        }
+        if (name === 'rent_price') {
+            return (formData.listing_type === 'rent' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent') && (!formData.rent_price && formData.rent_price !== 0);
+        }
+        if (name === 'vacation_price') {
+            return formData.listing_type === 'vacation' && (!formData.vacation_price && formData.vacation_price !== 0);
+        }
+
         return false;
     };
 
@@ -393,7 +425,11 @@ const PropertyForm = () => {
             return !isFieldInvalidValue(val);
         }
         if (isFieldMissing(name)) return false;
-        if (name === 'price') return !isFieldInvalidValue(formData.price) && formData.price !== '';
+
+        if (name === 'sale_price') return !isFieldInvalidValue(formData.sale_price);
+        if (name === 'rent_price') return !isFieldInvalidValue(formData.rent_price);
+        if (name === 'vacation_price') return !isFieldInvalidValue(formData.vacation_price);
+
         return true;
     };
 
@@ -430,8 +466,14 @@ const PropertyForm = () => {
         const errors = [];
         if (isFieldMissing('title')) errors.push(t('common.title_required'));
         if (isFieldMissing('description')) errors.push(t('common.description_required'));
-        if (isFieldMissing('price')) errors.push(t('common.price_required'));
-        if (isFieldInvalidValue(formData.price)) errors.push(t('common.price_negative'));
+
+        if (isFieldMissing('sale_price')) errors.push(t('common.sale_price_required') || 'Sale price is required');
+        if (isFieldMissing('rent_price')) errors.push(t('common.rent_price_required') || 'Rent price is required');
+        if (isFieldMissing('vacation_price')) errors.push(t('common.vacation_price_required') || 'Vacation price is required');
+
+        if (formData.sale_price && isFieldInvalidValue(formData.sale_price)) errors.push(t('common.sale_price_negative') || 'Sale price cannot be negative');
+        if (formData.rent_price && isFieldInvalidValue(formData.rent_price)) errors.push(t('common.rent_price_negative') || 'Rent price cannot be negative');
+        if (formData.vacation_price && isFieldInvalidValue(formData.vacation_price)) errors.push(t('common.vacation_price_negative') || 'Vacation price cannot be negative');
 
         const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
         charFields.forEach(f => {
@@ -444,8 +486,20 @@ const PropertyForm = () => {
 
     const isStepValid = (s) => {
         if (s === 1) {
-            return !!(formData.title && formData.description &&
-                formData.price !== '' && parseFloat(formData.price) >= 0);
+            const basicValid = !!(formData.title && formData.description);
+            let priceValid = true;
+
+            if (formData.listing_type === 'sale' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent') {
+                if (!formData.sale_price || isFieldInvalidValue(formData.sale_price)) priceValid = false;
+            }
+            if (formData.listing_type === 'rent' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent') {
+                if (!formData.rent_price || isFieldInvalidValue(formData.rent_price)) priceValid = false;
+            }
+            if (formData.listing_type === 'vacation') {
+                if (!formData.vacation_price || isFieldInvalidValue(formData.vacation_price)) priceValid = false;
+            }
+
+            return basicValid && priceValid;
         }
         if (s === 2) {
             const c = formData.characteristics;
@@ -469,7 +523,13 @@ const PropertyForm = () => {
             if (step === 1) {
                 if (isFieldMissing('title')) invalidFieldsInStep.push('title');
                 if (isFieldMissing('description')) invalidFieldsInStep.push('description');
-                if (isFieldMissing('price') || isFieldInvalidValue(formData.price)) invalidFieldsInStep.push('price');
+                const isSale = formData.listing_type === 'sale' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent';
+                const isRent = formData.listing_type === 'rent' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent';
+                const isVacation = formData.listing_type === 'vacation';
+
+                if (isSale && (isFieldMissing('sale_price') || isFieldInvalidValue(formData.sale_price))) invalidFieldsInStep.push('sale_price');
+                if (isRent && (isFieldMissing('rent_price') || isFieldInvalidValue(formData.rent_price))) invalidFieldsInStep.push('rent_price');
+                if (isVacation && (isFieldMissing('vacation_price') || isFieldInvalidValue(formData.vacation_price))) invalidFieldsInStep.push('vacation_price');
             }
             if (step === 2) {
                 const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
@@ -533,7 +593,14 @@ const PropertyForm = () => {
             // Track Step 1
             if (isFieldMissing('title')) invalidFields.push('title');
             if (isFieldMissing('description')) invalidFields.push('description');
-            if (isFieldMissing('price') || isFieldInvalidValue(formData.price)) invalidFields.push('price');
+
+            const isSale = formData.listing_type === 'sale' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent';
+            const isRent = formData.listing_type === 'rent' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent';
+            const isVacation = formData.listing_type === 'vacation';
+
+            if (isSale && (isFieldMissing('sale_price') || isFieldInvalidValue(formData.sale_price))) invalidFields.push('sale_price');
+            if (isRent && (isFieldMissing('rent_price') || isFieldInvalidValue(formData.rent_price))) invalidFields.push('rent_price');
+            if (isVacation && (isFieldMissing('vacation_price') || isFieldInvalidValue(formData.vacation_price))) invalidFields.push('vacation_price');
 
             // Track Step 2
             const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area'];
@@ -705,7 +772,10 @@ const PropertyForm = () => {
                                                 >
                                                     {listingTypes.map(type => (
                                                         <option key={type} value={type}>
-                                                            {type === 'sale' ? t('common.for_sale') : t('common.for_rent')}
+                                                            {type === 'sale' ? t('common.for_sale') :
+                                                                type === 'rent' ? t('common.for_rent') :
+                                                                    type === 'both' ? t('common.for_both') :
+                                                                        type === 'vacation' ? t('common.for_vacation') : type}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -722,7 +792,7 @@ const PropertyForm = () => {
                                                     {(propertyStatuses || []).map(status => {
                                                         let label = t(`property_card.${status.id}`);
                                                         if (status.id === 'sold_rented') {
-                                                            label = formData.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
+                                                            label = (formData.listing_type === 'rent' || formData.listing_type === 'vacation') ? t('property_card.rented') : t('property_card.sold');
                                                         }
                                                         return (
                                                             <option key={status.id} value={status.id}>
@@ -736,16 +806,51 @@ const PropertyForm = () => {
 
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                             <div className="field-container md:col-span-3">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('property_form.price_label')}</label>
-                                                <input
-                                                    type="number"
-                                                    id="price"
-                                                    name="price"
-                                                    value={formData.price}
-                                                    onChange={handleInputChange}
-                                                    placeholder="500,000"
-                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('price') === 'error' ? 'neon-error' : getFieldStatus('price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
-                                                />
+                                                <div className="space-y-4">
+                                                    {(formData.listing_type === 'sale' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent') && (
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.sale_price')}</label>
+                                                            <input
+                                                                type="number"
+                                                                name="sale_price"
+                                                                value={formData.sale_price ?? ''}
+                                                                onChange={handleInputChange}
+                                                                placeholder="500,000"
+                                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('sale_price') === 'error' ? 'neon-error' : getFieldStatus('sale_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {(formData.listing_type === 'rent' || formData.listing_type === 'both' || formData.listing_type === 'sale_rent') && (
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                                                                {t('common.rent_price')}
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                name="rent_price"
+                                                                value={formData.rent_price ?? ''}
+                                                                onChange={handleInputChange}
+                                                                placeholder="5,000"
+                                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('rent_price') === 'error' ? 'neon-error' : getFieldStatus('rent_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {formData.listing_type === 'vacation' && (
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                                                                {t('common.vacation_price')}
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                name="vacation_price"
+                                                                value={formData.vacation_price ?? ''}
+                                                                onChange={handleInputChange}
+                                                                placeholder="1,000"
+                                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('vacation_price') === 'error' ? 'neon-error' : getFieldStatus('vacation_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="field-container">
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.currency') || 'Currency'}</label>
@@ -813,72 +918,74 @@ const PropertyForm = () => {
                                             <p className="text-slate-500 mt-2">{t('property_form.characteristics_subtitle')}</p>
                                         </div>
 
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                            {[
-                                                { label: t('common.bedrooms'), name: 'characteristics.bedrooms' },
-                                                { label: t('common.suites'), name: 'characteristics.suites' },
-                                                { label: t('common.rooms'), name: 'characteristics.rooms' },
-                                                { label: t('common.bathrooms'), name: 'characteristics.bathrooms' },
-                                                { label: t('common.garages'), name: 'characteristics.garages' }
-                                            ].map((field) => (
-                                                <div key={field.name} className="field-container">
-                                                    <label className="block text-sm font-bold text-slate-700 mb-2">{field.label}</label>
-                                                    <input
-                                                        type="number"
-                                                        id={field.name}
-                                                        name={field.name}
-                                                        value={field.name.split('.').reduce((obj, key) => obj[key], formData)}
-                                                        onChange={handleInputChange}
-                                                        className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus(field.name) === 'error' ? 'neon-error' : getFieldStatus(field.name) === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
-                                                    />
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                                {[
+                                                    { label: t('common.bedrooms'), name: 'characteristics.bedrooms' },
+                                                    { label: t('common.suites'), name: 'characteristics.suites' },
+                                                    { label: t('common.rooms'), name: 'characteristics.rooms' },
+                                                    { label: t('common.bathrooms'), name: 'characteristics.bathrooms' },
+                                                    { label: t('common.garages'), name: 'characteristics.garages' }
+                                                ].map((field) => (
+                                                    <div key={field.name} className="field-container">
+                                                        <label className="block text-sm font-bold text-slate-700 mb-2 truncate" title={field.label}>{field.label}</label>
+                                                        <input
+                                                            type="number"
+                                                            id={field.name}
+                                                            name={field.name}
+                                                            value={field.name.split('.').reduce((obj, key) => obj[key], formData)}
+                                                            onChange={handleInputChange}
+                                                            className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus(field.name) === 'error' ? 'neon-error' : getFieldStatus(field.name) === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="field-container">
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.area')}</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="number"
+                                                            name="characteristics.area"
+                                                            value={formData.characteristics.area}
+                                                            onChange={handleInputChange}
+                                                            className={`flex-1 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('characteristics.area') === 'error' ? 'neon-error' : getFieldStatus('characteristics.area') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                        />
+                                                        <select
+                                                            name="characteristics.area_unit"
+                                                            value={formData.characteristics.area_unit}
+                                                            onChange={handleInputChange}
+                                                            className={`w-28 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                        >
+                                                            {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
+                                                                <option key={code} value={code}>{label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 </div>
-                                            ))}
 
-                                            <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.area_unit_label') || 'Area Unit'}</label>
-                                                <select
-                                                    name="characteristics.area_unit"
-                                                    value={formData.characteristics.area_unit}
-                                                    onChange={handleInputChange}
-                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
-                                                >
-                                                    {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
-                                                        <option key={code} value={code}>{label}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.area')}</label>
-                                                <input
-                                                    type="number"
-                                                    name="characteristics.area"
-                                                    value={formData.characteristics.area}
-                                                    onChange={handleInputChange}
-                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('characteristics.area') === 'error' ? 'neon-error' : getFieldStatus('characteristics.area') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
-                                                />
-                                            </div>
-
-                                            <div className="field-container">
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.total')}</label>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="number"
-                                                        name="characteristics.total_area"
-                                                        value={formData.characteristics.total_area}
-                                                        onChange={handleInputChange}
-                                                        className={`flex-1 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('characteristics.total_area') === 'error' ? 'neon-error' : getFieldStatus('characteristics.total_area') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
-                                                    />
-                                                    <select
-                                                        name="characteristics.total_area_unit"
-                                                        value={formData.characteristics.total_area_unit}
-                                                        onChange={handleInputChange}
-                                                        className={`w-32 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
-                                                    >
-                                                        {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
-                                                            <option key={code} value={code}>{label}</option>
-                                                        ))}
-                                                    </select>
+                                                <div className="field-container">
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('common.total')}</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="number"
+                                                            name="characteristics.total_area"
+                                                            value={formData.characteristics.total_area}
+                                                            onChange={handleInputChange}
+                                                            className={`flex-1 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('characteristics.total_area') === 'error' ? 'neon-error' : getFieldStatus('characteristics.total_area') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                                                        />
+                                                        <select
+                                                            name="characteristics.total_area_unit"
+                                                            value={formData.characteristics.total_area_unit}
+                                                            onChange={handleInputChange}
+                                                            className={`w-28 px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none border-slate-200`}
+                                                        >
+                                                            {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
+                                                                <option key={code} value={code}>{label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

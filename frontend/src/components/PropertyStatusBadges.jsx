@@ -8,20 +8,49 @@ const PropertyStatusBadges = ({ property, size = 'md' }) => {
     const padding = size === 'sm' ? 'px-2.5' : 'px-3';
     const gap = size === 'sm' ? 'gap-1.5' : 'gap-2';
 
-    // Minimalist badge style
-    const badgeBase = `${fontSize} ${padding} ${height} font-bold uppercase tracking-wide flex items-center justify-center whitespace-nowrap transition-all duration-200 rounded-md`;
+    // Enhanced premium badge style
+    const badgeBase = `${fontSize} ${padding} ${height} font-bold uppercase tracking-widest flex items-center justify-center whitespace-nowrap transition-all duration-300 rounded-lg shadow-sm`;
+
+    const isNew = property.created_at && (new Date() - new Date(property.created_at)) < 7 * 24 * 60 * 60 * 1000;
 
     return (
-        <div className={`flex items-center ${gap}`}>
+        <div className={`flex flex-wrap items-center ${gap}`}>
+            {/* New Badge */}
+            {isNew && (
+                <div className={`${badgeBase} bg-gradient-to-r from-violet-600 to-indigo-600 text-white animate-pulse`}>
+                    {t('common.new')}
+                </div>
+            )}
+
             {/* Property Type Badge */}
-            <div className={`${badgeBase} bg-white/95 text-slate-700 shadow-sm`}>
+            <div className={`${badgeBase} bg-white text-slate-800 border border-slate-100`}>
                 {property.property_type ? t(`home.${property.property_type.toLowerCase()}`) : 'Property'}
             </div>
 
             {/* Listing Type Badge */}
-            <div className={`${badgeBase} ${property.listing_type === 'rent' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'} shadow-sm`}>
-                {property.listing_type === 'rent' ? t('common.for_rent') : t('common.for_sale')}
-            </div>
+            {(() => {
+                let badgeStyle = 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white';
+                let label = t('common.for_sale');
+
+                const type = property.listing_type;
+                if (type === 'rent') {
+                    badgeStyle = 'bg-gradient-to-r from-amber-500 to-orange-600 text-white';
+                    label = t('common.for_rent');
+                } else if (type === 'both' || type === 'sale_rent') {
+                    badgeStyle = 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white';
+                    label = t('common.for_both');
+                } else if (type === 'vacation') {
+                    badgeStyle = 'bg-gradient-to-r from-rose-500 to-pink-600 text-white';
+                    label = t('common.for_vacation');
+                }
+
+                return (
+                    <div className={`${badgeBase} ${badgeStyle}`}>
+                        {label}
+                    </div>
+                );
+            })()}
+
         </div>
     );
 };

@@ -366,8 +366,31 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
                     <PropertyStatusBadges property={property} size="sm" />
                 </div>
                 <div className="absolute bottom-4 right-4 z-10">
-                    <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg">
-                        {formatCurrency(property.price, property.currency)}
+                    <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg flex flex-col items-end">
+                        {(() => {
+                            const isBoth = property.listing_type === 'both' || property.listing_type === 'sale_rent';
+                            const isVacation = property.listing_type === 'vacation';
+
+                            if (isBoth) {
+                                return (
+                                    <>
+                                        <span className="text-sm">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                        <div className="w-full h-px bg-white/20 my-1"></div>
+                                        <span className="text-sm">{formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                    </>
+                                );
+                            } else if (isVacation) {
+                                return (
+                                    <span className="text-lg">{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
+                                );
+                            } else if (property.listing_type === 'rent') {
+                                return (
+                                    <span className="text-lg">{formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                );
+                            }
+
+                            return <span className="text-lg">{formatCurrency(property.sale_price || property.price, property.currency)}</span>;
+                        })()}
                     </div>
                 </div>
             </div>
@@ -469,42 +492,84 @@ export const PropertyCard = ({ property, propertyStatuses = [], showEditAction =
 };
 
 const Home = () => {
-    const [properties, setProperties] = useState([]);
+    const [properties, setProperties] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('home_properties');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) { return []; }
+    });
     const [propertyTypes, setPropertyTypes] = useState([]);
     const [listingTypes, setListingTypes] = useState([]);
     const [propertyStatuses, setPropertyStatuses] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => !sessionStorage.getItem('home_properties'));
 
     useEffect(() => {
         if (import.meta.env.MEASUREMENT_ID) {
             ReactGA.send({ hitType: "pageview", page: window.location.pathname, title: "Home Page" });
         }
+
+        // Restore scroll position
+        const savedScroll = sessionStorage.getItem('home_scroll_y');
+        if (savedScroll) {
+            // Small timeout to ensure rendering has started
+            setTimeout(() => window.scrollTo(0, parseInt(savedScroll)), 0);
+        }
+
+        return () => {
+            sessionStorage.setItem('home_scroll_y', window.scrollY.toString());
+        };
     }, []);
 
-    const [filter, setFilter] = useState({
-        type: 'all',
-        listingType: 'all',
-        minPrice: '',
-        maxPrice: '',
-        minBedrooms: '',
-        minBathrooms: '',
-        minSuites: '',
-        minRooms: '',
-        minGarages: '',
-        minArea: '',
-        maxArea: '',
-        state: 'all',
-        city: 'all',
-        amenities: [],
-        sortBy: 'newest'
+    const [filter, setFilter] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('home_filter');
+            return saved ? JSON.parse(saved) : {
+                type: 'all',
+                listingType: 'all',
+                minPrice: '',
+                maxPrice: '',
+                minBedrooms: '',
+                minBathrooms: '',
+                minSuites: '',
+                minRooms: '',
+                minGarages: '',
+                minArea: '',
+                maxArea: '',
+                state: 'all',
+                city: 'all',
+                country: 'Brazil',
+                amenities: [],
+                sortBy: 'newest'
+            };
+        } catch (e) {
+            return {
+                type: 'all',
+                listingType: 'all',
+                minPrice: '',
+                maxPrice: '',
+                minBedrooms: '',
+                minBathrooms: '',
+                minSuites: '',
+                minRooms: '',
+                minGarages: '',
+                minArea: '',
+                maxArea: '',
+                state: 'all',
+                city: 'all',
+                country: 'Brazil',
+                amenities: [],
+                sortBy: 'newest'
+            };
+        }
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [availableAmenities, setAvailableAmenities] = useState([]);
-    const [brazilianStates, setBrazilianStates] = useState([]);
-    const [brazilianCities, setBrazilianCities] = useState([]);
-    const { t, regions, formatCurrency } = useLanguage();
+    const [allCountries, setAllCountries] = useState([]);
+    const [countryStates, setCountryStates] = useState([]);
+    const [stateCities, setStateCities] = useState([]);
+    const { t, regions, formatCurrency, currentLanguage } = useLanguage();
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -577,6 +642,10 @@ const Home = () => {
         const matchesAmenities = filter.amenities.length === 0 ||
             filter.amenities.every(a => (p.amenities || []).includes(a));
 
+        const matchesCountry = filter.country === 'all' ||
+            p.address?.country?.toLowerCase() === filter.country.toLowerCase() ||
+            p.display_address?.toLowerCase().includes(filter.country.toLowerCase());
+
         const matchesState = filter.state === 'all' ||
             p.display_address?.toLowerCase().includes(filter.state.toLowerCase()) ||
             p.address?.public?.toLowerCase().includes(filter.state.toLowerCase());
@@ -587,7 +656,7 @@ const Home = () => {
 
         return matchesType && matchesListingType && matchesSearch && matchesMinPrice && matchesMaxPrice &&
             matchesBedrooms && matchesBathrooms && matchesSuites && matchesRooms && matchesGarages &&
-            matchesMinArea && matchesMaxArea && matchesAmenities && matchesState && matchesCity;
+            matchesMinArea && matchesMaxArea && matchesAmenities && matchesCountry && matchesState && matchesCity;
     }).sort((a, b) => {
         if (filter.sortBy === 'price_asc') return Number(a.price) - Number(b.price);
         if (filter.sortBy === 'price_desc') return Number(b.price) - Number(a.price);
@@ -648,46 +717,116 @@ const Home = () => {
             }
         };
 
-
-        const fetchIBGEStates = async () => {
-            try {
-                const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
-                const data = await res.json();
-                setBrazilianStates(data.map(s => ({ id: s.id, sigla: s.sigla, nome: s.nome })));
-            } catch (err) {
-                console.error('Failed to fetch IBGE states:', err);
-            }
-        };
-
         fetchTypes();
         fetchListingTypes();
         fetchStatuses();
         fetchAmenities();
-
-        fetchIBGEStates();
     }, []);
 
-    // Fetch cities when state changes
+    // Fetch countries and translate based on current language
     useEffect(() => {
-        const fetchIBGECities = async () => {
-            if (filter.state === 'all') {
-                setBrazilianCities([]);
+        const fetchCountries = async () => {
+            try {
+                const res = await fetch('https://countriesnow.space/api/v0.1/countries/iso');
+                const json = await res.json();
+
+                if (!json.error && json.data) {
+                    // Use currentLanguage from context, default to 'en-US'
+                    // Intl.DisplayNames expects standard locale codes (e.g., pt-BR, en-US)
+                    const langMap = {
+                        'pt-br': 'pt-BR',
+                        'pt-pt': 'pt-PT',
+                        'es-es': 'es-ES',
+                        'en-us': 'en-US'
+                    };
+                    const locale = langMap[currentLanguage] || 'en-US';
+
+                    const regionNames = new Intl.DisplayNames([locale], { type: 'region' });
+
+                    const formatted = json.data.map(c => {
+                        let label = c.name;
+                        try {
+                            if (c.Iso2) {
+                                label = regionNames.of(c.Iso2);
+                            }
+                        } catch (e) {
+                            // Fallback to original name
+                        }
+                        return { value: c.name, label: label };
+                    });
+
+                    // Sort by the translated label
+                    formatted.sort((a, b) => a.label.localeCompare(b.label));
+
+                    setAllCountries(formatted);
+                } else {
+                    console.error('API Error:', json.msg);
+                }
+            } catch (err) {
+                console.error('Failed to fetch countries:', err);
+            }
+        };
+        fetchCountries();
+    }, [currentLanguage]);
+
+    // Fetch states when country changes
+    useEffect(() => {
+        const fetchStates = async () => {
+            if (filter.country === 'all') {
+                setCountryStates([]);
+                setStateCities([]);
+                // If country is reset, we might want to clear state/city selection if they were set?
+                // But the user might just be changing filter.
                 return;
             }
 
-            const stateObj = brazilianStates.find(s => s.nome === filter.state);
-            if (!stateObj) return;
-
             try {
-                const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateObj.id}/municipios?orderBy=nome`);
-                const data = await res.json();
-                setBrazilianCities(data.map(c => c.nome));
+                const res = await fetch('https://countriesnow.space/api/v0.1/countries/states', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ country: filter.country })
+                });
+                const json = await res.json();
+                if (!json.error) {
+                    setCountryStates(json.data.states.map(s => s.name));
+                } else {
+                    setCountryStates([]);
+                }
             } catch (err) {
-                console.error('Failed to fetch IBGE cities:', err);
+                console.error('Failed to fetch states:', err);
+                setCountryStates([]);
             }
         };
-        fetchIBGECities();
-    }, [filter.state, brazilianStates]);
+        fetchStates();
+    }, [filter.country]);
+
+    // Fetch cities when state changes (and country is selected)
+    useEffect(() => {
+        const fetchCities = async () => {
+            if (filter.country === 'all' || filter.state === 'all') {
+                setStateCities([]);
+                return;
+            }
+
+            try {
+                const res = await fetch('https://countriesnow.space/api/v0.1/countries/state/cities', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ country: filter.country, state: filter.state })
+                });
+                const json = await res.json();
+                if (!json.error) {
+                    setStateCities(json.data);
+                } else {
+                    setStateCities([]);
+                }
+            } catch (err) {
+                console.error('Failed to fetch cities:', err);
+                setStateCities([]);
+            }
+        };
+        fetchCities();
+    }, [filter.state, filter.country]);
 
     useEffect(() => {
         const fetchProperties = async () => {
@@ -700,6 +839,8 @@ const Home = () => {
 
                 const res = await api.get('/announcements', { params });
                 setProperties(res.data);
+                sessionStorage.setItem('home_properties', JSON.stringify(res.data));
+                sessionStorage.setItem('home_filter', JSON.stringify(filter));
                 setLoading(false);
             } catch (err) {
                 console.error('Failed to fetch properties:', err);
@@ -767,98 +908,58 @@ const Home = () => {
                         </button>
                     </div>
 
-                    <div className="flex w-full md:flex-nowrap flex-wrap gap-3 items-center justify-between overflow-visible md:overflow-visible pb-4 md:pb-0 hide-scrollbar">
-                        {isMobile ? (
-                            <div className="flex gap-2 w-full md:w-auto">
-                                <select
-                                    value={filter.listingType}
-                                    onChange={(e) => setFilter({ ...filter, listingType: e.target.value })}
-                                    className="flex-1 px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
-                                >
-                                    <option value="all">{t('common.all')}</option>
-                                    {listingTypes.map(type => (
-                                        <option key={type} value={type}>{t(`common.${type}`)}</option>
-                                    ))}
-                                </select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full">
+                        {/* Listing Type */}
+                        <SearchableSelect
+                            value={filter.listingType}
+                            onChange={(val) => setFilter({ ...filter, listingType: val })}
+                            options={listingTypes.map(type => ({ value: type, label: t(`common.for_${type}`) }))}
+                            placeholder={t('common.all_types')}
+                            allLabel={t('common.all_types')}
+                            className="w-full"
+                        />
 
-                                <select
-                                    value={filter.type}
-                                    onChange={(e) => setFilter({ ...filter, type: e.target.value })}
-                                    className="flex-1 px-4 py-2 rounded-xl text-sm font-bold bg-white border-2 border-slate-100 text-slate-700 shadow-sm outline-none focus:border-primary-500 transition-all cursor-pointer hover:border-slate-200"
-                                >
-                                    <option value="all">{t('home.all_properties')}</option>
-                                    {propertyTypes.map(type => (
-                                        <option key={type} value={type}>{t(`home.${type}s`)}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        ) : (
-                            <>
-                                {/* Listing Types Pills */}
-                                <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
-                                    <button
-                                        onClick={() => setFilter({ ...filter, listingType: 'all' })}
-                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === 'all' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        {t('common.all')}
-                                    </button>
-                                    {listingTypes.map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setFilter({ ...filter, listingType: type })}
-                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter.listingType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                            {t(`common.${type}`)}
-                                        </button>
-                                    ))}
-                                </div>
+                        {/* Property Type */}
+                        <SearchableSelect
+                            value={filter.type}
+                            onChange={(val) => setFilter({ ...filter, type: val })}
+                            options={propertyTypes.map(type => ({ value: type, label: t(`home.${type}s`) }))}
+                            placeholder={t('home.all_properties')}
+                            allLabel={t('home.all_properties')}
+                            className="w-full"
+                        />
 
-                                <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
+                        {/* Country */}
+                        <SearchableSelect
+                            value={filter.country}
+                            onChange={(val) => setFilter({ ...filter, country: val, state: 'all', city: 'all' })}
+                            options={allCountries}
+                            placeholder={t('home.all_countries')}
+                            allLabel={t('home.all_countries')}
+                            className="w-full"
+                        />
 
-                                {/* Property Type Pills */}
-                                <div className="flex md:flex-nowrap flex-wrap gap-2 shrink-0">
-                                    <button
-                                        onClick={() => setFilter({ ...filter, type: 'all' })}
-                                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === 'all' ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                                    >
-                                        {t('home.all_properties')}
-                                    </button>
-                                    {propertyTypes.map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setFilter({ ...filter, type: type })}
-                                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 whitespace-nowrap ${filter.type === type ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                                        >
-                                            {t(`home.${type}s`)}
-                                        </button>
-                                    ))}
-                                </div>
+                        {/* State */}
+                        <SearchableSelect
+                            value={filter.state}
+                            onChange={(val) => setFilter({ ...filter, state: val, city: 'all' })}
+                            options={countryStates.map(s => ({ value: s, label: s }))}
+                            placeholder={t('home.all_states')}
+                            allLabel={t('home.all_states')}
+                            disabled={filter.country === 'all'}
+                            className="w-full"
+                        />
 
-                                <div className="h-8 w-px bg-slate-200 self-center hidden md:block shrink-0" />
-                            </>
-                        )}
-
-                        {/* Region Selectors */}
-                        <div className="flex gap-2 shrink-0 w-full md:w-auto">
-                            <SearchableSelect
-                                value={filter.state}
-                                onChange={(val) => setFilter({ ...filter, state: val, city: 'all' })}
-                                options={brazilianStates.map(s => ({ value: s.nome, label: s.nome }))}
-                                placeholder={t('home.all_states')}
-                                allLabel={t('home.all_states')}
-                                className="flex-1 md:flex-none md:w-50"
-                            />
-
-                            <SearchableSelect
-                                value={filter.city}
-                                onChange={(val) => setFilter({ ...filter, city: val })}
-                                options={brazilianCities.map(c => ({ value: c, label: c }))}
-                                placeholder={t('home.all_cities')}
-                                allLabel={t('home.all_cities')}
-                                disabled={filter.state === 'all'}
-                                className="flex-1 md:flex-none md:w-42"
-                            />
-                        </div>
+                        {/* City */}
+                        <SearchableSelect
+                            value={filter.city}
+                            onChange={(val) => setFilter({ ...filter, city: val })}
+                            options={stateCities.map(c => ({ value: c, label: c }))}
+                            placeholder={t('home.all_cities')}
+                            allLabel={t('home.all_cities')}
+                            disabled={filter.state === 'all'}
+                            className="w-full"
+                        />
                     </div>
                 </div>
             </header>

@@ -75,6 +75,7 @@ const AddressAutocomplete = ({
         const suburb = address.suburb || address.neighbourhood || address.quarter || '';
         const city = address.city || address.town || address.municipality || address.village || '';
         const state = address.state || '';
+        const country = address.country || '';
         const zip = address.postcode || '';
 
         let number = address.house_number || '';
@@ -89,6 +90,10 @@ const AddressAutocomplete = ({
 
         if (state) {
             result += ` - ${state}`;
+        }
+
+        if (country) {
+            result += `, ${country}`;
         }
 
         if (zip) {

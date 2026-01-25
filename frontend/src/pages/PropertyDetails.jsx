@@ -6,7 +6,7 @@ import {
     MapPin, Share2, Heart, Calendar, ArrowLeft,
     CheckCircle2, Info, Building2, Layout, Car, DoorOpen, Bath as BathIcon,
     Edit, Save, Undo2, Loader, Trash2, Plus, X, Image as ImageIcon, Search,
-    Check, GripVertical, Languages
+    Check, GripVertical, Languages, SquareDashed
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -136,6 +136,11 @@ const PropertyDetails = () => {
             });
         }
     }, [property]);
+
+    // Scroll to top on mount or id change
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [id]);
 
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
@@ -371,18 +376,16 @@ const PropertyDetails = () => {
         }));
     };
     const handleAddressSelect = (data) => {
-        console.log("Selected details:", data);
+        console.log("handleAddressSelect triggered", data);
         setAnchorLocation(data.location);
 
         let finalAddress = data.address;
-        const currentInput = editData.address?.private || ''; // Access .private safely
-        // Look for a number pattern like ", 123" or " 123 " or just "123" if it's significant
-        // A safe bet for Brazilian addresses is comma followed by number
-        const numberMatch = currentInput.match(/,\s*(\d+)/);
+        const currentInput = editData.address?.private || '';
 
+        // Preserve number if manually entered or present
+        const numberMatch = currentInput.match(/,\s*(\d+)/);
         if (numberMatch && numberMatch[1]) {
             const number = numberMatch[1];
-            // Check existence logic
             const alreadyHasNumber = new RegExp(`\\b${number}\\b`).test(data.address);
 
             if (!alreadyHasNumber) {
@@ -399,7 +402,7 @@ const PropertyDetails = () => {
                 const number = spaceNumber[1];
                 const alreadyHasNumber = new RegExp(`\\b${number}\\b`).test(data.address);
 
-                if (!alreadyHasNumber && number.length < 5) { // heuristics to avoid zip codes
+                if (!alreadyHasNumber && number.length < 5) {
                     const parts = data.address.split(',');
                     if (parts.length > 0) {
                         finalAddress = `${parts[0]}, ${number},${parts.slice(1).join(',')}`;
@@ -408,12 +411,27 @@ const PropertyDetails = () => {
             }
         }
 
+        // Consistent public address formatting (Neighborhood, City, State - Country)
+        const details = data.addressDetails || {};
+        const neighborhood = details.neighborhood || '';
+        const city = details.city || '';
+        const state = details.state || '';
+        const country = details.country || '';
+
+        let public_parts = [neighborhood, city, state].filter(Boolean);
+        let public_addr = public_parts.join(', ');
+
+        if (country) public_addr += ` - ${country}`;
+
+        console.log("New Public Address:", public_addr);
+        console.log("New Private Address:", finalAddress);
+
         setEditData(prev => ({
             ...prev,
             address: {
                 ...prev.address,
                 private: finalAddress,
-                public: finalAddress // Update public too or logic to mask? Usually editing private.
+                public: public_addr
             },
             location: data.location
         }));
@@ -438,8 +456,10 @@ const PropertyDetails = () => {
                 const fullAddress = locationParts.join(', ');
 
                 // Construct masked address for Public
-                let public_addr = [region, cityPart].filter(Boolean).join(', ');
-                if (state) public_addr += ` - ${state}`;
+                let public_parts = [region, cityPart, state].filter(Boolean);
+                let public_addr = public_parts.join(', ');
+
+                if (country) public_addr += ` - ${country}`;
 
                 console.log(`Address resolved: ${fullAddress}`);
                 setEditData(prev => ({
@@ -766,58 +786,64 @@ const PropertyDetails = () => {
                     {/* Property Header */}
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div>
-                            <div className="flex items-center gap-2 mb-3">
-                                {isEditing ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        <select
-                                            name="property_type"
-                                            value={editData?.property_type || ''}
-                                            onChange={handleInputChange}
-                                            className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
-                                        >
-                                            {propertyTypes.map(type => (
-                                                <option key={type} value={type}>
-                                                    {t(`home.${type}s`).replace(/s$/, '')}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <select
-                                            name="listing_type"
-                                            value={editData?.listing_type || ''}
-                                            onChange={handleInputChange}
-                                            className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
-                                        >
-                                            {listingTypes.map(type => (
-                                                <option key={type} value={type}>
-                                                    {type === 'sale' ? t('common.for_sale') : t('common.for_rent')}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <select
-                                            name="status"
-                                            value={editData?.status || 'available'}
-                                            onChange={handleInputChange}
-                                            className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
-                                        >
-                                            {propertyStatuses.map(status => {
-                                                let label = t(`property_card.${status.id}`);
-                                                if (status.id === 'sold_rented') {
-                                                    label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
-                                                }
-                                                return (
-                                                    <option key={status.id} value={status.id}>
-                                                        {label}
+                            <div className="flex flex-col gap-2 mb-6">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {isEditing ? (
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <select
+                                                name="property_type"
+                                                value={editData?.property_type || ''}
+                                                onChange={handleInputChange}
+                                                className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
+                                            >
+                                                {propertyTypes.map(type => (
+                                                    <option key={type} value={type}>
+                                                        {t(`home.${type}s`).replace(/s$/, '')}
                                                     </option>
-                                                );
-                                            })}
-                                        </select>
-                                    </div>
-                                ) : (
-                                    <PropertyStatusBadges property={property} />
-                                )}
-                                <span className="text-slate-400 font-medium whitespace-nowrap">
-                                    • {property.created_at ? new Date(property.created_at).toLocaleDateString() : t('property_details.recently')}
-                                </span>
+                                                ))}
+                                            </select>
+                                            <select
+                                                name="listing_type"
+                                                value={editData?.listing_type || ''}
+                                                onChange={handleInputChange}
+                                                className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
+                                            >
+                                                {listingTypes.map(type => (
+                                                    <option key={type} value={type}>
+                                                        {type === 'sale' ? t('common.for_sale') :
+                                                            type === 'rent' ? t('common.for_rent') :
+                                                                type === 'both' ? t('common.for_both') :
+                                                                    type === 'vacation' ? t('common.for_vacation') : type}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                name="status"
+                                                value={editData?.status || 'available'}
+                                                onChange={handleInputChange}
+                                                className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
+                                            >
+                                                {propertyStatuses.map(status => {
+                                                    let label = t(`property_card.${status.id}`);
+                                                    if (status.id === 'sold_rented') {
+                                                        label = (property.listing_type === 'rent' || property.listing_type === 'vacation') ? t('property_card.rented') : t('property_card.sold');
+                                                    }
+                                                    return (
+                                                        <option key={status.id} value={status.id}>
+                                                            {label}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <PropertyStatusBadges property={property} />
+                                    )}
+                                </div>
+                                <div className="text-slate-500 font-bold text-sm flex items-center gap-2 mt-1">
+                                    <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
+                                    <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
+                                </div>
                             </div>
                             {isEditing ? (
                                 <div className="space-y-1">
@@ -865,33 +891,112 @@ const PropertyDetails = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">{t('property_details.asking_price')}</p>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">
+                                {property.listing_type === 'both' ? t('property_details.prices') : t('property_details.asking_price')}
+                            </p>
                             <div className="text-4xl font-black text-primary-600">
                                 {isEditing ? (
-                                    <div className="flex flex-col items-end">
+                                    <div className="flex flex-col items-end gap-3">
                                         <div className="flex items-center gap-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase">{t('common.currency')}</label>
                                             <select
                                                 name="currency"
                                                 value={editData.currency || 'BRL'}
                                                 onChange={handleInputChange}
-                                                className="text-2xl font-black text-primary-600 bg-transparent border-b-2 border-primary-500 outline-none p-1 cursor-pointer"
+                                                className="text-xl font-bold text-primary-600 bg-transparent border-b-2 border-primary-500 outline-none p-1 cursor-pointer"
                                             >
                                                 {Object.entries(t('common.currencies') || {}).map(([code, label]) => (
                                                     <option key={code} value={code} className="text-slate-800 text-sm font-bold">{code}</option>
                                                 ))}
                                             </select>
-                                            <input
-                                                type="number"
-                                                name="price"
-                                                value={editData.price}
-                                                onChange={handleInputChange}
-                                                className={`text-4xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.price ? 'border-red-500' : 'border-primary-500'}`}
-                                            />
                                         </div>
-                                        {errors.price && <p className="text-red-500 text-xs font-bold mt-1">{errors.price}</p>}
+
+                                        {(editData.listing_type === 'sale' || editData.listing_type === 'both' || editData.listing_type === 'sale_rent') && (
+                                            <div className="flex flex-col items-end">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 uppercase">{t('common.sale')}</span>
+                                                    <input
+                                                        type="number"
+                                                        name="sale_price"
+                                                        value={(editData.sale_price !== undefined && editData.sale_price !== null) ? editData.sale_price : (editData.price || '')}
+                                                        onChange={handleInputChange}
+                                                        className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.sale_price ? 'border-red-500' : 'border-primary-500'}`}
+                                                    />
+                                                </div>
+                                                {errors.sale_price && <p className="text-red-500 text-xs font-bold mt-1">{errors.sale_price}</p>}
+                                            </div>
+                                        )}
+
+                                        {(editData.listing_type === 'rent' || editData.listing_type === 'both' || editData.listing_type === 'sale_rent') && (
+                                            <div className="flex flex-col items-end">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
+                                                    <input
+                                                        type="number"
+                                                        name="rent_price"
+                                                        value={(editData.rent_price !== undefined && editData.rent_price !== null) ? editData.rent_price : (editData.price || '')}
+                                                        onChange={handleInputChange}
+                                                        className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.rent_price ? 'border-red-500' : 'border-primary-500'}`}
+                                                    />
+                                                </div>
+                                                {errors.rent_price && <p className="text-red-500 text-xs font-bold mt-1">{errors.rent_price}</p>}
+                                            </div>
+                                        )}
+
+                                        {editData.listing_type === 'vacation' && (
+                                            <div className="flex flex-col items-end">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 uppercase">{t('common.for_vacation')}</span>
+                                                    <input
+                                                        type="number"
+                                                        name="vacation_price"
+                                                        value={(editData.vacation_price !== undefined && editData.vacation_price !== null) ? editData.vacation_price : (editData.price || '')}
+                                                        onChange={handleInputChange}
+                                                        className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.vacation_price ? 'border-red-500' : 'border-primary-500'}`}
+                                                    />
+                                                </div>
+                                                {errors.vacation_price && <p className="text-red-500 text-xs font-bold mt-1">{errors.vacation_price}</p>}
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
-                                    formatCurrency(property.price, property.currency)
+                                    <div className="flex flex-col items-end gap-1">
+                                        {(() => {
+                                            const isBoth = property.listing_type === 'both' || property.listing_type === 'sale_rent';
+                                            const isVacation = property.listing_type === 'vacation';
+
+                                            if (isBoth) {
+                                                return (
+                                                    <>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.sale')}</span>
+                                                            <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
+                                                            <span>{formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                                        </div>
+                                                    </>
+                                                );
+                                            } else if (isVacation) {
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-slate-400 uppercase">{t('common.for_vacation')}</span>
+                                                        <span>{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
+                                                    </div>
+                                                );
+                                            } else if (property.listing_type === 'rent') {
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
+                                                        <span>{formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>;
+                                        })()}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -905,7 +1010,7 @@ const PropertyDetails = () => {
                             { label: t('common.rooms'), name: 'characteristics.rooms', icon: Layout },
                             { label: t('common.bathrooms'), name: 'characteristics.bathrooms', icon: BathIcon },
                             { label: t('common.garages'), name: 'characteristics.garages', icon: Car },
-                            { label: t('common.area'), name: 'characteristics.area', icon: Square },
+                            { label: t('common.area'), name: 'characteristics.area', icon: SquareDashed },
                             { label: t('common.total'), name: 'characteristics.total_area', icon: Square }
                         ].map((field) => {
                             const Icon = field.icon;
