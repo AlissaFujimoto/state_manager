@@ -6,7 +6,7 @@ import {
     MapPin, Share2, Heart, Calendar, ArrowLeft,
     CheckCircle2, Info, Building2, Layout, Car, DoorOpen, Bath as BathIcon,
     Edit, Save, Undo2, Loader, Trash2, Plus, X, Image as ImageIcon, Search,
-    Check, GripVertical
+    Check, GripVertical, Languages
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -121,7 +121,7 @@ const maskAddress = (address, defaultText = 'Location not specified') => {
 };
 
 const PropertyDetails = () => {
-    const { t, formatCurrency } = useLanguage();
+    const { t, formatCurrency, currentLanguage } = useLanguage();
     const { id } = useParams();
     const location = useLocation();
     const [property, setProperty] = useState(null);
@@ -148,6 +148,70 @@ const PropertyDetails = () => {
     const [availableAmenities, setAvailableAmenities] = useState([]);
     const [amenityInput, setAmenityInput] = useState('');
     const [showAmenitySuggestions, setShowAmenitySuggestions] = useState(false);
+
+    const [translations, setTranslations] = useState({
+        title: { text: null, active: false, loading: false },
+        description: { text: null, active: false, loading: false }
+    });
+
+    const handleTranslate = async (field) => {
+        const current = translations[field];
+        if (current.active) {
+            setTranslations(prev => ({
+                ...prev,
+                [field]: { ...prev[field], active: false }
+            }));
+            return;
+        }
+
+        if (current.text) {
+            setTranslations(prev => ({
+                ...prev,
+                [field]: { ...prev[field], active: true }
+            }));
+            return;
+        }
+
+        setTranslations(prev => ({
+            ...prev,
+            [field]: { ...prev[field], loading: true }
+        }));
+
+        try {
+            const targetLang = currentLanguage.split('-')[0];
+            const textToTranslate = property[field];
+
+            if (!textToTranslate) {
+                setTranslations(prev => ({
+                    ...prev,
+                    [field]: { ...prev[field], loading: false }
+                }));
+                return;
+            }
+
+            const res = await api.post('/translate', {
+                text: textToTranslate,
+                target_lang: targetLang
+            });
+            const translatedText = res.data.translatedText;
+
+            setTranslations(prev => ({
+                ...prev,
+                [field]: {
+                    text: translatedText,
+                    active: true,
+                    loading: false
+                }
+            }));
+        } catch (err) {
+            console.error(`Translation failed for ${field}:`, err);
+            setTranslations(prev => ({
+                ...prev,
+                [field]: { ...prev[field], loading: false }
+            }));
+            alert('Translation service unavailable at the moment.');
+        }
+    };
 
     const openLightbox = (imgs, index) => {
         setLightboxImages(imgs);
@@ -754,7 +818,30 @@ const PropertyDetails = () => {
                                     {errors.title && <p className="text-red-500 text-xs font-bold">{errors.title}</p>}
                                 </div>
                             ) : (
-                                <h1 className="text-4xl font-extrabold text-slate-900">{property.title}</h1>
+                                <div className="flex items-start gap-3 justify-between">
+                                    <h1 className="text-4xl font-extrabold text-slate-900">
+                                        {translations.title.active ? translations.title.text : property.title}
+                                    </h1>
+                                    {!isEditing && (
+                                        <button
+                                            onClick={() => handleTranslate('title')}
+                                            disabled={translations.title.loading}
+                                            className={`
+                                                flex-shrink-0 p-2 rounded-xl transition-all
+                                                ${translations.title.active
+                                                    ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}
+                                            `}
+                                            title={translations.title.active ? t('common.show_original') : t('common.translate')}
+                                        >
+                                            {translations.title.loading ? (
+                                                <Loader className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <Languages className="w-5 h-5" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             )}
                             <div className="flex items-center text-slate-500 mt-3">
                                 <MapPin className="w-5 h-5 mr-2 text-primary-500" />
@@ -828,7 +915,28 @@ const PropertyDetails = () => {
 
                     {/* Description */}
                     <div>
-                        <h3 className="text-2xl font-bold text-slate-800 mb-4">{t('property_details.about_property')}</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-2xl font-bold text-slate-800">{t('property_details.about_property')}</h3>
+                            {!isEditing && (
+                                <button
+                                    onClick={() => handleTranslate('description')}
+                                    disabled={translations.description.loading}
+                                    className={`
+                                        flex-shrink-0 p-2 rounded-xl transition-all
+                                        ${translations.description.active
+                                            ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}
+                                    `}
+                                    title={translations.description.active ? t('common.show_original') : t('common.translate')}
+                                >
+                                    {translations.description.loading ? (
+                                        <Loader className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Languages className="w-5 h-5" />
+                                    )}
+                                </button>
+                            )}
+                        </div>
                         {isEditing ? (
                             <textarea
                                 name="description"
@@ -839,9 +947,17 @@ const PropertyDetails = () => {
                                 placeholder={t('property_details.describe_property_placeholder')}
                             />
                         ) : (
-                            <p className="text-slate-600 leading-relaxed text-lg">
-                                {property.description}
-                            </p>
+                            <div className="relative">
+                                <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-line">
+                                    {translations.description.active ? translations.description.text : property.description}
+                                </p>
+                                {translations.description.active && (
+                                    <p className="text-xs text-slate-400 mt-2 italic flex items-center gap-1">
+                                        <Languages className="w-3 h-3" />
+                                        {t('common.translated_automatically')}
+                                    </p>
+                                )}
+                            </div>
                         )}
                     </div>
 

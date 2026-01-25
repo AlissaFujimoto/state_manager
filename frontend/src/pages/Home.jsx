@@ -406,14 +406,7 @@ const Home = () => {
                 console.error('Failed to fetch amenities:', err);
             }
         };
-        const fetchRegions = async () => {
-            try {
-                const res = await api.get('/region');
-                setRegions(res.data);
-            } catch (err) {
-                console.error('Failed to fetch regions:', err);
-            }
-        };
+
 
         const fetchIBGEStates = async () => {
             try {
@@ -429,7 +422,7 @@ const Home = () => {
         fetchListingTypes();
         fetchStatuses();
         fetchAmenities();
-        fetchRegions();
+
         fetchIBGEStates();
     }, []);
 

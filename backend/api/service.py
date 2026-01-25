@@ -140,27 +140,43 @@ def get_region() -> Tuple[flask.Response, int]:
         header_lang = request.headers.get("Accept-Language", "en-us")
         lang = "pt-br" if "pt" in header_lang.lower() else "en-us"
     
-    # Normalize language keys
-    lang = "pt-br" if "pt" in lang else "en-us"
-    
+    # Dynamic language resolution
     try:
-        lang_file = basedir / "api" / "data" / "languages" / f"{lang}.json"
-        if not lang_file.exists():
-            lang_file = basedir / "api" / "data" / "languages" / "en-us.json"
-            
+        lang_dir = basedir / "api" / "data" / "languages"
+        # Get all json files keys (e.g. 'en-us', 'pt-br')
+        available_langs = sorted([f.stem.lower() for f in lang_dir.glob("*.json")])
+        
+        target_lang = "en-us" # Default
+        
+        # 1. Exact match
+        if lang in available_langs:
+            target_lang = lang
+        else:
+            # 2. Prefix match (e.g. 'pt' -> 'pt-br')
+            # specific preference for 'pt-br' over 'pt-pt' if just 'pt' is given? 
+            # or just take the first one. Alphabetical: pt-br comes before pt-pt.
+            matches = [l for l in available_langs if l.startswith(f"{lang}-")]
+            if matches:
+                target_lang = matches[0]
+                
+        lang_file = lang_dir / f"{target_lang}.json"
+        
         with open(lang_file, "r", encoding="utf-8") as f:
             lang_pack = json.load(f)
             
         return jsonify({
             "regions": ["Brazil"],
-            "language": lang,
+            "language": target_lang,
+            "availableLanguages": available_langs,
             "languagePack": lang_pack
         }), 200
     except Exception as e:
         print(f"[ERROR_SERVICE] Failed to load language pack {lang}: {e}")
+        # Fallback mechanism
         return jsonify({
             "regions": ["Brazil"],
             "language": "en-us",
+            "availableLanguages": ["en-us"],
             "languagePack": {}
         }), 200
 
@@ -435,3 +451,41 @@ def get_user_profile() -> Tuple[flask.Response, int]:
         "picture": user.get("picture")
     }
     return jsonify(profile), 200
+
+@app.route("/api/translate", methods=["POST"])
+def translate_text() -> Tuple[flask.Response, int]:
+    """Proxy translation request to Google Translate to bypass CORS."""
+    # Optional: Require auth? The user said "frontend api", maybe public is fine for now but safer with auth or limit.
+    # The frontend is mostly public for property details.
+    
+    data = request.json
+    if not data or "text" not in data or "target_lang" not in data:
+        return jsonify({"error": "Missing text or target_lang"}), 400
+
+    text = data["text"]
+    target_lang = data["target_lang"]
+    
+    try:
+        import requests
+        # Use the same endpoint the user liked
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {
+            "client": "gtx",
+            "sl": "auto",
+            "tl": target_lang,
+            "dt": "t",
+            "q": text
+        }
+        
+        resp = requests.get(url, params=params)
+        if resp.status_code != 200:
+             return jsonify({"error": "Translation service error"}), 502
+             
+        # Response format: [[["translated", "original", ...], ...], ...]
+        json_data = resp.json()
+        translated_text = "".join([s[0] for s in json_data[0]])
+        
+        return jsonify({"translatedText": translated_text}), 200
+    except Exception as e:
+        print(f"Translation proxy failed: {e}")
+        return jsonify({"error": str(e)}), 500

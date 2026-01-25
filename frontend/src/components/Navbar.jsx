@@ -4,7 +4,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User, Globe, ChevronDown, ArrowLeft } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import CompressedImage from './CompressedImage';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -12,6 +12,7 @@ const Navbar = () => {
     const [user] = useAuthState(auth);
     const [isOpen, setIsOpen] = useState(false);
     const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+    const langMenuRef = useRef(null);
     const { t, changeLanguage, currentLanguage } = useLanguage();
     const location = useLocation();
     const isAuthPage = location.pathname === '/auth';
@@ -32,6 +33,21 @@ const Navbar = () => {
         { code: 'pt-pt', label: 'Português (EU)', short: 'PT' },
         { code: 'es-es', label: 'Español (EU)', short: 'ES' },
     ];
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
+                setIsLangMenuOpen(false);
+            }
+        };
+
+        if (isLangMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isLangMenuOpen]);
 
     return (
         <>
@@ -62,42 +78,44 @@ const Navbar = () => {
                         {/* Unified Menu Button and Language Switcher */}
                         <div className="flex items-center space-x-2 md:space-x-4">
                             {/* Language Dropdown */}
-                            <div className="relative">
+                            <div className="relative" ref={langMenuRef}>
                                 <button
                                     onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-                                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-colors"
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${isLangMenuOpen ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                 >
-                                    <Globe className="w-4 h-4 text-slate-600" />
-                                    <span className="text-sm font-bold text-slate-700">{languages.find(l => l.code === currentLanguage)?.short || 'EN'}</span>
-                                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                                    <Globe className="w-4 h-4" />
+                                    <span className="text-sm font-bold">{languages.find(l => l.code === currentLanguage)?.short || 'EN'}</span>
+                                    <ChevronDown className={`w-3 h-3 transition-transform ${isLangMenuOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 <AnimatePresence>
                                     {isLangMenuOpen && (
-                                        <>
-                                            <div className="fixed inset-0 z-40" onClick={() => setIsLangMenuOpen(false)}></div>
-                                            <Motion.div
-                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                transition={{ duration: 0.1 }}
-                                                className="absolute top-full right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden py-1 z-50 origin-top-right"
-                                            >
-                                                {languages.map(lang => (
-                                                    <button
-                                                        key={lang.code}
-                                                        onClick={() => {
-                                                            changeLanguage(lang.code);
-                                                            setIsLangMenuOpen(false);
-                                                        }}
-                                                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors flex items-center justify-between ${currentLanguage === lang.code ? 'text-primary-600 bg-primary-50' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`}
-                                                    >
-                                                        <span>{lang.label}</span>
-                                                        {currentLanguage === lang.code && <div className="w-1.5 h-1.5 rounded-full bg-primary-600"></div>}
-                                                    </button>
-                                                ))}
-                                            </Motion.div>
-                                        </>
+                                        <Motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            transition={{ duration: 0.1 }}
+                                            className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden py-1 z-50 origin-top-right ring-1 ring-black/5"
+                                        >
+                                            {languages.map(lang => (
+                                                <button
+                                                    key={lang.code}
+                                                    onClick={() => {
+                                                        changeLanguage(lang.code);
+                                                        setIsLangMenuOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center justify-between group ${currentLanguage === lang.code ? 'text-primary-600 bg-primary-50' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`}
+                                                >
+                                                    <span className="relative z-10">{lang.label}</span>
+                                                    {currentLanguage === lang.code && (
+                                                        <Motion.div
+                                                            layoutId="activeLang"
+                                                            className="w-1.5 h-1.5 rounded-full bg-primary-600"
+                                                        />
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </Motion.div>
                                     )}
                                 </AnimatePresence>
                             </div>
