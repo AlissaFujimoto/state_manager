@@ -80,7 +80,8 @@ def verify_token() -> Any:
 @app.before_request
 def before_request_hook() -> Any:
     """Apply security validation before each request."""
-    return security.validation()
+    security.validation()
+    return None
 
 @app.route("/api/types", methods=["GET"])
 def get_property_types() -> Tuple[flask.Response, int]:

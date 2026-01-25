@@ -1,4 +1,6 @@
+flask==3.0.0
 gunicorn==23.0.0
 flask-cors==4.0.0
 python-dotenv==1.0.1
+firebase-admin==7.1.0
 git+ssh://git@github.com/AlissaFujimoto/server_utils.git
