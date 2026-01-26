@@ -185,8 +185,8 @@
         "media_assets_subtitle": "Upload photos and floor plans to attract interest.",
         "listing_published": "Listing Published!",
         "listing_updated": "Listing Updated!",
-        "success_msg_published": "Your property has been successfully announced to the Vita ecosystem.",
-        "success_msg_updated": "Your property has been successfully updated to the Vita ecosystem.",
+        "success_msg_published": "Your property has been successfully announced to the VitEstate ecosystem.",
+        "success_msg_updated": "Your property has been successfully updated to the VitEstate ecosystem.",
         "go_to_my_listings": "Go to My Listings",
         "view_homepage": "View Homepage",
         "correct_errors": "Please correct the following:",
@@ -271,7 +271,7 @@
     "privacy": {
         "title": "Privacy Policy",
         "last_updated": "Last updated: January 2026",
-        "intro": "At Vita, we take your privacy seriously. This policy describes how we collect, use, and handle your personal information when you use our services.",
+        "intro": "At VitEstate, we take your privacy seriously. This policy describes how we collect, use, and handle your personal information when you use our services.",
         "section1_title": "1. Information We Collect",
         "section1_text": "We collect information you provide directly to us, such as when you create an account, list a property, or contact us. This may include your name, email, phone number, and property details.",
         "section2_title": "2. How We Use Information",
@@ -282,7 +282,7 @@
     "terms": {
         "title": "Terms of Service",
         "last_updated": "Last updated: January 2026",
-        "intro": "By using Vita, you agree to the following terms and conditions. Please read them carefully.",
+        "intro": "By using VitEstate, you agree to the following terms and conditions. Please read them carefully.",
         "section1_title": "1. User Responsibilities",
         "section1_text": "Users are responsible for the accuracy of the information they provide and the properties they list. You must have the right to list any property you post on our platform.",
         "section2_title": "2. Prohibited Activities",
@@ -293,7 +293,7 @@
     "cookies": {
         "title": "Cookies Policy",
         "last_updated": "Last updated: January 2026",
-        "intro": "Vita uses cookies and similar technologies to provide and protect our services and to understand how they are used.",
+        "intro": "VitEstate uses cookies and similar technologies to provide and protect our services and to understand how they are used.",
         "section1_title": "1. What are Cookies?",
         "section1_text": "Cookies are small text files that are stored on your device when you visit a website. They help us remember your preferences and improve your experience.",
         "section2_title": "2. Types of Cookies We Use",

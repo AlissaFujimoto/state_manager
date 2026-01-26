@@ -62,7 +62,7 @@ CORS(app, resources={r"/*": {"origins": origins_list}})
 @app.route("/")
 def home() -> Any:
     """Status endpoint for the backend service."""
-    return "Vita State Manager API is running", 200
+    return "Vit Estate Manager API is running", 200
 
 # Initialize Security
 security = Security()

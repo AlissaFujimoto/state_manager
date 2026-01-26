@@ -74,7 +74,7 @@ const Navbar = () => {
                                 <div className="bg-primary-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg shadow-primary-200">
                                     <Landmark className="text-white w-6 h-6" />
                                 </div>
-                                <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Vita<span className="text-primary-600 not-italic">State</span></span>
+                                <span className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Vit<span className="text-primary-600 not-italic">Estate</span></span>
                             </Link>
                         </div>
 

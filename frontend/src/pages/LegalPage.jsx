@@ -88,7 +88,7 @@ const LegalPage = ({ type }) => {
                     </button>
 
                     <p className="text-slate-400 font-medium italic">
-                        © 2026 Vita State Manager. {t('navbar.all_rights_reserved')}
+                        © 2026 VitEstate. {t('navbar.all_rights_reserved')}
                     </p>
                 </div>
             </Motion.div>

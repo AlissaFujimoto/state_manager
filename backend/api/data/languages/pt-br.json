@@ -185,8 +185,8 @@
         "media_assets_subtitle": "Envie fotos e plantas baixas para atrair interessados.",
         "listing_published": "Anúncio Publicado!",
         "listing_updated": "Anúncio Atualizado!",
-        "success_msg_published": "Seu imóvel foi anunciado com sucesso no ecossistema Vita.",
-        "success_msg_updated": "Seu imóvel foi atualizado com sucesso no ecossistema Vita.",
+        "success_msg_published": "Seu imóvel foi anunciado com sucesso no ecossistema VitEstate.",
+        "success_msg_updated": "Seu imóvel foi atualizado com sucesso no ecossistema VitEstate.",
         "go_to_my_listings": "Ir para Meus Anúncios",
         "view_homepage": "Ver Página Inicial",
         "correct_errors": "Por favor, corrija o seguinte:",
@@ -271,7 +271,7 @@
     "privacy": {
         "title": "Política de Privacidade",
         "last_updated": "Última atualização: Janeiro 2026",
-        "intro": "Na Vita, levamos a sua privacidade a sério. Esta política descreve como coletamos, usamos e lidamos com suas informações pessoais ao usar nossos serviços.",
+        "intro": "Na VitEstate, levamos a sua privacidade a sério. Esta política descreve como coletamos, usamos e lidamos com suas informações pessoais ao usar nossos serviços.",
         "section1_title": "1. Informações que Coletamos",
         "section1_text": "Coletamos informações que você nos fornece diretamente, como quando cria uma conta, anuncia um imóvel ou entra em contato conosco. Isso pode incluir seu nome, e-mail, número de telefone e detalhes do imóvel.",
         "section2_title": "2. Como Usamos as Informações",
@@ -282,7 +282,7 @@
     "terms": {
         "title": "Termos de Serviço",
         "last_updated": "Última atualização: Janeiro 2026",
-        "intro": "Ao usar a Vita, você concorda com os seguintes termos e condições. Por favor, leia-os com atenção.",
+        "intro": "Ao usar a VitEstate, você concorda com os seguintes termos e condições. Por favor, leia-os com atenção.",
         "section1_title": "1. Responsabilidades do Usuário",
         "section1_text": "Os usuários são responsáveis pela precisão das informações que fornecem e dos imóveis que anunciam. Você deve ter o direito de anunciar qualquer imóvel que postar em nossa plataforma.",
         "section2_title": "2. Atividades Proibidas",
@@ -293,7 +293,7 @@
     "cookies": {
         "title": "Política de Cookies",
         "last_updated": "Última atualização: Janeiro 2026",
-        "intro": "A Vita usa cookies e tecnologias semelhantes para fornecer e proteger nossos serviços e para entender como eles são usados.",
+        "intro": "A VitEstate usa cookies e tecnologias semelhantes para fornecer e proteger nossos serviços e para entender como eles são usados.",
         "section1_title": "1. O que são Cookies?",
         "section1_text": "Cookies são pequenos arquivos de texto armazenados em seu dispositivo quando você visita um site. Eles nos ajudam a lembrar suas preferências e melhorar sua experiência.",
         "section2_title": "2. Tipos de Cookies que Usamos",
