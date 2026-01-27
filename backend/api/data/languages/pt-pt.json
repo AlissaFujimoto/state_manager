@@ -77,7 +77,8 @@
         "price_negative": "O preço não pode ser negativo",
         "field_negative": "Não pode ser negativo",
         "property": "Imóvel",
-        "properties": "Imóveis"
+        "properties": "Imóveis",
+        "login_required": "Por favor, inicie sessão para realizar esta ação"
     },
     "home": {
         "hero_title": "Encontre o Seu",

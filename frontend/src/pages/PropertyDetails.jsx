@@ -245,6 +245,10 @@ const PropertyDetails = () => {
 
     const toggleFavorite = (e) => {
         e.stopPropagation();
+        if (!user) {
+            alert(t('common.login_required') || 'Please login to favorite properties');
+            return;
+        }
         if (isFav) {
             removeFavorite(property.id);
             setFavCount(c => Math.max(0, c - 1));

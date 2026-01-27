@@ -77,7 +77,8 @@
         "price_negative": "El precio no puede ser negativo",
         "field_negative": "No puede ser negativo",
         "property": "Propiedad",
-        "properties": "Propiedades"
+        "properties": "Propiedades",
+        "login_required": "Por favor, inicie sesión para realizar esta acción"
     },
     "home": {
         "hero_title": "Encuentra Tu",

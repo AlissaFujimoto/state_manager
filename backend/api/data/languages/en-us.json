@@ -77,7 +77,8 @@
         "price_negative": "Price cannot be negative",
         "field_negative": "Cannot be negative",
         "property": "Property",
-        "properties": "Properties"
+        "properties": "Properties",
+        "login_required": "Please login to perform this action"
     },
     "home": {
         "hero_title": "Find Your",
