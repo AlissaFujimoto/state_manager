@@ -400,7 +400,7 @@ def upload_profile_image() -> Tuple[flask.Response, int]:
 
 @app.route("/api/user/profile-photo", methods=["POST"])
 def upload_profile_photo() -> Tuple[flask.Response, int]:
-    """Store compressed profile photo in Firestore."""
+    """Store compressed profile photo in Firestore (users collection)."""
     user = verify_token()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
@@ -410,13 +410,15 @@ def upload_profile_photo() -> Tuple[flask.Response, int]:
         return jsonify({"error": "Missing photo data"}), 400
     
     try:
-        # Store compressed photo data in Firestore
+        # Store compressed photo data in users/{uid} document
         db = Database()
-        photo_ref = db.collection("user_photos").document(user["uid"])
-        photo_ref.set({
+        user_ref = db.collection("users").document(user["uid"])
+        
+        # Use set with merge=True to update or create
+        user_ref.set({
             "photoData": data["photoData"],
             "updated_at": firestore.SERVER_TIMESTAMP
-        })
+        }, merge=True)
         
         # Return a reference string
         photo_reference = f"profile:{user['uid']}"
@@ -427,19 +429,128 @@ def upload_profile_photo() -> Tuple[flask.Response, int]:
 
 @app.route("/api/user/profile-photo/<uid>", methods=["GET"])
 def get_profile_photo(uid: str) -> Tuple[flask.Response, int]:
-    """Retrieve compressed profile photo from Firestore."""
+    """Retrieve compressed profile photo from Firestore (users collection)."""
     try:
         db = Database()
-        photo_ref = db.collection("user_photos").document(uid)
-        photo_doc = photo_ref.get()
+        user_ref = db.collection("users").document(uid)
+        user_doc = user_ref.get()
         
-        if not photo_doc.exists:
-            return jsonify({"error": "Photo not found"}), 404
+        if not user_doc.exists:
+            # Fallback to check old collection during migration phase? 
+            # Or just return 404. Let's return 404 for now, or check old 'user_photos' if critical.
+            # Checking old collection for backward compatibility if needed, but for now assuming clean switch.
+            return jsonify({"error": "User/Photo not found"}), 404
         
-        photo_data = photo_doc.to_dict()
-        return jsonify({"photoData": photo_data.get("photoData")}), 200
+        user_data = user_doc.to_dict()
+        photo_data = user_data.get("photoData")
+        
+        if not photo_data:
+             return jsonify({"error": "Photo not found"}), 404
+
+        return jsonify({"photoData": photo_data}), 200
     except Exception as e:
         print(f"Failed to retrieve profile photo: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/user/favorites", methods=["GET"])
+def get_user_favorites() -> Tuple[flask.Response, int]:
+    """Get list of favorite property IDs for the logged-in user."""
+    user = verify_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        db = Database()
+        user_ref = db.collection("users").document(user["uid"])
+        doc = user_ref.get()
+        
+        favorites = []
+        if doc.exists:
+            data = doc.to_dict()
+            favorites = data.get("favorites", [])
+            
+        return jsonify(favorites), 200
+    except Exception as e:
+        print(f"Failed to get favorites: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/user/favorites/<property_id>", methods=["POST"])
+def add_user_favorite(property_id: str) -> Tuple[flask.Response, int]:
+    """Add a property to user favorites."""
+    user = verify_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    try:
+        # Use native client for batch operations
+        db = firestore.client()
+        user_ref = db.collection("users").document(user["uid"])
+        
+        # Check if already exists to prevent double counting
+        doc = user_ref.get()
+        if doc.exists:
+            data = doc.to_dict()
+            if property_id in data.get("favorites", []):
+                return jsonify({"status": "already_added", "property_id": property_id}), 200
+
+        # Atomically add to array and increment counter
+        batch = db.batch()
+        
+        # Use FieldValue for operations
+        batch.set(user_ref, {
+            "favorites": firestore.firestore.ArrayUnion([property_id]),
+            "updated_at": firestore.firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        # Increment property counter
+        prop_ref = db.collection("announcements").document(property_id)
+        batch.update(prop_ref, {"favorite_count": firestore.firestore.Increment(1)})
+        
+        batch.commit()
+        
+        return jsonify({"status": "added", "property_id": property_id}), 200
+    except Exception as e:
+        print(f"Failed to add favorite: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/user/favorites/<property_id>", methods=["DELETE"])
+def remove_user_favorite(property_id: str) -> Tuple[flask.Response, int]:
+    """Remove a property from user favorites."""
+    user = verify_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    try:
+        # Use native client for batch operations
+        db = firestore.client()
+        user_ref = db.collection("users").document(user["uid"])
+        
+        # Check if exists to prevent double decrement
+        doc = user_ref.get()
+        if doc.exists:
+            data = doc.to_dict()
+            if property_id not in data.get("favorites", []):
+                return jsonify({"status": "already_removed", "property_id": property_id}), 200
+        else:
+            return jsonify({"status": "already_removed", "property_id": property_id}), 200
+
+        # Atomically remove from array and decrement counter
+        batch = db.batch()
+        
+        batch.update(user_ref, {
+            "favorites": firestore.firestore.ArrayRemove([property_id]),
+            "updated_at": firestore.firestore.SERVER_TIMESTAMP
+        })
+        
+        # Decrement property counter
+        prop_ref = db.collection("announcements").document(property_id)
+        batch.update(prop_ref, {"favorite_count": firestore.firestore.Increment(-1)})
+        
+        batch.commit()
+        
+        return jsonify({"status": "removed", "property_id": property_id}), 200
+    except Exception as e:
+        print(f"Failed to remove favorite: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/user/profile", methods=["GET"])

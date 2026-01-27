@@ -75,7 +75,9 @@
         "description_required": "A descrição é obrigatória",
         "price_required": "O preço é obrigatório",
         "price_negative": "O preço não pode ser negativo",
-        "field_negative": "Não pode ser negativo"
+        "field_negative": "Não pode ser negativo",
+        "property": "Imóvel",
+        "properties": "Imóveis"
     },
     "home": {
         "hero_title": "Encontre o Seu",
@@ -108,6 +110,7 @@
         "privacy_policy": "Política de Privacidade",
         "terms_of_service": "Termos de Serviço",
         "cookies": "Cookies",
+        "favorites": "Favoritos",
         "all_rights_reserved": "Todos os direitos reservados."
     },
     "property_details": {
@@ -118,6 +121,7 @@
         "building_layout": "Planta do Edifício",
         "upload_floor_plan": "Carregar Planta",
         "listed_by": "Anunciado por",
+        "listed_on": "Anunciado em",
         "manage_listing": "Gerir Anúncio",
         "interested": "Interessado?",
         "save_changes": "Guardar Alterações",
@@ -165,6 +169,11 @@
         "delete_confirm_text": "Tem a certeza que deseja eliminar este anúncio? Esta ação não pode ser desfeita.",
         "confirm_delete": "Confirmar Eliminação",
         "cancel": "Cancelar"
+    },
+    "favorites": {
+        "title": "Os Meus Favoritos",
+        "empty_title": "Ainda sem favoritos",
+        "empty_description": "Comece a navegar pelos imóveis e clique no ícone de coração para guardá-los aqui."
     },
     "property_form": {
         "basic_info_title": "Informação Básica",

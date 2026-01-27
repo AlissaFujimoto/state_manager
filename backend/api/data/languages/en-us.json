@@ -75,7 +75,9 @@
         "description_required": "Description is required",
         "price_required": "Price is required",
         "price_negative": "Price cannot be negative",
-        "field_negative": "Cannot be negative"
+        "field_negative": "Cannot be negative",
+        "property": "Property",
+        "properties": "Properties"
     },
     "home": {
         "hero_title": "Find Your",
@@ -108,6 +110,7 @@
         "privacy_policy": "Privacy Policy",
         "terms_of_service": "Terms of Service",
         "cookies": "Cookies",
+        "favorites": "Favorites",
         "all_rights_reserved": "All rights reserved."
     },
     "property_details": {
@@ -118,6 +121,7 @@
         "building_layout": "Building Layout",
         "upload_floor_plan": "Upload Floor Plan",
         "listed_by": "Listed by",
+        "listed_on": "Listed on",
         "manage_listing": "Manage Listing",
         "interested": "Interested?",
         "save_changes": "Save Changes",
@@ -165,6 +169,11 @@
         "delete_confirm_text": "Are you sure you want to delete this listing? This action cannot be undone and the property will be removed from the ecosystem.",
         "confirm_delete": "Confirm Delete",
         "cancel": "Cancel"
+    },
+    "favorites": {
+        "title": "My Favorites",
+        "empty_title": "No favorites yet",
+        "empty_description": "Start browsing properties and click the heart icon to save them here for later."
     },
     "property_form": {
         "basic_info_title": "Basic Information",

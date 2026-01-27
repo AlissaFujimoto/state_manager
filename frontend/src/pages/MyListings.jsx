@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import Profile from '../components/Profile';
-import { PropertyCard } from './Home';
+import PropertyCard from '../components/PropertyCard';
 import {
     Plus, LayoutGrid, List as ListIcon, Loader, Trash2, AlertCircle,
     ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight

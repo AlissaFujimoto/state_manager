@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
-import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User, Globe, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Home, LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, User, Globe, ChevronDown, ArrowLeft, Heart } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import CompressedImage from './CompressedImage';
@@ -181,6 +181,10 @@ const Navbar = () => {
                                         <LayoutDashboard className="w-6 h-6" />
                                         <span>{t('navbar.my_listings')}</span>
                                     </Link>
+                                    <Link to="/favorites" className="mobile-nav-link" onClick={() => setIsOpen(false)}>
+                                        <Heart className="w-6 h-6" />
+                                        <span>{t('navbar.favorites') || 'Favorites'}</span>
+                                    </Link>
                                     <Link to="/create-announcement" className="mobile-nav-link primary" onClick={() => setIsOpen(false)}>
                                         <PlusCircle className="w-6 h-6" />
                                         <span>{t('navbar.list_property')}</span>
@@ -271,6 +275,15 @@ const Navbar = () => {
                                         >
                                             <LayoutDashboard className="w-5 h-5" />
                                             <span>{t('navbar.my_listings')}</span>
+                                        </Link>
+
+                                        <Link
+                                            to="/favorites"
+                                            className="drawer-nav-link"
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            <Heart className="w-5 h-5" />
+                                            <span>{t('navbar.favorites') || 'Favorites'}</span>
                                         </Link>
 
                                         <Link

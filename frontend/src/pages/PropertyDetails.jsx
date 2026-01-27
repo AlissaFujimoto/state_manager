@@ -19,6 +19,7 @@ import CompressedImage from '../components/CompressedImage';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ImageLightbox from '../components/ImageLightbox';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useFavorites } from '../contexts/FavoritesContext';
 import ReactGA from 'react-ga4';
 
 // Fix for default marker icon in leaflet
@@ -123,9 +124,11 @@ const maskAddress = (address, defaultText = 'Location not specified') => {
 
 const PropertyDetails = () => {
     const { t, formatCurrency, currentLanguage } = useLanguage();
+    const { isFavorite, addFavorite, removeFavorite } = useFavorites();
     const { id } = useParams();
     const location = useLocation();
     const [property, setProperty] = useState(null);
+    const [favCount, setFavCount] = useState(0);
 
     useEffect(() => {
         if (property && import.meta.env.MEASUREMENT_ID) {
@@ -134,6 +137,7 @@ const PropertyDetails = () => {
                 page: window.location.pathname,
                 title: property.title || "Property Details"
             });
+            setFavCount(property.favorite_count || 0);
         }
     }, [property]);
 
@@ -237,6 +241,18 @@ const PropertyDetails = () => {
     };
 
     const isOwner = user && property && user.uid === property.owner_id;
+    const isFav = property ? isFavorite(property.id) : false;
+
+    const toggleFavorite = (e) => {
+        e.stopPropagation();
+        if (isFav) {
+            removeFavorite(property.id);
+            setFavCount(c => Math.max(0, c - 1));
+        } else {
+            addFavorite(property.id);
+            setFavCount(c => c + 1);
+        }
+    };
 
     const navigate = useNavigate();
     const handleInputChange = (e) => {
@@ -750,6 +766,7 @@ const PropertyDetails = () => {
                                         );
                                     })()}
 
+
                                     {safesImages?.length > 1 && (
                                         <>
                                             <button
@@ -784,67 +801,85 @@ const PropertyDetails = () => {
                     )}
 
                     {/* Property Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div>
-                            <div className="flex flex-col gap-2 mb-6">
-                                <div className="flex flex-wrap items-center gap-3">
-                                    {isEditing ? (
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <select
-                                                name="property_type"
-                                                value={editData?.property_type || ''}
-                                                onChange={handleInputChange}
-                                                className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
-                                            >
-                                                {propertyTypes.map(type => (
-                                                    <option key={type} value={type}>
-                                                        {t(`home.${type}s`).replace(/s$/, '')}
+                    <div className="flex items-start justify-between mt-8 mb-6">
+                        <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                                {isEditing ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <select
+                                            name="property_type"
+                                            value={editData?.property_type || ''}
+                                            onChange={handleInputChange}
+                                            className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
+                                        >
+                                            {propertyTypes.map(type => (
+                                                <option key={type} value={type}>
+                                                    {t(`home.${type}s`).replace(/s$/, '')}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            name="listing_type"
+                                            value={editData?.listing_type || ''}
+                                            onChange={handleInputChange}
+                                            className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
+                                        >
+                                            {listingTypes.map(type => (
+                                                <option key={type} value={type}>
+                                                    {type === 'sale' ? t('common.for_sale') :
+                                                        type === 'rent' ? t('common.for_rent') :
+                                                            type === 'both' ? t('common.for_both') :
+                                                                type === 'vacation' ? t('common.for_vacation') : type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            name="status"
+                                            value={editData?.status || 'available'}
+                                            onChange={handleInputChange}
+                                            className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
+                                        >
+                                            {propertyStatuses.map(status => {
+                                                let label = t(`property_card.${status.id}`);
+                                                if (status.id === 'sold_rented') {
+                                                    label = (property.listing_type === 'rent' || property.listing_type === 'vacation') ? t('property_card.rented') : t('property_card.sold');
+                                                }
+                                                return (
+                                                    <option key={status.id} value={status.id}>
+                                                        {label}
                                                     </option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                name="listing_type"
-                                                value={editData?.listing_type || ''}
-                                                onChange={handleInputChange}
-                                                className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
-                                            >
-                                                {listingTypes.map(type => (
-                                                    <option key={type} value={type}>
-                                                        {type === 'sale' ? t('common.for_sale') :
-                                                            type === 'rent' ? t('common.for_rent') :
-                                                                type === 'both' ? t('common.for_both') :
-                                                                    type === 'vacation' ? t('common.for_vacation') : type}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                name="status"
-                                                value={editData?.status || 'available'}
-                                                onChange={handleInputChange}
-                                                className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
-                                            >
-                                                {propertyStatuses.map(status => {
-                                                    let label = t(`property_card.${status.id}`);
-                                                    if (status.id === 'sold_rented') {
-                                                        label = (property.listing_type === 'rent' || property.listing_type === 'vacation') ? t('property_card.rented') : t('property_card.sold');
-                                                    }
-                                                    return (
-                                                        <option key={status.id} value={status.id}>
-                                                            {label}
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                        </div>
-                                    ) : (
-                                        <PropertyStatusBadges property={property} />
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <PropertyStatusBadges property={property} />
+                                )}
+                                <div className="relative">
+                                    <button
+                                        onClick={toggleFavorite}
+                                        className="p-3 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-all group/fav"
+                                        title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                                    >
+                                        <Heart className={`w-6 h-6 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                                    </button>
+                                    {favCount > 0 && (
+                                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                                            {favCount}
+                                        </span>
                                     )}
                                 </div>
-                                <div className="text-slate-500 font-bold text-sm flex items-center gap-2 mt-1">
-                                    <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
-                                    <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
-                                </div>
                             </div>
+                            <div className="text-slate-500 font-bold text-sm flex items-center gap-2 mt-6">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
+                                <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div>
                             {isEditing ? (
                                 <div className="space-y-1">
                                     <input

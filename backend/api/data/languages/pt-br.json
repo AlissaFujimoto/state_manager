@@ -75,7 +75,9 @@
         "description_required": "Descrição é obrigatória",
         "price_required": "Preço é obrigatório",
         "price_negative": "Preço não pode ser negativo",
-        "field_negative": "Não pode ser negativo"
+        "field_negative": "Não pode ser negativo",
+        "property": "Imóvel",
+        "properties": "Imóveis"
     },
     "home": {
         "hero_title": "Encontre Seu",
@@ -108,6 +110,7 @@
         "privacy_policy": "Política de Privacidade",
         "terms_of_service": "Termos de Serviço",
         "cookies": "Cookies",
+        "favorites": "Favoritos",
         "all_rights_reserved": "Todos os direitos reservados."
     },
     "property_details": {
@@ -118,6 +121,7 @@
         "building_layout": "Planta Baixa",
         "upload_floor_plan": "Enviar Planta Baixa",
         "listed_by": "Anunciado por",
+        "listed_on": "Anunciado em",
         "manage_listing": "Gerenciar Anúncio",
         "interested": "Interessado?",
         "save_changes": "Salvar Alterações",
@@ -165,6 +169,11 @@
         "delete_confirm_text": "Tem certeza que deseja excluir este anúncio? Esta ação não pode ser desfeita e o imóvel será removido do ecossistema.",
         "confirm_delete": "Confirmar Exclusão",
         "cancel": "Cancelar"
+    },
+    "favorites": {
+        "title": "Meus Favoritos",
+        "empty_title": "Ainda sem favoritos",
+        "empty_description": "Comece a navegar pelos imóveis e clique no ícone de coração para salvá-los aqui."
     },
     "property_form": {
         "basic_info_title": "Informações Básicas",

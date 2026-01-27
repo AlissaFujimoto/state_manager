@@ -75,7 +75,9 @@
         "description_required": "Se requiere descripción",
         "price_required": "Se requiere precio",
         "price_negative": "El precio no puede ser negativo",
-        "field_negative": "No puede ser negativo"
+        "field_negative": "No puede ser negativo",
+        "property": "Propiedad",
+        "properties": "Propiedades"
     },
     "home": {
         "hero_title": "Encuentra Tu",
@@ -108,6 +110,7 @@
         "privacy_policy": "Política de Privacidad",
         "terms_of_service": "Términos de Servicio",
         "cookies": "Cookies",
+        "favorites": "Favoritos",
         "all_rights_reserved": "Todos los derechos reservados."
     },
     "property_details": {
@@ -118,6 +121,7 @@
         "building_layout": "Plano del Edificio",
         "upload_floor_plan": "Subir Plano",
         "listed_by": "Publicado por",
+        "listed_on": "Publicado en",
         "manage_listing": "Gestionar Anuncio",
         "interested": "¿Interesado?",
         "save_changes": "Guardar Cambios",
@@ -165,6 +169,11 @@
         "delete_confirm_text": "¿Estás seguro de que deseas eliminar este anuncio? Esta acción no se puede deshacer.",
         "confirm_delete": "Confirmar Eliminación",
         "cancel": "Cancelar"
+    },
+    "favorites": {
+        "title": "Mis Favoritos",
+        "empty_title": "Aún no hay favoritos",
+        "empty_description": "Empiece a buscar propiedades y haga clic en el icono del corazón para guardarlas aquí."
     },
     "property_form": {
         "basic_info_title": "Información Básica",

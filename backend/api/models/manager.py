@@ -44,6 +44,7 @@ class PropertyData:
     listing_type: str = "sale"
     status: str = "available"
     currency: str = "BRL"
+    favorite_count: int = 0
     
     # Nested Data Classes
     characteristics: PropertyCharacteristics = field(default_factory=PropertyCharacteristics)
@@ -126,6 +127,7 @@ class Property:
             "property_type": d.property_type,
             "listing_type": d.listing_type,
             "status": d.status,
+            "favorite_count": d.favorite_count,
             
             # Sub-category characteristics (Stats)
             "characteristics": characteristics_dict,
@@ -250,6 +252,7 @@ class Property:
             listing_type=listing_type,
             status=data.get("status", "available"),
             currency=data.get("currency", "BRL"),
+            favorite_count=int(data.get("favorite_count", 0)),
             characteristics=stats,
             address=addr,
             features=features,
