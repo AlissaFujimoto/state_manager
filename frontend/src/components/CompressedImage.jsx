@@ -53,7 +53,11 @@ const CompressedImage = ({ src, alt = '', className = '', onError, style, ...pro
                     if (url) {
                         setDisplayUrl(url);
                     } else {
-                        setError(true);
+                        // Fallback: If decompression fails or it returns null,
+                        // it might be a valid URL that isCompressedImage() misdiagnosed (e.g. relative path).
+                        // Try displaying it as-is.
+                        console.warn('getImageDisplayUrl returned null, falling back to original src:', src);
+                        setDisplayUrl(src);
                     }
                 }
             } catch (err) {
