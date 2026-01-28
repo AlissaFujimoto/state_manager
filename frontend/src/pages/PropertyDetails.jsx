@@ -930,7 +930,7 @@ const PropertyDetails = () => {
                     {/* Media Section: Carousel or Image Manager */}
                     <div className="flex flex-col gap-1">
                         {isEditing ? (
-                            <div className="space-y-8 px-8 md:px-0">
+                            <div className="space-y-8 px-4 md:px-0">
                                 {/* ... (Edit mode render stays same, uses editData) ... */}
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -1102,7 +1102,7 @@ const PropertyDetails = () => {
                                 );
                             })()
                         )}
-                        <div ref={scrollRef} className="flex flex-col-reverse items-center md:flex-row md:items-center justify-between gap-4 px-8 md:px-0">
+                        <div ref={scrollRef} className="flex flex-col-reverse items-center md:flex-row md:items-center justify-between gap-4 px-4 md:px-0">
                             <div className="text-slate-500 font-bold text-sm flex justify-start items-center gap-2 w-full md:w-auto">
                                 <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
                                 <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
@@ -1273,7 +1273,7 @@ const PropertyDetails = () => {
 
 
                     {/* Title Section - Full Width & Prominent */}
-                    <div className="px-8 md:px-0 mt-2 mb-2">
+                    <div className="px-4 md:px-0 mt-2 mb-2">
                         {isEditing ? (
                             <div className="space-y-2">
                                 <input
@@ -1321,7 +1321,7 @@ const PropertyDetails = () => {
                         )}
                     </div>
 
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-8 md:px-0">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-4 md:px-0">
                         <div>
                             <div className="flex items-start text-slate-500">
                                 <MapPin className="w-5 h-5 mr-1 text-primary-500 shrink-0 mt-1" />
@@ -1360,7 +1360,7 @@ const PropertyDetails = () => {
                                                         </div>
                                                         <div className="w-full h-px bg-slate-200 my-2"></div>
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
+                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.total_rent')}</span>
                                                             <div className="flex items-baseline gap-1">
                                                                 <span>{formatCurrency(calculateTotalRent(), property.currency)}</span>
                                                                 <span className="text-xs font-medium text-slate-400 lowercase">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
@@ -1424,7 +1424,7 @@ const PropertyDetails = () => {
 
                     {/* Characteristics Grid */}
                     {isEditing ? (
-                        <div className="px-8 md:px-0">
+                        <div className="px-4 md:px-0">
                             <PropertyCharacteristicsFields
                                 data={editData}
                                 onChange={handleInputChange}
@@ -1434,7 +1434,7 @@ const PropertyDetails = () => {
                             />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 px-8 md:px-0">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 px-4 md:px-0">
                             {[
                                 { label: t('common.bedrooms'), name: 'characteristics.bedrooms', icon: Bed },
                                 { label: t('common.suites'), name: 'characteristics.suites', icon: DoorOpen },
@@ -1507,7 +1507,7 @@ const PropertyDetails = () => {
 
                     {/* Description */}
                     {(isEditing || property.description?.trim()) && (
-                        <div className="px-8 md:px-0">
+                        <div className="px-4 md:px-0">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-2xl font-bold text-slate-800">{t('property_details.about_property')}</h3>
                                 {!isEditing && (
@@ -1560,7 +1560,7 @@ const PropertyDetails = () => {
 
                     {/* Amenities Section */}
                     {(isEditing || (property.amenities && property.amenities.length > 0)) && (
-                        <div className="py-8 border-t border-slate-100 px-8 md:px-0">
+                        <div className="py-8 border-t border-slate-100 px-4 md:px-0">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
                                 {isEditing && (
@@ -1727,13 +1727,13 @@ const PropertyDetails = () => {
                     )}
 
                     {/* Property Location */}
-                    {
-                        property.location && (
+                    {property.location && (
+                        <div className="md:px-0">
+                            <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center px-4 md:px-0">
+                                <MapPin className="w-6 h-6 mr-2 text-primary-600" />
+                                {t('property_details.location') || 'Location'}
+                            </h3>
                             <div className="px-8 md:px-0">
-                                <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
-                                    <MapPin className="w-6 h-6 mr-2 text-primary-600" />
-                                    {t('property_details.location') || 'Location'}
-                                </h3>
                                 <div
                                     className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-10 relative group"
                                 >
@@ -1815,13 +1815,13 @@ const PropertyDetails = () => {
                                     </div>
                                 )}
                             </div>
-                        )
-                    }
+                        </div>
+                    )}
 
                     {/* Building Layout */}
                     {
                         property.layout_image && !isEditing && (
-                            <div className="px-8 md:px-0">
+                            <div className="px-4 md:px-0">
                                 <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
                                     <Layout className="w-7 h-7 mr-3 text-primary-600" />
                                     {t('property_details.building_layout')}
@@ -1857,10 +1857,10 @@ const PropertyDetails = () => {
                 </div>
 
                 {/* Right Column: Sidebar */}
-                <div className="space-y-8 px-8 md:px-0">
+                <div className="space-y-8 px-4 md:px-0">
                     {/* Contact Card - Hide when creating new listing */}
                     {!isCreating && (
-                        <div className="p-8 rounded-3xl sticky top-28 premium-shadow bg-primary-600 text-white shadow-2xl overflow-hidden relative">
+                        <div className="p-6 md:p-8 rounded-3xl sticky top-28 premium-shadow bg-primary-600 text-white shadow-2xl overflow-hidden relative">
                             {/* Background Pattern */}
                             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
                             <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-primary-500/30 rounded-full blur-3xl"></div>
