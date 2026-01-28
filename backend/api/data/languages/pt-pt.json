@@ -28,6 +28,21 @@
         "vacation_price": "Preço de Temporada",
         "vacation_price_required": "Preço de Temporada é obrigatório",
         "vacation_price_negative": "Preço de Temporada não pode ser negativo",
+        "condo_fee": "Condomínio",
+        "annual_fee": "Encargos Anuais",
+        "total_rent": "Renda Total",
+        "annual_fee_labels": {
+            "annual": "Encargos Anuais",
+            "iptu": "IMI",
+            "tax": "Imposto"
+        },
+        "period": "Período",
+        "periods": {
+            "day": "/ dia",
+            "week": "/ semana",
+            "month": "/ mês",
+            "year": "/ ano"
+        },
         "currency": "Moeda",
         "currency_symbol": "€",
         "currencies": {
@@ -82,10 +97,13 @@
         "price_required": "O preço é obrigatório",
         "price_negative": "O preço não pode ser negativo",
         "field_negative": "Não pode ser negativo",
-        "properties": "Imóveis",
+        "property": "propriedade",
+        "properties": "Propriedades",
         "login_required": "Por favor, inicie sessão para realizar esta ação",
         "cannot_favorite_own": "Não pode adicionar o seu próprio imóvel aos favoritos",
-        "your_property": "O Seu Imóvel"
+        "your_property": "O Seu Imóvel",
+        "price_per_area": "Preço / Área",
+        "price_per_total_area": "Preço / Área Total"
     },
     "home": {
         "hero_title": "Encontre o Seu",
@@ -130,6 +148,7 @@
         "upload_floor_plan": "Carregar Planta",
         "listed_by": "Anunciado por",
         "listed_on": "Anunciado em",
+        "property_owner": "Proprietário",
         "manage_listing": "Gerir Anúncio",
         "interested": "Interessado?",
         "save_changes": "Guardar Alterações",
@@ -147,6 +166,7 @@
         "no_amenities_yet": "Nenhuma característica adicionada ainda. Comece a digitar acima!",
         "press_enter_to_add": "Pressione Enter para adicionar \"{name}\" como característica personalizada",
         "no_more_amenities": "Não há mais características disponíveis. Adicione uma personalizada digitando!",
+        "view_all_amenities": "Ver todas as características",
         "approximate_location": "Localização Aproximada",
         "click_map_to_change": "Clique no mapa para alterar a localização",
         "property_address": "Morada da Propriedade",
@@ -155,7 +175,6 @@
         "contact_agent": "Contactar Agente",
         "schedule_tour": "Agendar Visita",
         "not_found": "Propriedade não encontrada",
-        "asking_price": "Preço Pedido",
         "title_required": "O título é obrigatório",
         "description_required": "A descrição é obrigatória",
         "price_required": "O preço é obrigatório",

@@ -6,7 +6,7 @@ import {
     MapPin, Share2, Heart, Calendar, ArrowLeft,
     CheckCircle2, Info, Building2, Layout, Car, DoorOpen,
     Edit, Save, Trash2, Undo2, Phone, Mail, Check, X, Plus, GripVertical, Languages,
-    Image as ImageIcon, Loader, SquareDashed, PlusCircle, MessageCircle, Copy
+    Image as ImageIcon, Loader, SquareDashed, PlusCircle, MessageCircle, Copy, Eye, Linkedin, Facebook
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -143,13 +143,15 @@ const PropertyDetails = () => {
         }
     }, [property]);
 
-    // Scroll to top on mount or id change
+    const isNew = property && property.created_at && (new Date() - new Date(property.created_at)) < 7 * 24 * 60 * 60 * 1000;
+
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [id]);
 
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
+    const [direction, setDirection] = useState(0);
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
     const [user] = useAuthState(auth);
@@ -196,6 +198,16 @@ const PropertyDetails = () => {
 
     const handleShareEmail = () => {
         window.location.href = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareUrl)}`;
+        setIsShareOpen(false);
+    };
+
+    const handleShareLinkedIn = () => {
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
+        setIsShareOpen(false);
+    };
+
+    const handleShareFacebook = () => {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
         setIsShareOpen(false);
     };
 
@@ -368,7 +380,12 @@ const PropertyDetails = () => {
 
     const navigate = useNavigate();
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+
+        // Block negative values for number inputs
+        if (type === 'number' && value && parseFloat(value) < 0) {
+            return;
+        }
 
         // Clear error for this field if it exists
         if (errors[name]) {
@@ -840,13 +857,35 @@ const PropertyDetails = () => {
 
     const nextImage = () => {
         if (activeImage < (property.images?.length || 0) - 1) {
+            setDirection(1);
             setActiveImage((prev) => prev + 1);
         }
     };
     const prevImage = () => {
         if (activeImage > 0) {
+            setDirection(-1);
             setActiveImage((prev) => prev - 1);
         }
+    };
+
+    const slideVariants = {
+        enter: (direction) => {
+            if (direction === 0) return { x: 0, opacity: 0 };
+            return {
+                x: direction > 0 ? '100%' : '-100%',
+                opacity: 1
+            };
+        },
+        center: {
+            zIndex: 1,
+            x: 0,
+            opacity: 1
+        },
+        exit: (direction) => ({
+            zIndex: 0,
+            x: direction < 0 ? '100%' : '-100%',
+            opacity: 1
+        })
     };
 
 
@@ -881,7 +920,7 @@ const PropertyDetails = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-8 md:px-12 py-8">
+        <div className="max-w-7xl mx-auto px-0 md:px-12 py-8">
 
 
 
@@ -889,119 +928,133 @@ const PropertyDetails = () => {
                 {/* Left Column: Media & Content */}
                 <div className={`${isCreating ? 'w-full max-w-5xl mx-auto' : 'lg:col-span-2'} space-y-12`}>
                     {/* Media Section: Carousel or Image Manager */}
-                    {isEditing ? (
-                        <div className="space-y-8">
-                            {/* ... (Edit mode render stays same, uses editData) ... */}
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <ImageIcon className="w-5 h-5 text-primary-600" />
-                                    {t('property_details.property_gallery')}
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {editData.images?.map((url, idx) => (
-                                        <div key={idx} className="relative aspect-square group bg-slate-100 rounded-2xl cursor-pointer" onClick={() => openLightbox(editData.images, idx)}>
-                                            <CompressedImage src={url} className="w-full h-full object-cover rounded-2xl shadow-md transition-transform group-hover:scale-[1.02]" />
+                    <div className="flex flex-col gap-1">
+                        {isEditing ? (
+                            <div className="space-y-8 px-8 md:px-0">
+                                {/* ... (Edit mode render stays same, uses editData) ... */}
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        <ImageIcon className="w-5 h-5 text-primary-600" />
+                                        {t('property_details.property_gallery')}
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {editData.images?.map((url, idx) => (
+                                            <div key={idx} className="relative aspect-square group bg-slate-100 rounded-2xl cursor-pointer" onClick={() => openLightbox(editData.images, idx)}>
+                                                <CompressedImage src={url} className="w-full h-full object-cover rounded-2xl shadow-md transition-transform group-hover:scale-[1.02]" />
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-all z-10"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-primary-300 transition-all bg-white group">
+                                            <div className="bg-slate-50 group-hover:bg-primary-50 p-3 rounded-full transition-colors">
+                                                <Plus className="w-6 h-6 text-slate-400 group-hover:text-primary-500" />
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">{t('property_details.add_photo')}</span>
+                                            <input type="file" multiple onChange={handleImageUpload} className="hidden" />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        <Layout className="w-5 h-5 text-primary-600" />
+                                        {t('property_details.building_layout')}
+                                    </h3>
+                                    {editData?.layout_image ? (
+                                        <div className="relative w-full group bg-slate-900 p-4 border border-slate-200 flex items-center justify-center cursor-pointer rounded-3xl" style={{ minHeight: '400px', maxHeight: '700px' }} onClick={() => openLightbox([editData.layout_image], 0)}>
+                                            <CompressedImage src={editData.layout_image} className="max-w-full max-h-full object-contain shadow-2xl transition-transform group-hover:scale-[1.01]" />
                                             <button
                                                 type="button"
-                                                onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                                                onClick={(e) => { e.stopPropagation(); removeLayout(); }}
                                                 className="absolute -top-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-all z-10"
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>
                                         </div>
-                                    ))}
-                                    <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-primary-300 transition-all bg-white group">
-                                        <div className="bg-slate-50 group-hover:bg-primary-50 p-3 rounded-full transition-colors">
+                                    ) : (
+                                        <label className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-primary-300 transition-all bg-white group">
                                             <Plus className="w-6 h-6 text-slate-400 group-hover:text-primary-500" />
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">{t('property_details.add_photo')}</span>
-                                        <input type="file" multiple onChange={handleImageUpload} className="hidden" />
-                                    </label>
+                                            <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">{t('property_details.upload_floor_plan')}</span>
+                                            <input type="file" onChange={handleLayoutUpload} className="hidden" />
+                                        </label>
+                                    )}
                                 </div>
                             </div>
+                        ) : (
+                            /* Image Carousel */
+                            (() => {
+                                const safesImages = (property.images || []).filter(url => url && !url.startsWith('blob:'));
+                                // Use default if empty
+                                if (safesImages.length === 0) safesImages.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
 
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <Layout className="w-5 h-5 text-primary-600" />
-                                    {t('property_details.building_layout')}
-                                </h3>
-                                {editData?.layout_image ? (
-                                    <div className="relative w-full group bg-slate-900 p-4 border border-slate-200 flex items-center justify-center cursor-pointer rounded-3xl" style={{ minHeight: '400px', maxHeight: '700px' }} onClick={() => openLightbox([editData.layout_image], 0)}>
-                                        <CompressedImage src={editData.layout_image} className="max-w-full max-h-full object-contain shadow-2xl transition-transform group-hover:scale-[1.01]" />
-                                        <button
-                                            type="button"
-                                            onClick={(e) => { e.stopPropagation(); removeLayout(); }}
-                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-all z-10"
+                                return (
+                                    <div className="relative">
+                                        {isNew && (
+                                            <div className="absolute -top-9 left-1 z-30 flex items-center gap-1 animate-pulse">
+                                                <span className="text-green-400 font-bold text-4xl leading-none drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] pb-2">·</span>
+                                                <span className="text-green-400 font-bold text-lg lowercase tracking-wider drop-shadow-[0_0_8px_rgba(74,222,128,0.6)]">{t('common.new').toLowerCase()}</span>
+                                            </div>
+                                        )}
+                                        <div
+                                            className="relative h-[600px] rounded-none md:rounded-3xl overflow-hidden shadow-2xl group bg-black"
+                                            onTouchStart={onTouchStart}
+                                            onTouchMove={onTouchMove}
+                                            onTouchEnd={onTouchEnd}
                                         >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <label className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-primary-300 transition-all bg-white group">
-                                        <Plus className="w-6 h-6 text-slate-400 group-hover:text-primary-500" />
-                                        <span className="text-xs font-bold text-slate-400 group-hover:text-primary-500 mt-2 uppercase tracking-wider">{t('property_details.upload_floor_plan')}</span>
-                                        <input type="file" onChange={handleLayoutUpload} className="hidden" />
-                                    </label>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                        /* Image Carousel */
-                        (() => {
-                            const safesImages = (property.images || []).filter(url => url && !url.startsWith('blob:'));
-                            // Use default if empty
-                            if (safesImages.length === 0) safesImages.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
 
-                            return (
-                                <div
-                                    className="relative h-[600px] rounded-3xl overflow-hidden shadow-2xl group bg-black"
-                                    onTouchStart={onTouchStart}
-                                    onTouchMove={onTouchMove}
-                                    onTouchEnd={onTouchEnd}
-                                >
+                                            <AnimatePresence initial={false} custom={direction}>
+                                                <Motion.div
+                                                    key={activeImage}
+                                                    custom={direction}
+                                                    variants={slideVariants}
+                                                    initial="enter"
+                                                    animate="center"
+                                                    exit="exit"
+                                                    transition={{
+                                                        x: { type: "spring", stiffness: 300, damping: 30 },
+                                                        opacity: { duration: 0.2 }
+                                                    }}
+                                                    className="absolute inset-0 w-full h-full"
+                                                >
+                                                    <CompressedImage
+                                                        src={safesImages?.[activeImage]}
+                                                        alt={property.title}
+                                                        className="w-full h-full object-contain cursor-zoom-in"
+                                                        onClick={() => openLightbox(safesImages, activeImage)}
+                                                    />
+                                                </Motion.div>
+                                            </AnimatePresence>
 
-                                    <AnimatePresence mode="wait">
-                                        <Motion.div
-                                            key={activeImage}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.5 }}
-                                            className="w-full h-full"
-                                        >
-                                            <CompressedImage
-                                                src={safesImages?.[activeImage]}
-                                                alt={property.title}
-                                                className="w-full h-full object-contain cursor-zoom-in"
-                                                onClick={() => openLightbox(safesImages, activeImage)}
-                                            />
-                                        </Motion.div>
-                                    </AnimatePresence>
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
 
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+                                            {(() => {
+                                                const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
+                                                if (!statusConfig?.showRibbon) return null;
 
-                                    {(() => {
-                                        const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
-                                        if (!statusConfig?.showRibbon) return null;
+                                                let label = t(`property_card.${statusConfig.id}`);
+                                                if (property.status === 'sold') {
+                                                    label = t('property_card.sold');
+                                                }
 
-                                        let label = t(`property_card.${statusConfig.id}`);
-                                        if (property.status === 'sold_rented') {
-                                            label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
-                                        }
+                                                const colorMap = {
+                                                    amber: 'bg-amber-500',
+                                                    emerald: 'bg-emerald-500',
+                                                    indigo: 'bg-indigo-500',
+                                                    rose: 'bg-rose-500',
+                                                    blue: 'bg-blue-500',
+                                                    orange: 'bg-orange-500'
+                                                };
 
-                                        const colorMap = {
-                                            amber: 'bg-amber-500',
-                                            emerald: 'bg-emerald-500',
-                                            indigo: 'bg-indigo-500',
-                                            rose: 'bg-rose-500',
-                                            blue: 'bg-blue-500'
-                                        };
+                                                const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
 
-                                        const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
-
-                                        return (
-                                            <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-3xl">
-                                                <div className={`
+                                                return (
+                                                    <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-none md:rounded-tr-3xl">
+                                                        <div className={`
                                                     ${bgColor}
                                                     text-white
                                                     text-[10px] font-bold uppercase tracking-wide py-1.5
@@ -1009,50 +1062,59 @@ const PropertyDetails = () => {
                                                     transform rotate-45
                                                     shadow-sm text-center
                                                 `}>
-                                                    {label}
-                                                </div>
+                                                            {label}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
+
+                                            {safesImages?.length > 1 && (
+                                                <>
+                                                    <button
+                                                        onClick={prevImage}
+                                                        disabled={activeImage === 0}
+                                                        className="carousel-nav-btn left-4"
+                                                    >
+                                                        <ChevronLeft className="w-6 h-6" />
+                                                    </button>
+                                                    <button
+                                                        onClick={nextImage}
+                                                        disabled={activeImage === (safesImages?.length || 0) - 1}
+                                                        className="carousel-nav-btn right-4"
+                                                    >
+                                                        <ChevronRight className="w-6 h-6" />
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                                                {safesImages?.map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setActiveImage(i)}
+                                                        className={`w-2 h-2 rounded-full transition-all ${i === activeImage ? 'bg-white w-6' : 'bg-white/50'}`}
+                                                    />
+                                                ))}
                                             </div>
-                                        );
-                                    })()}
-
-
-                                    {safesImages?.length > 1 && (
-                                        <>
-                                            <button
-                                                onClick={prevImage}
-                                                disabled={activeImage === 0}
-                                                className="carousel-nav-btn left-4"
-                                            >
-                                                <ChevronLeft className="w-6 h-6" />
-                                            </button>
-                                            <button
-                                                onClick={nextImage}
-                                                disabled={activeImage === (safesImages?.length || 0) - 1}
-                                                className="carousel-nav-btn right-4"
-                                            >
-                                                <ChevronRight className="w-6 h-6" />
-                                            </button>
-                                        </>
-                                    )}
-
-                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                                        {safesImages?.map((_, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => setActiveImage(i)}
-                                                className={`w-2 h-2 rounded-full transition-all ${i === activeImage ? 'bg-white w-6' : 'bg-white/50'}`}
-                                            />
-                                        ))}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })()
-                    )}
+                                );
+                            })()
+                        )}
+                        <div ref={scrollRef} className="flex flex-col-reverse items-center md:flex-row md:items-center justify-between gap-4 px-8 md:px-0">
+                            <div className="text-slate-500 font-bold text-sm flex justify-start items-center gap-2 w-full md:w-auto">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
+                                <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
+                                {property.friendly_id && (
+                                    <>
+                                        <span className="w-1 h-1 bg-slate-300 rounded-full mx-1"></span>
+                                        <span className="text-primary-600 font-black">{property.friendly_id}</span>
+                                    </>
+                                )}
+                            </div>
 
-                    {/* Property Header */}
-                    <div ref={scrollRef} className="flex items-start justify-between mt-8 mb-6 landscape:mt-4 landscape:mb-4">
-                        <div className="flex flex-col gap-2">
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center justify-between w-full md:w-auto md:justify-end gap-3 md:self-auto">
                                 {isEditing ? (
                                     <div className="flex flex-wrap items-center gap-2">
                                         <select
@@ -1089,10 +1151,18 @@ const PropertyDetails = () => {
                                             className="px-3 py-1 bg-white border border-primary-200 text-primary-700 text-xs font-bold rounded-full uppercase tracking-wider outline-none focus:ring-1 focus:ring-primary-500"
                                         >
                                             {propertyStatuses.map(status => {
+                                                const currentType = editData?.listing_type || property.listing_type;
                                                 let label = t(`property_card.${status.id}`);
-                                                if (status.id === 'sold_rented') {
-                                                    label = (property.listing_type === 'rent' || property.listing_type === 'vacation') ? t('property_card.rented') : t('property_card.sold');
+
+                                                if (status.id === 'sold') {
+                                                    label = t('property_card.sold');
+                                                    if (currentType === 'rent' || currentType === 'vacation') return null;
                                                 }
+
+                                                if (status.id === 'rented') {
+                                                    if (currentType === 'sale') return null;
+                                                }
+
                                                 return (
                                                     <option key={status.id} value={status.id}>
                                                         {label}
@@ -1102,14 +1172,14 @@ const PropertyDetails = () => {
                                         </select>
                                     </div>
                                 ) : (
-                                    <PropertyStatusBadges property={property} />
+                                    <PropertyStatusBadges property={property} hideNew={true} />
                                 )}
                                 {!isEditing && !isCreating && (
                                     <div className="flex items-center gap-3">
                                         <div className="relative">
                                             <button
                                                 onClick={toggleFavorite}
-                                                className={`p-3 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-all group/fav ${isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                className={`p-3 bg-white border border-slate-200 shadow-md hover:shadow-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-full transition-all group/fav ${isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 title={isOwner ? t('common.your_property') : (isFav ? t('favorites.remove') || 'Remove from favorites' : t('favorites.add') || 'Add to favorites')}
                                             >
                                                 <Heart className={`w-6 h-6 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -1124,7 +1194,7 @@ const PropertyDetails = () => {
                                         <div className="relative">
                                             <button
                                                 onClick={() => setIsShareOpen(!isShareOpen)}
-                                                className={`p-3 rounded-full transition-all ${isShareOpen ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                                                className={`p-3 rounded-full border border-slate-200 shadow-md hover:shadow-lg transition-all ${isShareOpen ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-white text-slate-500 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-200'}`}
                                                 title={t('common.share') || 'Share'}
                                             >
                                                 <Share2 className="w-6 h-6" />
@@ -1154,6 +1224,24 @@ const PropertyDetails = () => {
                                                                 WhatsApp
                                                             </button>
                                                             <button
+                                                                onClick={handleShareFacebook}
+                                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                                                    <Facebook className="w-4 h-4" />
+                                                                </div>
+                                                                Facebook
+                                                            </button>
+                                                            <button
+                                                                onClick={handleShareLinkedIn}
+                                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+                                                                    <Linkedin className="w-4 h-4" />
+                                                                </div>
+                                                                LinkedIn
+                                                            </button>
+                                                            <button
                                                                 onClick={handleShareEmail}
                                                                 className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
                                                             >
@@ -1179,69 +1267,69 @@ const PropertyDetails = () => {
                                     </div>
                                 )}
                             </div>
-                            <div className="text-slate-500 font-bold text-sm flex items-center gap-2 mt-6">
-                                <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
-                                <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
-                                {property.friendly_id && (
-                                    <>
-                                        <span className="w-1 h-1 bg-slate-300 rounded-full mx-1"></span>
-                                        <span className="text-primary-600 font-black">{property.friendly_id}</span>
-                                    </>
-                                )}
-                            </div>
                         </div>
-
                     </div>
 
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div>
-                            {isEditing ? (
-                                <div className="space-y-1">
-                                    <input
-                                        type="text"
-                                        name="title"
-                                        value={editData?.title || ''}
-                                        onChange={handleInputChange}
-                                        className={`text-4xl font-extrabold text-slate-900 border-b-2 bg-transparent outline-none w-full transition-all ${getFieldStatus('title') || 'border-primary-500 focus:border-primary-600'}`}
-                                        placeholder={t('property_details.property_title_placeholder')}
-                                    />
-                                    {errors.title && <p className="text-red-500 text-xs font-bold">{errors.title}</p>}
-                                </div>
-                            ) : (
-                                <div className="flex items-start gap-3 justify-between">
-                                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 landscape:text-2xl">
-                                        {translations.title.active ? translations.title.text : property.title}
-                                    </h1>
+
+
+                    {/* Title Section - Full Width & Prominent */}
+                    <div className="px-8 md:px-0 mt-2 mb-2">
+                        {isEditing ? (
+                            <div className="space-y-2">
+                                <input
+                                    type="text"
+                                    name="title"
+                                    value={editData?.title || ''}
+                                    onChange={handleInputChange}
+                                    className={`text-4xl md:text-6xl font-black text-slate-900 border-b-4 border-slate-200 focus:border-primary-500 bg-transparent outline-none w-full transition-all ${getFieldStatus('title')}`}
+                                    placeholder={t('property_details.property_title_placeholder')}
+                                />
+                                {errors.title && <p className="text-red-500 text-xs font-bold">{errors.title}</p>}
+                            </div>
+                        ) : (
+                            <div className="w-full">
+                                <h1 className="text-4xl md:text-6xl font-black text-slate-900 leading-[1.1] tracking-tight drop-shadow-sm break-words">
+                                    {translations.title.active ? translations.title.text : property.title}
                                     {!isEditing && (
                                         <button
-                                            onClick={() => handleTranslate('title')}
+                                            onClick={(e) => { e.stopPropagation(); handleTranslate('title'); }}
                                             disabled={translations.title.loading}
                                             className={`
-                                                flex-shrink-0 p-2 rounded-xl transition-all
+                                                inline-flex align-middle ml-3 p-2 rounded-xl transition-all
                                                 ${translations.title.active
                                                     ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
                                                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}
                                             `}
+                                            style={{ verticalAlign: 'middle' }}
                                             title={translations.title.active ? t('common.show_original') : t('common.translate')}
                                         >
                                             {translations.title.loading ? (
-                                                <Loader className="w-5 h-5 animate-spin" />
+                                                <Loader className="w-6 h-6 animate-spin" />
                                             ) : (
-                                                <Languages className="w-5 h-5" />
+                                                <Languages className="w-6 h-6" />
                                             )}
                                         </button>
                                     )}
-                                </div>
-                            )}
-                            <div className="flex items-start text-slate-500 mt-3">
-                                <MapPin className="w-5 h-5 mr-1 text-primary-500 shrink-0 mt-2" />
+                                </h1>
+                                {translations.title.active && (
+                                    <p className="text-xs text-slate-400 mt-1 italic flex items-center gap-1">
+                                        <Languages className="w-3 h-3" />
+                                        {t('common.translated_automatically')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-8 md:px-0">
+                        <div>
+                            <div className="flex items-start text-slate-500">
+                                <MapPin className="w-5 h-5 mr-1 text-primary-500 shrink-0 mt-1" />
                                 {renderAddress()}
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">
-                                {property.listing_type === 'both' ? t('property_details.prices') : t('property_details.asking_price')}
-                            </p>
+
                             <div className="text-4xl font-black text-primary-600">
                                 {isEditing ? (
                                     <PropertyPriceFields
@@ -1261,10 +1349,16 @@ const PropertyDetails = () => {
                                             if (isBoth) {
                                                 return (
                                                     <div className="flex flex-col items-end">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.sale')}</span>
-                                                            <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                                        <div className="flex flex-col items-end mb-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-bold text-slate-400 uppercase">{t('common.sale')}</span>
+                                                                <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                                            </div>
+                                                            <p className="text-lg font-bold text-slate-600 mt-1">
+                                                                {getPricePerArea()}
+                                                            </p>
                                                         </div>
+                                                        <div className="w-full h-px bg-slate-200 my-2"></div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
                                                             <div className="flex items-baseline gap-1">
@@ -1273,7 +1367,7 @@ const PropertyDetails = () => {
                                                             </div>
                                                         </div>
                                                         {(property.rent_period === 'month' || property.rent_period === 'year') && (
-                                                            <div className="flex items-center gap-3 mt-1 opacity-60 text-[10px] font-bold uppercase tracking-wider">
+                                                            <div className="flex items-center gap-3 mt-1 text-slate-600 text-xs font-bold uppercase tracking-wider">
                                                                 <span>{t('common.rent')}: {formatCurrency(property.rent_price || property.price, property.currency)}</span>
                                                                 {parseFloat(property.condo_fee) > 0 && <span>{t('common.condo_fee')}: {formatCurrency(property.condo_fee, property.currency)}</span>}
                                                                 {parseFloat(property.annual_fee) > 0 && <span>{t(`common.annual_fee_labels.${property.annual_fee_label || 'iptu'}`)}: {formatCurrency(property.annual_fee, property.currency)}</span>}
@@ -1303,7 +1397,7 @@ const PropertyDetails = () => {
                                                             </div>
                                                         </div>
                                                         {(property.rent_period === 'month' || property.rent_period === 'year') && (
-                                                            <div className="flex items-center gap-3 mt-1 opacity-60 text-xs font-bold uppercase tracking-wider">
+                                                            <div className="flex items-center gap-3 mt-1 text-slate-600 text-xs font-bold uppercase tracking-wider">
                                                                 <span>{t('common.rent')}: {formatCurrency(property.rent_price || property.price, property.currency)}</span>
                                                                 {parseFloat(property.condo_fee) > 0 && <span>{t('common.condo_fee')}: {formatCurrency(property.condo_fee, property.currency)}</span>}
                                                                 {parseFloat(property.annual_fee) > 0 && <span>{t(`common.annual_fee_labels.${property.annual_fee_label || 'iptu'}`)}: {formatCurrency(property.annual_fee, property.currency)}</span>}
@@ -1313,14 +1407,16 @@ const PropertyDetails = () => {
                                                 );
                                             }
 
-                                            return <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>;
+                                            return (
+                                                <div className="flex flex-col items-end">
+                                                    <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                                    <p className="text-lg font-bold text-slate-600 mt-1">
+                                                        {getPricePerArea()}
+                                                    </p>
+                                                </div>
+                                            );
                                         })()}
                                     </div>
-                                )}
-                                {!isEditing && (property.listing_type === 'sale' || property.listing_type === 'both' || property.listing_type === 'sale_rent') && (
-                                    <p className="text-2xl font-black text-slate-500 mt-1 tracking-tight">
-                                        {getPricePerArea()}
-                                    </p>
                                 )}
                             </div>
                         </div>
@@ -1328,15 +1424,17 @@ const PropertyDetails = () => {
 
                     {/* Characteristics Grid */}
                     {isEditing ? (
-                        <PropertyCharacteristicsFields
-                            data={editData}
-                            onChange={handleInputChange}
-                            getFieldStatus={getFieldStatus}
-                            errors={errors}
-                            t={t}
-                        />
+                        <div className="px-8 md:px-0">
+                            <PropertyCharacteristicsFields
+                                data={editData}
+                                onChange={handleInputChange}
+                                getFieldStatus={getFieldStatus}
+                                errors={errors}
+                                t={t}
+                            />
+                        </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 px-8 md:px-0">
                             {[
                                 { label: t('common.bedrooms'), name: 'characteristics.bedrooms', icon: Bed },
                                 { label: t('common.suites'), name: 'characteristics.suites', icon: DoorOpen },
@@ -1358,11 +1456,12 @@ const PropertyDetails = () => {
                                     const totalUnit = t(`common.area_units.${totalUnitRaw}`) || totalUnitRaw || t('common.area_unit');
 
                                     return (
-                                        <div key={field.name} className="glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all">
-                                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
-                                                <Icon className="w-6 h-6" />
-                                            </div>
-                                            <div className="flex-1">
+                                        <div key={field.name} className="glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all relative overflow-hidden">
+                                            {/* Watermark Icon - match edit mode style */}
+                                            {!field.isCombined && (
+                                                <Icon className="absolute -right-4 -bottom-4 w-24 h-24 text-primary-600/5 rotate-[-15deg] pointer-events-none" />
+                                            )}
+                                            <div className="flex-1 relative z-10">
                                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{field.label}</p>
                                                 <p className="text-xl font-bold text-slate-800">
                                                     {(() => {
@@ -1388,11 +1487,12 @@ const PropertyDetails = () => {
                                     if (value === undefined || value === null) value = 0;
 
                                     return (
-                                        <div key={field.name} className="glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all">
-                                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
-                                                <Icon className="w-6 h-6" />
-                                            </div>
-                                            <div className="flex-1">
+                                        <div key={field.name} className="glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all relative overflow-hidden">
+                                            {/* Watermark Icon - match edit mode style */}
+                                            {!field.isCombined && (
+                                                <Icon className="absolute -right-4 -bottom-4 w-24 h-24 text-primary-600/5 rotate-[-15deg] pointer-events-none" />
+                                            )}
+                                            <div className="flex-1 relative z-10">
                                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{field.label}</p>
                                                 <p className="text-xl font-bold text-slate-800">
                                                     {value}
@@ -1407,7 +1507,7 @@ const PropertyDetails = () => {
 
                     {/* Description */}
                     {(isEditing || property.description?.trim()) && (
-                        <div>
+                        <div className="px-8 md:px-0">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-2xl font-bold text-slate-800">{t('property_details.about_property')}</h3>
                                 {!isEditing && (
@@ -1460,7 +1560,7 @@ const PropertyDetails = () => {
 
                     {/* Amenities Section */}
                     {(isEditing || (property.amenities && property.amenities.length > 0)) && (
-                        <div className="py-8 border-t border-slate-100">
+                        <div className="py-8 border-t border-slate-100 px-8 md:px-0">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
                                 {isEditing && (
@@ -1629,7 +1729,7 @@ const PropertyDetails = () => {
                     {/* Property Location */}
                     {
                         property.location && (
-                            <div>
+                            <div className="px-8 md:px-0">
                                 <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
                                     <MapPin className="w-6 h-6 mr-2 text-primary-600" />
                                     {t('property_details.location') || 'Location'}
@@ -1721,7 +1821,7 @@ const PropertyDetails = () => {
                     {/* Building Layout */}
                     {
                         property.layout_image && !isEditing && (
-                            <div>
+                            <div className="px-8 md:px-0">
                                 <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
                                     <Layout className="w-7 h-7 mr-3 text-primary-600" />
                                     {t('property_details.building_layout')}
@@ -1757,7 +1857,7 @@ const PropertyDetails = () => {
                 </div>
 
                 {/* Right Column: Sidebar */}
-                <div className="space-y-8">
+                <div className="space-y-8 px-8 md:px-0">
                     {/* Contact Card - Hide when creating new listing */}
                     {!isCreating && (
                         <div className="p-8 rounded-3xl sticky top-28 premium-shadow bg-primary-600 text-white shadow-2xl overflow-hidden relative">

@@ -117,7 +117,7 @@ def get_property_statuses() -> Tuple[flask.Response, int]:
         return jsonify(statuses_list), 200
     except Exception as e:
         print(f"[ERROR_SERVICE] Failed to load statuses: {e}")
-        return jsonify(["available", "reserved", "under_option", "sold_rented"]), 200  # Fallback
+        return jsonify(["available", "reserved", "under_option", "sold"]), 200  # Fallback
 
 @app.route("/api/amenities", methods=["GET"])
 def get_amenities() -> Tuple[flask.Response, int]:

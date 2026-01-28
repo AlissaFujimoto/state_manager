@@ -21,9 +21,16 @@
         "showRibbon": true
     },
     {
-        "id": "sold_rented",
-        "label": "Sold / Rented",
+        "id": "sold",
+        "label": "Sold",
         "color": "rose",
+        "textColor": "white",
+        "showRibbon": true
+    },
+    {
+        "id": "rented",
+        "label": "Rented",
+        "color": "orange",
         "textColor": "white",
         "showRibbon": true
     }

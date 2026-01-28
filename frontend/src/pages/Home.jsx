@@ -270,7 +270,7 @@ const Home = () => {
     const filteredProperties = (properties || []).filter(p => {
         const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
         const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
-        const query = searchQuery.toLowerCase();
+        const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(t => t.length > 0);
         // Localized values for search
         const typeTranslated = p.property_type ? t(`home.${p.property_type.toLowerCase()}`).toLowerCase() : '';
         const listingTypeTranslated = p.listing_type ? t(`common.${p.listing_type.toLowerCase()}`).toLowerCase() : '';
@@ -278,7 +278,7 @@ const Home = () => {
 
         let statusTranslated = '';
         if (p.status) {
-            if (p.status === 'sold_rented') {
+            if (p.status === 'sold') {
                 statusTranslated = p.listing_type === 'rent' ? t('property_card.rented').toLowerCase() : t('property_card.sold').toLowerCase();
             } else {
                 statusTranslated = t(`property_card.${p.status.toLowerCase()}`).toLowerCase();
@@ -290,18 +290,20 @@ const Home = () => {
             return t(`amenities.${key}`).toLowerCase();
         });
 
-        const matchesSearch = p.title.toLowerCase().includes(query) ||
-            p.description?.toLowerCase().includes(query) ||
-            p.display_address?.toLowerCase().includes(query) ||
-            p.address?.public?.toLowerCase().includes(query) ||
-            p.property_type?.toLowerCase().includes(query) ||
-            p.listing_type?.toLowerCase().includes(query) ||
-            p.status?.toLowerCase().includes(query) ||
-            typeTranslated.includes(query) ||
-            listingTypeTranslated.includes(query) ||
-            listingTypeForTranslated.includes(query) ||
-            statusTranslated.includes(query) ||
-            propertyAmenitiesTranslated.some(a => a.includes(query));
+        const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
+            p.title.toLowerCase().includes(term) ||
+            p.description?.toLowerCase().includes(term) ||
+            p.display_address?.toLowerCase().includes(term) ||
+            p.address?.public?.toLowerCase().includes(term) ||
+            p.property_type?.toLowerCase().includes(term) ||
+            p.listing_type?.toLowerCase().includes(term) ||
+            p.status?.toLowerCase().includes(term) ||
+            typeTranslated.includes(term) ||
+            listingTypeTranslated.includes(term) ||
+            listingTypeForTranslated.includes(term) ||
+            statusTranslated.includes(term) ||
+            propertyAmenitiesTranslated.some(a => a.includes(term))
+        );
 
         const price = Number(p.price);
         const matchesMinPrice = filter.minPrice === '' || price >= Number(filter.minPrice);
@@ -807,24 +809,27 @@ const Home = () => {
                             {/* Sticky Footer Action Buttons */}
                             <div className="p-6 border-t border-slate-100 bg-white/80 backdrop-blur-md absolute bottom-0 left-0 right-0 grid grid-cols-2 gap-4">
                                 <button
-                                    onClick={() => setFilter({
-                                        type: 'all',
-                                        listingType: 'all',
-                                        minPrice: '',
-                                        maxPrice: '',
-                                        minBedrooms: '',
-                                        minBathrooms: '',
-                                        minSuites: '',
-                                        minRooms: '',
-                                        minGarages: '',
-                                        minArea: '',
-                                        maxArea: '',
-                                        state: 'all',
-                                        city: 'all',
-                                        country: 'Brazil',
-                                        amenities: [],
-                                        sortBy: 'newest'
-                                    })}
+                                    onClick={() => {
+                                        setFilter({
+                                            type: 'all',
+                                            listingType: 'all',
+                                            minPrice: '',
+                                            maxPrice: '',
+                                            minBedrooms: '',
+                                            minBathrooms: '',
+                                            minSuites: '',
+                                            minRooms: '',
+                                            minGarages: '',
+                                            minArea: '',
+                                            maxArea: '',
+                                            state: 'all',
+                                            city: 'all',
+                                            country: 'Brazil',
+                                            amenities: [],
+                                            sortBy: 'newest'
+                                        });
+                                        setIsFilterOpen(false);
+                                    }}
                                     className="py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all border-2 border-slate-100"
                                 >
                                     {t('common.reset_all')}

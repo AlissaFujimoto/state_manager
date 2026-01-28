@@ -46,7 +46,7 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                                 name="sale_price"
                                 value={(data.sale_price !== undefined && data.sale_price !== null) ? data.sale_price : ''}
                                 onChange={onChange}
-                                placeholder={t('common.price_placeholder') || "500,000"}
+                                placeholder=""
                                 className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${getFieldStatus('sale_price') || (errors?.sale_price ? 'border-red-500' : 'border-primary-500')}`}
                             />
                         </div>
@@ -58,7 +58,7 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                                 name="sale_price"
                                 value={(data.sale_price !== undefined && data.sale_price !== null) ? data.sale_price : ''}
                                 onChange={onChange}
-                                placeholder="500,000"
+                                placeholder=""
                                 className={`w-full px-3 py-2.5 text-sm bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('sale_price') === 'error' ? 'neon-error' : getFieldStatus('sale_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                             />
                         </>
@@ -78,7 +78,7 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                                 name="rent_price"
                                 value={(data.rent_price !== undefined && data.rent_price !== null) ? data.rent_price : ''}
                                 onChange={onChange}
-                                placeholder={t('common.price_placeholder') || "5,000"}
+                                placeholder=""
                                 className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${getFieldStatus('rent_price') || (errors?.rent_price ? 'border-red-500' : 'border-primary-500')}`}
                             />
                         </div>
@@ -90,7 +90,7 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                                 name="rent_price"
                                 value={(data.rent_price !== undefined && data.rent_price !== null) ? data.rent_price : ''}
                                 onChange={onChange}
-                                placeholder="5,000"
+                                placeholder=""
                                 className={`w-full px-3 py-2.5 text-sm bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('rent_price') === 'error' ? 'neon-error' : getFieldStatus('rent_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                             />
                         </>
@@ -171,7 +171,7 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                                 name="vacation_price"
                                 value={(data.vacation_price !== undefined && data.vacation_price !== null) ? data.vacation_price : ''}
                                 onChange={onChange}
-                                placeholder={t('common.price_placeholder') || "1,000"}
+                                placeholder=""
                                 className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${getFieldStatus('vacation_price') || (errors?.vacation_price ? 'border-red-500' : 'border-primary-500')}`}
                             />
                         </div>
@@ -183,7 +183,7 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                                 name="vacation_price"
                                 value={(data.vacation_price !== undefined && data.vacation_price !== null) ? data.vacation_price : ''}
                                 onChange={onChange}
-                                placeholder="1,000"
+                                placeholder=""
                                 className={`w-full px-3 py-2.5 text-sm bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('vacation_price') === 'error' ? 'neon-error' : getFieldStatus('vacation_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
                             />
                         </>

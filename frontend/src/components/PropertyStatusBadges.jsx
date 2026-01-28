@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const PropertyStatusBadges = ({ property, size = 'md' }) => {
+const PropertyStatusBadges = ({ property, size = 'md', hideNew = false }) => {
     const { t } = useLanguage();
     const height = size === 'sm' ? 'h-6' : 'h-8';
     const fontSize = size === 'sm' ? 'text-[9px]' : 'text-[11px]';
@@ -11,7 +11,7 @@ const PropertyStatusBadges = ({ property, size = 'md' }) => {
     // Enhanced premium badge style
     const badgeBase = `${fontSize} ${padding} ${height} font-bold uppercase tracking-widest flex items-center justify-center whitespace-nowrap transition-all duration-300 rounded-lg shadow-sm`;
 
-    const isNew = property.created_at && (new Date() - new Date(property.created_at)) < 7 * 24 * 60 * 60 * 1000;
+    const isNew = !hideNew && property.created_at && (new Date() - new Date(property.created_at)) < 7 * 24 * 60 * 60 * 1000;
 
     return (
         <div className={`flex flex-wrap items-center ${gap}`}>

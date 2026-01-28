@@ -16,20 +16,25 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
     const [currentImgIndex, setCurrentImgIndex] = useState(0);
     const [user] = useAuthState(auth);
     const { t, formatCurrency, currentLanguage } = useLanguage();
-    const [translations, setTranslations] = useState({
-        title: '',
-        description: '',
-        active: false,
-        loading: false
-    });
+
     const { isFavorite, addFavorite, removeFavorite } = useFavorites();
     const isFav = isFavorite(property.id);
 
     const isOwner = user && property.owner_id === user.uid;
 
+    const isNew = property.created_at && (new Date() - new Date(property.created_at)) < 7 * 24 * 60 * 60 * 1000;
+
     const [favCount, setFavCount] = useState(property.favorite_count || 0);
     const [copied, setCopied] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
+    const [isMobileFlip, setIsMobileFlip] = useState(false);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIsMobileFlip(prev => !prev);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     const shareUrl = `${window.location.origin}/property/${property.id}`;
     const shareTitle = property.title;
@@ -235,120 +240,99 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
         }
     };
 
-    const handleTranslate = async (e) => {
-        e.stopPropagation();
-        if (translations.active) {
-            setTranslations(prev => ({ ...prev, active: false }));
-            return;
-        }
 
-        if (translations.title && translations.description) {
-            setTranslations(prev => ({ ...prev, active: true }));
-            return;
-        }
-
-        setTranslations(prev => ({ ...prev, loading: true }));
-        try {
-            const targetLang = currentLanguage.split('-')[0];
-            const [titleRes, descRes] = await Promise.all([
-                api.post('/translate', { text: property.title, target_lang: targetLang }),
-                api.post('/translate', { text: property.description, target_lang: targetLang })
-            ]);
-
-            setTranslations({
-                title: titleRes.data.translatedText,
-                description: descRes.data.translatedText,
-                active: true,
-                loading: false
-            });
-        } catch (err) {
-            console.error('Translation failed:', err);
-            setTranslations(prev => ({ ...prev, loading: false }));
-        }
-    };
 
     return (
         <div
             onClick={handleCardClick}
-            className="glass-card rounded-2xl overflow-hidden group premium-shadow cursor-pointer relative"
+            className="relative group h-full cursor-pointer"
         >
-            <div
-                className="relative h-64 overflow-hidden group/image"
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
-            >
-                <AnimatePresence mode="wait">
-                    <Motion.div
-                        key={currentImgIndex}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="w-full h-full absolute inset-0"
-                    >
-                        <CompressedImage
-                            src={displayImages[currentImgIndex]}
-                            alt={property.title}
-                            onError={(e) => {
-                                e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80';
-                            }}
-                            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                        />
-                    </Motion.div>
-                </AnimatePresence>
+            {isNew && (
+                <div className="absolute -top-6 left-1 z-50 flex items-center gap-1 animate-pulse transition-transform duration-300 group-hover:-translate-y-1">
+                    <span className="text-green-500 font-bold text-3xl leading-none drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] pb-1.5">·</span>
+                    <span className="text-green-500 font-bold text-sm lowercase tracking-wider drop-shadow-[0_0_8px_rgba(74,222,128,0.6)]">{t('common.new').toLowerCase()}</span>
+                </div>
+            )}
 
-                {/* Navigation Arrows */}
-                {displayImages.length > 1 && (
-                    <>
-                        <button
-                            onClick={prevImage}
-                            className="carousel-nav-btn left-2 p-1.5 z-10"
+            <div className="glass-card rounded-2xl overflow-hidden premium-shadow relative h-full transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
+                <div
+                    className="relative h-64 overflow-hidden group/image"
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                >
+                    <AnimatePresence mode="wait">
+                        <Motion.div
+                            key={currentImgIndex}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="w-full h-full absolute inset-0"
                         >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={nextImage}
-                            className="carousel-nav-btn right-2 p-1.5 z-10"
-                        >
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
+                            <CompressedImage
+                                src={displayImages[currentImgIndex]}
+                                alt={property.title}
+                                onError={(e) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80';
+                                }}
+                                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                            />
+                        </Motion.div>
+                    </AnimatePresence>
 
-                        {/* Image Indicator Dots */}
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                            {displayImages.map((_, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={(e) => { e.stopPropagation(); setCurrentImgIndex(idx); }}
-                                    className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImgIndex ? 'bg-white w-3' : 'bg-white/50'}`}
-                                />
-                            ))}
-                        </div>
-                    </>
-                )}
+                    {/* Navigation Arrows */}
+                    {displayImages.length > 1 && (
+                        <>
+                            <button
+                                onClick={prevImage}
+                                className="carousel-nav-btn left-2 p-1.5 z-10"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={nextImage}
+                                className="carousel-nav-btn right-2 p-1.5 z-10"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
 
-                {(() => {
-                    const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
-                    if (!statusConfig?.showRibbon) return null;
+                            {/* Image Indicator Dots */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                                {displayImages.map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={(e) => { e.stopPropagation(); setCurrentImgIndex(idx); }}
+                                        className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImgIndex ? 'bg-white w-3' : 'bg-white/50'}`}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    )}
 
-                    let label = t(`property_card.${statusConfig.id}`);
-                    if (property.status === 'sold_rented') {
-                        label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
-                    }
+                    {(() => {
+                        const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
+                        if (!statusConfig?.showRibbon) return null;
 
-                    const colorMap = {
-                        amber: 'bg-amber-500',
-                        emerald: 'bg-emerald-500',
-                        indigo: 'bg-indigo-500',
-                        rose: 'bg-rose-500',
-                        blue: 'bg-blue-500'
-                    };
+                        let label = t(`property_card.${statusConfig.id}`);
+                        if (property.status === 'sold') {
+                            label = property.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold');
+                        }
 
-                    const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
+                        const colorMap = {
+                            amber: 'bg-amber-500',
+                            emerald: 'bg-emerald-500',
+                            indigo: 'bg-indigo-500',
+                            rose: 'bg-rose-500',
+                            blue: 'bg-blue-500',
+                            orange: 'bg-orange-500'
+                        };
 
-                    return (
-                        <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-2xl">
-                            <div className={`
+                        const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
+
+                        return (
+                            <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-2xl">
+                                <div className={`
                                 ${bgColor}
                                 text-white
                                 text-[10px] font-bold uppercase tracking-wide py-1.5
@@ -356,243 +340,247 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
                                 transform rotate-45
                                 shadow-sm text-center
                             `}>
-                                {label}
+                                    {label}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+
+                    <div className={`absolute left-4 z-10 transition-transform duration-300 group-hover:scale-105 top-4`}>
+                        <PropertyStatusBadges property={property} size="sm" hideNew={true} />
+                    </div>
+
+                    {property.created_at && (
+                        <div className="absolute bottom-4 left-4 z-10">
+                            <div className="bg-white/70 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg border border-white/30 flex items-center gap-1.5 transition-all group-hover:bg-white/90">
+                                <Calendar className="w-3.5 h-3.5 text-primary-600" />
+                                <span className="text-[10px] font-bold text-slate-800">
+                                    {new Date(property.created_at).toLocaleDateString()}
+                                </span>
                             </div>
                         </div>
-                    );
-                })()}
+                    )}
 
+                    <div className="absolute bottom-4 right-4 z-10">
+                        <div className="relative group/price bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg flex flex-col items-center overflow-hidden">
+                            {(() => {
+                                const isBoth = property.listing_type === 'both' || property.listing_type === 'sale_rent';
+                                const isVacation = property.listing_type === 'vacation';
+                                const isSaleListing = property.listing_type === 'sale' || isBoth;
 
-                <div className="absolute top-4 left-4 z-10 transition-transform duration-300 group-hover:scale-105">
-                    <PropertyStatusBadges property={property} size="sm" />
-                </div>
-
-                {property.created_at && (
-                    <div className="absolute bottom-4 left-4 z-10">
-                        <div className="bg-white/70 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg border border-white/30 flex items-center gap-1.5 transition-all group-hover:bg-white/90">
-                            <Calendar className="w-3.5 h-3.5 text-primary-600" />
-                            <span className="text-[10px] font-bold text-slate-800">
-                                {new Date(property.created_at).toLocaleDateString()}
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <div className="absolute bottom-4 right-4 z-10">
-                    <div className="relative group/price bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg flex flex-col items-end overflow-hidden cursor-help">
-                        {(() => {
-                            const isBoth = property.listing_type === 'both' || property.listing_type === 'sale_rent';
-                            const isVacation = property.listing_type === 'vacation';
-                            const isSaleListing = property.listing_type === 'sale' || isBoth;
-
-                            return (
-                                <>
-                                    <div className={`transition-all duration-300 ${isSaleListing ? 'group-hover/price:opacity-0 group-hover/price:translate-y-2' : ''}`}>
+                                return (
+                                    <>
                                         {isBoth ? (
-                                            <>
-                                                <span className="text-sm">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                            <div className="flex flex-col items-center min-w-[3rem]">
+                                                {/* Sale Price w/ Flip */}
+                                                <div className="grid grid-cols-1 items-center justify-items-center h-6 overflow-hidden">
+                                                    <span className={`row-start-1 col-start-1 text-sm transition-all duration-300 md:group-hover/price:-translate-y-full md:group-hover/price:opacity-0 ${isMobileFlip ? '-translate-y-full opacity-0' : ''} md:translate-y-0 md:opacity-100`}>
+                                                        {formatCurrency(property.sale_price || property.price, property.currency)}
+                                                    </span>
+                                                    <span className={`row-start-1 col-start-1 text-sm transition-all duration-300 md:group-hover/price:translate-y-0 md:group-hover/price:opacity-100 whitespace-nowrap ${isMobileFlip ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'} md:translate-y-full md:opacity-0`}>
+                                                        {getPricePerArea()}
+                                                    </span>
+                                                </div>
+
                                                 <div className="w-full h-px bg-white/20 my-1"></div>
+
                                                 <div className="flex items-baseline gap-1">
                                                     <span className="text-sm">{formatCurrency(calculateTotalRent(), property.currency)}</span>
                                                     <span className="text-[10px] opacity-70 italic font-medium">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
                                                 </div>
-                                            </>
-                                        ) : isVacation ? (
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-lg">{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
-                                                <span className="text-xs opacity-80 italic font-medium">{t(`common.periods.${property.vacation_period || 'day'}`)}</span>
-                                            </div>
-                                        ) : property.listing_type === 'rent' ? (
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-lg">{formatCurrency(calculateTotalRent(), property.currency)}</span>
-                                                <span className="text-xs opacity-80 italic font-medium">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
                                             </div>
                                         ) : (
-                                            <span className="text-lg">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                            // Standard Behavior for other types
+                                            <>
+                                                <div className={`transition-all duration-300 ${isSaleListing ? `md:group-hover/price:opacity-0 md:group-hover/price:translate-y-2 ${isMobileFlip ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'} md:opacity-100 md:translate-y-0` : ''}`}>
+                                                    {isVacation ? (
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-lg">{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
+                                                            <span className="text-xs opacity-80 italic font-medium">{t(`common.periods.${property.vacation_period || 'day'}`)}</span>
+                                                        </div>
+                                                    ) : property.listing_type === 'rent' ? (
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-lg">{formatCurrency(calculateTotalRent(), property.currency)}</span>
+                                                            <span className="text-xs opacity-80 italic font-medium">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-lg">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                                    )}
+                                                </div>
+
+                                                {isSaleListing && (
+                                                    <div className={`absolute inset-0 bg-primary-600 flex flex-col items-center justify-center transition-all duration-300 p-2 text-center pointer-events-none md:group-hover/price:opacity-100 md:group-hover/price:translate-y-0 ${isMobileFlip ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} md:opacity-0 md:-translate-y-2`}>
+                                                        <span className="text-sm font-black tracking-tight leading-normal">
+                                                            {getPricePerArea()}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
-                                    </div>
-
-                                    {isSaleListing && (
-                                        <div className="absolute inset-0 bg-primary-700 flex flex-col items-center justify-center opacity-0 group-hover/price:opacity-100 transition-all duration-300 -translate-y-2 group-hover/price:translate-y-0 p-2 text-center pointer-events-none">
-                                            <span className="text-sm font-black tracking-tight leading-normal">
-                                                {getPricePerArea()}
-                                            </span>
-                                        </div>
-                                    )}
-                                </>
-                            );
-                        })()}
-                    </div>
-                </div>
-            </div>
-
-            <div className="p-6">
-                <div className="flex justify-between items-start gap-2">
-                    <div className="relative flex-1 pl-7">
-                        <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors leading-tight">
-                            {translations.active ? translations.title : property.title}
-                        </h3>
-                        <button
-                            onClick={handleTranslate}
-                            disabled={translations.loading}
-                            className={`absolute -top-1 left-0 p-1.5 rounded-lg transition-all ${translations.active ? 'bg-primary-50 text-primary-600' : 'text-slate-300 hover:text-primary-600 hover:bg-slate-50'}`}
-                            title={translations.active ? t('common.show_original') : t('common.translate')}
-                        >
-                            {translations.loading ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                                <Languages className="w-3.5 h-3.5" />
-                            )}
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative shrink-0">
-                            <button
-                                onClick={toggleFavorite}
-                                className={`p-2 rounded-xl transition-all ${isFav ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500 hover:bg-rose-50'} ${isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                title={isOwner ? t('common.your_property') : (isFav ? t('favorites.remove') || 'Remove from favorites' : t('favorites.add') || 'Add to favorites')}
-                            >
-                                <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500' : ''}`} />
-                            </button>
-                            {favCount > 0 && (
-                                <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">
-                                    {favCount}
-                                </span>
-                            )}
-                        </div>
-
-                        <div className="relative">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setIsShareOpen(!isShareOpen); }}
-                                className={`p-2 rounded-xl transition-all ${isShareOpen ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
-                                title={t('common.share') || 'Share'}
-                            >
-                                <Share2 className="w-4 h-4" />
-                            </button>
-
-                            <AnimatePresence>
-                                {isShareOpen && (
-                                    <>
-                                        <div
-                                            className="fixed inset-0 z-40"
-                                            onClick={(e) => { e.stopPropagation(); setIsShareOpen(false); }}
-                                        />
-                                        <Motion.div
-                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                            className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 overflow-hidden"
-                                            onClick={e => e.stopPropagation()}
-                                        >
-                                            <button
-                                                onClick={handleShareWhatsApp}
-                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
-                                            >
-                                                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
-                                                    <MessageCircle className="w-4 h-4" />
-                                                </div>
-                                                WhatsApp
-                                            </button>
-                                            <button
-                                                onClick={handleShareEmail}
-                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
-                                            >
-                                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
-                                                    <Mail className="w-4 h-4" />
-                                                </div>
-                                                Email
-                                            </button>
-                                            <button
-                                                onClick={handleCopyLink}
-                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
-                                            >
-                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-                                                    <Copy className="w-4 h-4" />
-                                                </div>
-                                                {t('common.copy_link') || 'Copy Link'}
-                                            </button>
-                                        </Motion.div>
                                     </>
-                                )}
-                            </AnimatePresence>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-col gap-y-1.5 text-slate-500 mt-5">
-                    <div className="flex items-start gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0 mt-0.5" />
-                        {renderAddress()}
-                    </div>
-                    <p className="text-slate-500 text-sm mt-2 line-clamp-2">
-                        {translations.active ? translations.description : property.description}
-                    </p>
 
-                    <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
-                        <div className="flex flex-col items-center">
-                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bedrooms')}</span>
-                            <span className="text-slate-700 font-semibold">{property.characteristics?.bedrooms || 0}</span>
+                <div className="p-6 pb-10">
+                    <div className="flex justify-between items-start gap-2">
+                        <div className="relative flex-1 pl-7">
+                            <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors leading-tight">
+                                {property.title}
+                            </h3>
                         </div>
-                        <div className="flex flex-col items-center border-x border-slate-100">
-                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.suites')}</span>
-                            <span className="text-slate-700 font-semibold">{property.characteristics?.suites || 0}</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.rooms')}</span>
-                            <span className="text-slate-700 font-semibold">{property.characteristics?.rooms || 0}</span>
-                        </div>
-                        <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
-                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bathrooms')}</span>
-                            <span className="text-slate-700 font-semibold">{property.characteristics?.bathrooms || 0}</span>
-                        </div>
-                        <div className="flex flex-col items-center pt-2 mt-2 border-x border-t border-slate-50">
-                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.garages')}</span>
-                            <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
-                        </div>
-                        <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
-                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
-                            <div className="text-slate-700 font-semibold text-center w-full px-1">
-                                {(() => {
-                                    const areaUnit = t(`common.area_units.${property.characteristics?.area_unit}`) || property.characteristics?.area_unit || t('common.area_unit');
-                                    const totalUnit = t(`common.area_units.${property.characteristics?.total_area_unit}`) || property.characteristics?.total_area_unit || t('common.area_unit');
-                                    const sameUnit = property.characteristics?.area_unit === property.characteristics?.total_area_unit;
+                        <div className="flex items-center gap-2">
+                            <div className="relative shrink-0">
+                                <button
+                                    onClick={toggleFavorite}
+                                    className={`p-2 rounded-xl transition-all ${isFav ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500 hover:bg-rose-50'} ${isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={isOwner ? t('common.your_property') : (isFav ? t('favorites.remove') || 'Remove from favorites' : t('favorites.add') || 'Add to favorites')}
+                                >
+                                    <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500' : ''}`} />
+                                </button>
+                                {favCount > 0 && (
+                                    <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">
+                                        {favCount}
+                                    </span>
+                                )}
+                            </div>
 
-                                    if (sameUnit) {
-                                        return (
-                                            <span>
-                                                {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0} {areaUnit}
-                                            </span>
-                                        );
-                                    } else {
-                                        return (
-                                            <div className="flex flex-col leading-tight -mt-0.5">
-                                                <span className="text-[11px]">{property.characteristics?.area || 0} {areaUnit} /</span>
-                                                <span className="text-[11px]">{property.characteristics?.total_area || 0} {totalUnit}</span>
-                                            </div>
-                                        );
-                                    }
-                                })()}
+                            <div className="relative">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setIsShareOpen(!isShareOpen); }}
+                                    className={`p-2 rounded-xl transition-all ${isShareOpen ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                                    title={t('common.share') || 'Share'}
+                                >
+                                    <Share2 className="w-4 h-4" />
+                                </button>
+
+                                <AnimatePresence>
+                                    {isShareOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-40"
+                                                onClick={(e) => { e.stopPropagation(); setIsShareOpen(false); }}
+                                            />
+                                            <Motion.div
+                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 overflow-hidden"
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                <button
+                                                    onClick={handleShareWhatsApp}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                >
+                                                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                                                        <MessageCircle className="w-4 h-4" />
+                                                    </div>
+                                                    WhatsApp
+                                                </button>
+                                                <button
+                                                    onClick={handleShareEmail}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                >
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                                                        <Mail className="w-4 h-4" />
+                                                    </div>
+                                                    Email
+                                                </button>
+                                                <button
+                                                    onClick={handleCopyLink}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                >
+                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                                                        <Copy className="w-4 h-4" />
+                                                    </div>
+                                                    {t('common.copy_link') || 'Copy Link'}
+                                                </button>
+                                            </Motion.div>
+                                        </>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </div>
+                    <div className="flex flex-col gap-y-1.5 text-slate-500 mt-5">
+                        <div className="flex items-start gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0 mt-0.5" />
+                            {renderAddress()}
+                        </div>
+                        <p className="text-slate-500 text-sm mt-2 line-clamp-2 min-h-[40px]">
+                            {property.description}
+                        </p>
 
-                </div>
-            </div>
-            {property.friendly_id && (
-                <div className="absolute bottom-3 left-6 group/id">
-                    <div className="relative">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
-                            {property.friendly_id}
-                        </span>
-                        <button
-                            onClick={handleCopy}
-                            className={`absolute -top-3.5 -right-3.5 p-1.5 rounded-lg border shadow-sm transition-all duration-300 ${copied ? 'bg-green-500 border-green-600 text-white scale-110' : 'bg-white border-slate-200 text-slate-400 hover:text-primary-600 hover:border-primary-500 opacity-0 group-hover/id:opacity-100'}`}
-                            title={t('common.copy')}
-                        >
-                            {copied ? <Check className="w-2 h-2" /> : <Copy className="w-2 h-2" />}
-                        </button>
+                        <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
+                            <div className="flex flex-col items-center">
+                                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bedrooms')}</span>
+                                <span className="text-slate-700 font-semibold">{property.characteristics?.bedrooms || 0}</span>
+                            </div>
+                            <div className="flex flex-col items-center border-x border-slate-100">
+                                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.suites')}</span>
+                                <span className="text-slate-700 font-semibold">{property.characteristics?.suites || 0}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.rooms')}</span>
+                                <span className="text-slate-700 font-semibold">{property.characteristics?.rooms || 0}</span>
+                            </div>
+                            <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
+                                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bathrooms')}</span>
+                                <span className="text-slate-700 font-semibold">{property.characteristics?.bathrooms || 0}</span>
+                            </div>
+                            <div className="flex flex-col items-center pt-2 mt-2 border-x border-t border-slate-50">
+                                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.garages')}</span>
+                                <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
+                            </div>
+                            <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
+                                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
+                                <div className="text-slate-700 font-semibold text-center w-full px-1">
+                                    {(() => {
+                                        const areaUnit = t(`common.area_units.${property.characteristics?.area_unit}`) || property.characteristics?.area_unit || t('common.area_unit');
+                                        const totalUnit = t(`common.area_units.${property.characteristics?.total_area_unit}`) || property.characteristics?.total_area_unit || t('common.area_unit');
+                                        const sameUnit = property.characteristics?.area_unit === property.characteristics?.total_area_unit;
+
+                                        if (sameUnit) {
+                                            return (
+                                                <span>
+                                                    {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0} {areaUnit}
+                                                </span>
+                                            );
+                                        } else {
+                                            return (
+                                                <div className="flex flex-col leading-tight -mt-0.5">
+                                                    <span className="text-[11px]">{property.characteristics?.area || 0} {areaUnit} /</span>
+                                                    <span className="text-[11px]">{property.characteristics?.total_area || 0} {totalUnit}</span>
+                                                </div>
+                                            );
+                                        }
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
-            )}
+                {property.friendly_id && (
+                    <div className="absolute bottom-3 left-6 group/id">
+                        <div className="relative">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
+                                {property.friendly_id}
+                            </span>
+                            <button
+                                onClick={handleCopy}
+                                className={`absolute -top-3.5 -right-3.5 p-1.5 rounded-lg border shadow-sm transition-all duration-300 ${copied ? 'bg-green-500 border-green-600 text-white scale-110' : 'bg-white border-slate-200 text-slate-400 hover:text-primary-600 hover:border-primary-500 opacity-0 group-hover/id:opacity-100'}`}
+                                title={t('common.copy')}
+                            >
+                                {copied ? <Check className="w-2 h-2" /> : <Copy className="w-2 h-2" />}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
