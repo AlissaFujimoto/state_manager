@@ -311,7 +311,9 @@
         "fireplace": "Lareira",
         "walk_in_closet": "Closet",
         "storage_unit": "Depósito",
-        "concierge_service": "Portaria / Concierge"
+        "concierge_service": "Portaria / Concierge",
+        "energy_water_bills_included": "Contas de Energia / Água inclusas",
+        "close_to_the_beach": "Próximo à praia"
     },
     "privacy": {
         "title": "Política de Privacidade",

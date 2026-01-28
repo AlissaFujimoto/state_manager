@@ -311,7 +311,9 @@
         "fireplace": "Fireplace",
         "walk_in_closet": "Walk-in Closet",
         "storage_unit": "Storage Unit",
-        "concierge_service": "Concierge Service"
+        "concierge_service": "Concierge Service",
+        "energy_water_bills_included": "Energy / Water bills included",
+        "close_to_the_beach": "Close to the beach"
     },
     "privacy": {
         "title": "Privacy Policy",

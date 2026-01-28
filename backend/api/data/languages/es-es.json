@@ -311,7 +311,9 @@
         "fireplace": "Chimenea",
         "walk_in_closet": "Vestidor",
         "storage_unit": "Trastero",
-        "concierge_service": "Conserjería"
+        "concierge_service": "Conserjería",
+        "energy_water_bills_included": "Gastos de luz / agua incluidos",
+        "close_to_the_beach": "Cerca de la playa"
     },
     "privacy": {
         "title": "Política de Privacidad",
