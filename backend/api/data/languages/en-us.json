@@ -6,6 +6,11 @@
         "filters": "Filters",
         "advanced_filters": "Advanced Filters",
         "reset_all": "Reset All",
+        "share": "Share",
+        "copy": "Copy",
+        "copy_link": "Copy Link",
+        "period": "Period",
+        "link_copied": "Link copied to clipboard!",
         "show_results": "Show {count} Results",
         "no_properties": "No properties found",
         "try_adjusting": "Try adjusting your filters or search terms.",
@@ -24,6 +29,14 @@
         "vacation_price": "Vacation Price",
         "vacation_price_required": "Vacation Price is required",
         "vacation_price_negative": "Vacation Price cannot be negative",
+        "condo_fee": "Condo Fee",
+        "annual_fee": "Annual Fee",
+        "total_rent": "Total Rent",
+        "annual_fee_labels": {
+            "annual": "Annual Fee",
+            "iptu": "IPTU",
+            "tax": "Property Tax"
+        },
         "currency": "Currency",
         "currency_symbol": "$",
         "currencies": {
@@ -64,21 +77,32 @@
         "total": "Total",
         "for_sale": "For Sale",
         "for_rent": "For Rent",
+        "periods": {
+            "day": "/ day",
+            "week": "/ week",
+            "month": "/ month",
+            "year": "/ year"
+        },
         "for_both": "Sale & Rent",
         "for_vacation": "Vacation Rental",
         "uploading": "Uploading...",
         "submitting": "Submitting...",
         "new": "New",
         "searching_location": "Searching location...",
+        "new_listing": "New Listing",
+        "create_listing": "Create Listing",
         "no_amenities_listed": "No amenities listed",
         "title_required": "Title is required",
         "description_required": "Description is required",
         "price_required": "Price is required",
         "price_negative": "Price cannot be negative",
         "field_negative": "Cannot be negative",
-        "property": "Property",
         "properties": "Properties",
-        "login_required": "Please login to perform this action"
+        "login_required": "Please login to perform this action",
+        "cannot_favorite_own": "You cannot favorite your own property",
+        "your_property": "Your Property",
+        "price_per_area": "Price / Area",
+        "price_per_total_area": "Price / Total Area"
     },
     "home": {
         "hero_title": "Find Your",
@@ -157,7 +181,8 @@
         "property_title_placeholder": "Property Title",
         "describe_property_placeholder": "Describe the property...",
         "location": "Location",
-        "search_address_label": "Search Address"
+        "search_address_label": "Search Address",
+        "show_exact_address": "Show exact address to public"
     },
     "my_listings": {
         "title": "My Listings",
@@ -174,7 +199,9 @@
     "favorites": {
         "title": "My Favorites",
         "empty_title": "No favorites yet",
-        "empty_description": "Start browsing properties and click the heart icon to save them here for later."
+        "empty_description": "Start browsing properties and click the heart icon to save them here for later.",
+        "add": "Add to favorites",
+        "remove": "Remove from favorites"
     },
     "property_form": {
         "basic_info_title": "Basic Information",
@@ -230,6 +257,12 @@
         "reauth_required": "Please sign out and sign in again to change your password.",
         "photo_updated": "Profile photo updated successfully!"
     },
+    "profile_card": {
+        "verified_owner": "Verified Owner",
+        "premium_member": "Premium Member",
+        "profile_settings": "Profile Settings",
+        "sign_out": "Sign Out"
+    },
     "property_card": {
         "available": "Available",
         "reserved": "Reserved",
@@ -251,7 +284,7 @@
         "password_placeholder": "••••••••",
         "sign_in": "Sign In",
         "sign_up": "Sign Up",
-        "or_continue_with": "Or continue with",
+        "or_continue_with": "Or",
         "continue_google": "Continue with Google",
         "no_account": "Don't have an account? ",
         "have_account": "Already have an account? "

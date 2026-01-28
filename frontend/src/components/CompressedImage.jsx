@@ -81,9 +81,14 @@ const CompressedImage = ({ src, alt = '', className = '', onError, style, ...pro
     }
 
     if (error || !displayUrl) {
+        // Generate initials from alt text
+        const initials = alt
+            ? alt.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+            : '?';
+
         return (
-            <div className={`bg-slate-100 flex items-center justify-center ${className}`} style={style}>
-                <span className="text-slate-400 text-sm">Image unavailable</span>
+            <div className={`bg-slate-100 flex items-center justify-center text-slate-500 font-bold ${className}`} style={style}>
+                <span className="text-sm">{initials}</span>
             </div>
         );
     }

@@ -6,6 +6,10 @@
         "filters": "Filtros",
         "advanced_filters": "Filtros Avançados",
         "reset_all": "Repor Tudo",
+        "share": "Partilhar",
+        "copy": "Copiar",
+        "copy_link": "Copiar Link",
+        "link_copied": "Link copiado!",
         "show_results": "Mostrar {count} Resultados",
         "no_properties": "Nenhuma propriedade encontrada",
         "try_adjusting": "Tente ajustar os seus filtros ou termos de pesquisa.",
@@ -70,15 +74,18 @@
         "submitting": "A submeter...",
         "new": "Novo",
         "searching_location": "A pesquisar localização...",
+        "new_listing": "Novo Anúncio",
+        "create_listing": "Criar Anúncio",
         "no_amenities_listed": "Nenhuma característica adicionada",
         "title_required": "O título é obrigatório",
         "description_required": "A descrição é obrigatória",
         "price_required": "O preço é obrigatório",
         "price_negative": "O preço não pode ser negativo",
         "field_negative": "Não pode ser negativo",
-        "property": "Imóvel",
         "properties": "Imóveis",
-        "login_required": "Por favor, inicie sessão para realizar esta ação"
+        "login_required": "Por favor, inicie sessão para realizar esta ação",
+        "cannot_favorite_own": "Não pode adicionar o seu próprio imóvel aos favoritos",
+        "your_property": "O Seu Imóvel"
     },
     "home": {
         "hero_title": "Encontre o Seu",
@@ -157,7 +164,8 @@
         "property_title_placeholder": "Título da Propriedade",
         "describe_property_placeholder": "Descreva a propriedade...",
         "location": "Localização",
-        "search_address_label": "Pesquisar Morada"
+        "search_address_label": "Pesquisar Morada",
+        "show_exact_address": "Mostrar morada exata ao público"
     },
     "my_listings": {
         "title": "Os Meus Anúncios",
@@ -174,7 +182,9 @@
     "favorites": {
         "title": "Os Meus Favoritos",
         "empty_title": "Ainda sem favoritos",
-        "empty_description": "Comece a navegar pelos imóveis e clique no ícone de coração para guardá-los aqui."
+        "empty_description": "Comece a navegar pelos imóveis e clique no ícone de coração para guardá-los aqui.",
+        "add": "Adicionar aos favoritos",
+        "remove": "Remover dos favoritos"
     },
     "property_form": {
         "basic_info_title": "Informação Básica",
@@ -230,6 +240,12 @@
         "reauth_required": "Por favor, saia e entre novamente para alterar a sua palavra-passe.",
         "photo_updated": "Foto de perfil atualizada com sucesso!"
     },
+    "profile_card": {
+        "verified_owner": "Proprietário Verificado",
+        "premium_member": "Membro Premium",
+        "profile_settings": "Definições de Perfil",
+        "sign_out": "Sair"
+    },
     "property_card": {
         "available": "Disponível",
         "reserved": "Reservado",
@@ -251,7 +267,7 @@
         "password_placeholder": "••••••••",
         "sign_in": "Entrar",
         "sign_up": "Registar",
-        "or_continue_with": "Ou continuar com",
+        "or_continue_with": "Ou",
         "continue_google": "Continuar com Google",
         "no_account": "Não tem conta? ",
         "have_account": "Já tem conta? "

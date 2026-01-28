@@ -6,6 +6,11 @@
         "filters": "Filtros",
         "advanced_filters": "Filtros Avanzados",
         "reset_all": "Restablecer Todo",
+        "share": "Compartir",
+        "copy": "Copiar",
+        "copy_link": "Compartir Enlace",
+        "period": "Periodo",
+        "link_copied": "¡Enlace copiado al portapapeles!",
         "show_results": "Ver {count} Resultados",
         "no_properties": "No se encontraron propiedades",
         "try_adjusting": "Intente ajustar sus filtros o términos de búsqueda.",
@@ -24,6 +29,14 @@
         "vacation_price": "Precio de Temporada",
         "vacation_price_required": "El precio de temporada es obligatorio",
         "vacation_price_negative": "El precio de temporada no puede ser negativo",
+        "condo_fee": "Gastos de Comunidad",
+        "annual_fee": "Tasa Anual",
+        "total_rent": "Alquiler Total",
+        "annual_fee_labels": {
+            "annual": "Tasa Anual",
+            "iptu": "IPTU",
+            "tax": "Impuesto"
+        },
         "currency": "Moneda",
         "currency_symbol": "€",
         "currencies": {
@@ -64,21 +77,32 @@
         "total": "Total",
         "for_sale": "En Venta",
         "for_rent": "En Alquiler",
+        "periods": {
+            "day": "/ día",
+            "week": "/ semana",
+            "month": "/ mes",
+            "year": "/ año"
+        },
         "for_both": "Venta y Alquiler",
         "for_vacation": "Alquiler Vacacional",
         "uploading": "Subiendo...",
         "submitting": "Enviando...",
         "new": "Nuevo",
         "searching_location": "Buscando ubicación...",
+        "new_listing": "Nuevo Anuncio",
+        "create_listing": "Crear Anuncio",
         "no_amenities_listed": "No hay características adicionales listadas",
         "title_required": "Se requiere título",
         "description_required": "Se requiere descripción",
         "price_required": "Se requiere precio",
         "price_negative": "El precio no puede ser negativo",
         "field_negative": "No puede ser negativo",
-        "property": "Propiedad",
         "properties": "Propiedades",
-        "login_required": "Por favor, inicie sesión para realizar esta acción"
+        "login_required": "Por favor, inicie sesión para realizar esta acción",
+        "cannot_favorite_own": "No puedes marcar tu propia propiedad como favorita",
+        "your_property": "Tu Propiedad",
+        "price_per_area": "Precio / Área",
+        "price_per_total_area": "Precio / Área Total"
     },
     "home": {
         "hero_title": "Encuentra Tu",
@@ -157,7 +181,8 @@
         "property_title_placeholder": "Título de la Propiedad",
         "describe_property_placeholder": "Describe la propiedad...",
         "location": "Ubicación",
-        "search_address_label": "Buscar Dirección"
+        "search_address_label": "Buscar Dirección",
+        "show_exact_address": "Mostrar dirección exacta al público"
     },
     "my_listings": {
         "title": "Mis Anuncios",
@@ -174,7 +199,9 @@
     "favorites": {
         "title": "Mis Favoritos",
         "empty_title": "Aún no hay favoritos",
-        "empty_description": "Empiece a buscar propiedades y haga clic en el icono del corazón para guardarlas aquí."
+        "empty_description": "Empiece a buscar propiedades y haga clic en el icono del corazón para guardarlas aquí.",
+        "add": "Añadir a favoritos",
+        "remove": "Quitar de favoritos"
     },
     "property_form": {
         "basic_info_title": "Información Básica",
@@ -230,6 +257,12 @@
         "reauth_required": "Por favor cierra e inicia sesión para cambiar tu contraseña.",
         "photo_updated": "¡Foto de perfil actualizada con éxito!"
     },
+    "profile_card": {
+        "verified_owner": "Propietario Verificado",
+        "premium_member": "Miembro Premium",
+        "profile_settings": "Configuración del Perfil",
+        "sign_out": "Cerrar Sesión"
+    },
     "property_card": {
         "available": "Disponible",
         "reserved": "Reservado",
@@ -251,7 +284,7 @@
         "password_placeholder": "••••••••",
         "sign_in": "Iniciar Sesión",
         "sign_up": "Registrarse",
-        "or_continue_with": "O continuar con",
+        "or_continue_with": "O",
         "continue_google": "Continuar con Google",
         "no_account": "¿No tienes cuenta? ",
         "have_account": "¿Ya tienes cuenta? "

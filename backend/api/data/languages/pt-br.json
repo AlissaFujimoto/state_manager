@@ -6,6 +6,11 @@
         "filters": "Filtros",
         "advanced_filters": "Filtros Avançados",
         "reset_all": "Limpar Tudo",
+        "share": "Compartilhar",
+        "copy": "Copiar",
+        "copy_link": "Copiar Link",
+        "period": "Período",
+        "link_copied": "Link copiado para a área de transferência!",
         "show_results": "Ver {count} Resultados",
         "no_properties": "Nenhuma propriedade encontrada",
         "try_adjusting": "Tente ajustar seus filtros ou termos de busca.",
@@ -24,6 +29,14 @@
         "vacation_price": "Preço de Temporada",
         "vacation_price_required": "Preço de Temporada é obrigatório",
         "vacation_price_negative": "Preço de Temporada não pode ser negativo",
+        "condo_fee": "Condomínio",
+        "annual_fee": "Taxa Anual",
+        "total_rent": "Aluguel Total",
+        "annual_fee_labels": {
+            "annual": "Taxa Anual",
+            "iptu": "IPTU",
+            "tax": "Imposto"
+        },
         "currency": "Moeda",
         "currency_symbol": "R$",
         "currencies": {
@@ -64,21 +77,32 @@
         "total": "Total",
         "for_sale": "Para Venda",
         "for_rent": "Para Alugar",
+        "periods": {
+            "day": "/ dia",
+            "week": "/ semana",
+            "month": "/ mês",
+            "year": "/ ano"
+        },
         "for_both": "Venda e Aluguel",
         "for_vacation": "Para Temporada",
         "uploading": "Enviando...",
         "submitting": "Enviando anúncio...",
         "new": "Novo",
         "searching_location": "Buscando localização...",
+        "new_listing": "Novo Anúncio",
+        "create_listing": "Criar Anúncio",
         "no_amenities_listed": "Nenhuma característica adicionada",
         "title_required": "Título é obrigatório",
         "description_required": "Descrição é obrigatória",
         "price_required": "Preço é obrigatório",
         "price_negative": "Preço não pode ser negativo",
         "field_negative": "Não pode ser negativo",
-        "property": "Imóvel",
         "properties": "Imóveis",
-        "login_required": "Por favor, faça login para realizar esta ação"
+        "login_required": "Por favor, faça login para realizar esta ação",
+        "cannot_favorite_own": "Você não pode favoritar seu próprio imóvel",
+        "your_property": "Seu Imóvel",
+        "price_per_area": "Preço / Área",
+        "price_per_total_area": "Preço / Área Total"
     },
     "home": {
         "hero_title": "Encontre Seu",
@@ -157,7 +181,8 @@
         "property_title_placeholder": "Título do Imóvel",
         "describe_property_placeholder": "Descreva o imóvel...",
         "location": "Localização",
-        "search_address_label": "Buscar Endereço"
+        "search_address_label": "Buscar Endereço",
+        "show_exact_address": "Mostrar endereço exato ao público"
     },
     "my_listings": {
         "title": "Meus Anúncios",
@@ -174,7 +199,9 @@
     "favorites": {
         "title": "Meus Favoritos",
         "empty_title": "Ainda sem favoritos",
-        "empty_description": "Comece a navegar pelos imóveis e clique no ícone de coração para salvá-los aqui."
+        "empty_description": "Comece a navegar pelos imóveis e clique no ícone de coração para salvá-los aqui.",
+        "add": "Adicionar aos favoritos",
+        "remove": "Remover dos favoritos"
     },
     "property_form": {
         "basic_info_title": "Informações Básicas",
@@ -230,6 +257,12 @@
         "reauth_required": "Por favor, saia e entre novamente para alterar sua senha.",
         "photo_updated": "Foto do perfil atualizada com sucesso!"
     },
+    "profile_card": {
+        "verified_owner": "Proprietário Verificado",
+        "premium_member": "Membro Premium",
+        "profile_settings": "Configurações do Perfil",
+        "sign_out": "Sair"
+    },
     "property_card": {
         "available": "Disponível",
         "reserved": "Reservado",
@@ -251,7 +284,7 @@
         "password_placeholder": "••••••••",
         "sign_in": "Entrar",
         "sign_up": "Cadastrar",
-        "or_continue_with": "Ou continue com",
+        "or_continue_with": "Ou",
         "continue_google": "Continuar com Google",
         "no_account": "Não tem uma conta? ",
         "have_account": "Já tem uma conta? "

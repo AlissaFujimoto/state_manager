@@ -12,7 +12,7 @@ import Auth from './components/Auth';
 import Home from './pages/Home';
 import MyListings from './pages/MyListings';
 import PropertyDetails from './pages/PropertyDetails';
-import PropertyForm from './pages/PropertyForm';
+
 import Profile from './pages/Profile';
 import LegalPage from './pages/LegalPage';
 import Favorites from './pages/Favorites';
@@ -103,7 +103,7 @@ function App() {
                   path="/create-announcement"
                   element={
                     <PrivateRoute>
-                      <PropertyForm />
+                      <Navigate to="/property/new" replace />
                     </PrivateRoute>
                   }
                 />
@@ -111,7 +111,7 @@ function App() {
                   path="/edit-property/:id"
                   element={
                     <PrivateRoute>
-                      <PropertyForm />
+                      <PropertyDetails />
                     </PrivateRoute>
                   }
                 />

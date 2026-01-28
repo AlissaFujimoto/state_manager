@@ -18,9 +18,8 @@ const MyListings = () => {
     const [user] = useAuthState(auth);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState('grid'); // grid or list
     const [currentPage, setCurrentPage] = useState(1);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [propertyToDelete, setPropertyToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -29,7 +28,7 @@ const MyListings = () => {
     const ITEMS_PER_PAGE = isMobile ? 6 : 9;
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -88,7 +87,7 @@ const MyListings = () => {
     if (!user) return null;
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-8 md:px-12 py-8 min-h-screen">
             <Profile user={user} />
 
             <div className="mt-12">
@@ -99,20 +98,6 @@ const MyListings = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="bg-white border border-slate-200 rounded-xl p-1 flex">
-                            <button
-                                onClick={() => setViewMode('grid')}
-                                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <LayoutGrid className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={() => setViewMode('list')}
-                                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-100 text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <ListIcon className="w-5 h-5" />
-                            </button>
-                        </div>
                         <Link
                             to="/create-announcement"
                             className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center space-x-2"
@@ -124,14 +109,14 @@ const MyListings = () => {
                 </div>
 
                 {loading ? (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-4"}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                             <PropertyCardSkeleton key={`skeleton-${i}`} />
                         ))}
                     </div>
                 ) : (announcements || []).length > 0 ? (
                     <>
-                        <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-4"}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
                             {announcements.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((p) => (
                                 <PropertyCard
                                     key={p.id}

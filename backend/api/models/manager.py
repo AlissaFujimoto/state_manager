@@ -4,6 +4,8 @@
 """
 # Standard library imports
 import uuid
+import random
+import string
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 
@@ -12,6 +14,10 @@ from server_utils.database import Database
 import flask
 
 INTERNAL_KEYS = {"bedrooms", "bathrooms", "suites", "rooms", "garages", "area", "total", "total_area", "area_unit", "total_area_unit"}
+
+def generate_friendly_id() -> str:
+    """Generate a friendly, random alphanumeric ID."""
+    return "VE-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 @dataclass
 class PropertyAddress:
@@ -34,6 +40,7 @@ class PropertyCharacteristics:
 @dataclass
 class PropertyData:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    friendly_id: str = ""
     title: str = ""
     description: str = ""
     price: float = 0.0
@@ -44,7 +51,13 @@ class PropertyData:
     listing_type: str = "sale"
     status: str = "available"
     currency: str = "BRL"
+    rent_period: str = "month"
+    vacation_period: str = "day"
+    annual_fee: Optional[float] = 0.0
+    annual_fee_label: str = "iptu"
+    condo_fee: Optional[float] = 0.0
     favorite_count: int = 0
+    show_exact_address: bool = False
     
     # Nested Data Classes
     characteristics: PropertyCharacteristics = field(default_factory=PropertyCharacteristics)
@@ -85,7 +98,9 @@ class Property:
         
         # Display Address Logic (Always Public for Preview)
         display_str = ""
-        if addr.public:
+        if d.show_exact_address and addr.private:
+            display_str = addr.private
+        elif addr.public:
             display_str = addr.public
         else:
             display_str = "Location Protected"
@@ -98,6 +113,9 @@ class Property:
         }
         
         if not is_owner:
+            if d.show_exact_address:
+                addr_dict["public"] = addr.private
+            
             addr_dict["private"] = None
             if not include_location:
                  addr_dict["location"] = None
@@ -142,7 +160,14 @@ class Property:
             "display_address": display_str,
             "location": addr_dict["location"],
             "currency": d.currency,
+            "rent_period": d.rent_period,
+            "vacation_period": d.vacation_period,
+            "annual_fee": d.annual_fee,
+            "annual_fee_label": d.annual_fee_label,
+            "condo_fee": d.condo_fee,
             "owner_id": d.owner_id,
+            "friendly_id": d.friendly_id,
+            "show_exact_address": d.show_exact_address,
             "created_at": None
         }
 
@@ -240,8 +265,28 @@ class Property:
         elif listing_type == "vacation" and vacation_price is not None:
             price = vacation_price
 
+        # Prepare IDs
+        prop_id = data.get("id")
+        is_new = not prop_id or prop_id == "new"
+        
+        # Only generate friendly_id for truly NEW properties
+        friendly_id = data.get("friendly_id", "")
+        if not friendly_id and is_new:
+            friendly_id = generate_friendly_id()
+
+        # Fee logic enforcement
+        rent_period = data.get("rent_period", "month")
+        annual_fee = safe_float(data.get("annual_fee", 0.0)) or 0.0
+        condo_fee = safe_float(data.get("condo_fee", 0.0)) or 0.0
+        
+        # If listing doesn't have rent or period is too short (day/week), fees are not applicable
+        if listing_type not in ["rent", "both", "sale_rent"] or rent_period in ["day", "week"]:
+            annual_fee = 0.0
+            condo_fee = 0.0
+
         prop_data = PropertyData(
-            id=data.get("id", str(uuid.uuid4())),
+            id=prop_id if prop_id and prop_id != "new" else str(uuid.uuid4()),
+            friendly_id=friendly_id,
             title=data.get("title", ""),
             description=data.get("description", ""),
             price=price,
@@ -252,6 +297,11 @@ class Property:
             listing_type=listing_type,
             status=data.get("status", "available"),
             currency=data.get("currency", "BRL"),
+            rent_period=rent_period,
+            vacation_period=data.get("vacation_period", "day"),
+            annual_fee=annual_fee,
+            annual_fee_label=data.get("annual_fee_label", "iptu"),
+            condo_fee=condo_fee,
             favorite_count=int(data.get("favorite_count", 0)),
             characteristics=stats,
             address=addr,
@@ -260,6 +310,7 @@ class Property:
             images=data.get("images", []),
             layout_image=data.get("layout_image"),
             owner_id=data.get("owner_id", ""),
+            show_exact_address=data.get("show_exact_address", False),
             created_at=data.get("created_at")
         )
         return cls(prop_data)
@@ -318,10 +369,20 @@ class PropertyManager:
 
     def create_announcement(self, property_data: Property) -> str:
         """Create a new announcement."""
+        # Ensure ID is a UUID (catch 'new' from frontend)
+        if property_data.id == "new":
+             property_data.data.id = str(uuid.uuid4())
+
+        # Uniqueness check for friendly_id (statistical fallback)
+        existing_friendly = self.db.collection(self.COLLECTION).where("friendly_id", "==", property_data.data.friendly_id).get()
+        if len(existing_friendly) > 0:
+            property_data.data.friendly_id = generate_friendly_id()
+            return self.create_announcement(property_data)
+
         # Always save full data to DB (is_owner=True)
         data = property_data.to_dict(include_location=True, is_owner=True)
         data["created_at"] = self.db.SERVER_TIMESTAMP
-        print(f"[DEBUG] Saving NEW announcement {property_data.id} with address: {data.get('address')}")
+        print(f"[DEBUG] Saving NEW announcement {property_data.id} ({property_data.data.friendly_id})")
         self.db.collection(self.COLLECTION).document(property_data.id).set(data)
         return property_data.id
 

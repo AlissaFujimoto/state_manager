@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-    ChevronLeft, ChevronRight, Bed, Bath, Square,
+    ChevronLeft, ChevronRight, Bed, Bath, Bath as BathIcon, Square,
     MapPin, Share2, Heart, Calendar, ArrowLeft,
-    CheckCircle2, Info, Building2, Layout, Car, DoorOpen, Bath as BathIcon,
-    Edit, Save, Undo2, Loader, Trash2, Plus, X, Image as ImageIcon, Search,
-    Check, GripVertical, Languages, SquareDashed
+    CheckCircle2, Info, Building2, Layout, Car, DoorOpen,
+    Edit, Save, Trash2, Undo2, Phone, Mail, Check, X, Plus, GripVertical, Languages,
+    Image as ImageIcon, Loader, SquareDashed, PlusCircle, MessageCircle, Copy
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -18,6 +18,8 @@ import PropertyStatusBadges from '../components/PropertyStatusBadges';
 import CompressedImage from '../components/CompressedImage';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ImageLightbox from '../components/ImageLightbox';
+import PropertyCharacteristicsFields from '../components/PropertyCharacteristicsFields';
+import PropertyPriceFields from '../components/PropertyPriceFields';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useFavorites } from '../contexts/FavoritesContext';
 import ReactGA from 'react-ga4';
@@ -50,7 +52,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const Δλ = (lon2 - lon1) * Math.PI / 180;
 
     const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ1) *
+        Math.cos(φ1) * Math.cos(φ2) *
         Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
@@ -169,11 +171,64 @@ const PropertyDetails = () => {
     const [availableAmenities, setAvailableAmenities] = useState([]);
     const [amenityInput, setAmenityInput] = useState('');
     const [showAmenitySuggestions, setShowAmenitySuggestions] = useState(false);
+    const scrollRef = React.useRef(null);
 
     const [translations, setTranslations] = useState({
         title: { text: null, active: false, loading: false },
         description: { text: null, active: false, loading: false }
     });
+
+    const [isShareOpen, setIsShareOpen] = useState(false);
+
+    const shareUrl = window.location.href;
+    const shareTitle = property?.title || '';
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(shareUrl);
+        alert(t('common.link_copied') || 'Link copied to clipboard!');
+        setIsShareOpen(false);
+    };
+
+    const handleShareWhatsApp = () => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}`, '_blank');
+        setIsShareOpen(false);
+    };
+
+    const handleShareEmail = () => {
+        window.location.href = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareUrl)}`;
+        setIsShareOpen(false);
+    };
+
+    const calculateTotalRent = (target = property) => {
+        if (!target) return 0;
+        const rent = parseFloat(target.rent_price || target.price || 0);
+        const period = target.rent_period || 'month';
+
+        if (period === 'day' || period === 'week') return rent;
+
+        const condo = parseFloat(target.condo_fee || 0);
+        const annual = parseFloat(target.annual_fee || 0);
+
+        if (period === 'year') return rent + condo + annual;
+        return rent + condo + (annual / 12);
+    };
+
+    const getPricePerArea = () => {
+        if (!property) return null;
+        const isLand = property.property_type === 'land';
+        const areaValue = isLand ? property.characteristics?.total_area : property.characteristics?.area;
+        const areaUnitRaw = isLand ? property.characteristics?.total_area_unit : property.characteristics?.area_unit;
+        const areaUnit = t(`common.area_units.${areaUnitRaw}`) || areaUnitRaw || t('common.area_unit') || 'm²';
+
+        if (!areaValue || areaValue <= 0) return formatCurrency(0, property.currency) + ' / ' + areaUnit;
+
+        const salePrice = property.sale_price || (property.listing_type === 'sale' || property.listing_type === 'both' || property.listing_type === 'sale_rent' ? property.price : 0);
+        if (!salePrice) return null;
+
+        const pricePer = salePrice / areaValue;
+
+        return `${formatCurrency(pricePer, property.currency)} / ${areaUnit}`;
+    };
 
     const handleTranslate = async (field) => {
         const current = translations[field];
@@ -240,8 +295,9 @@ const PropertyDetails = () => {
         setLightboxOpen(true);
     };
 
-    const isOwner = user && property && user.uid === property.owner_id;
-    const isFav = property ? isFavorite(property.id) : false;
+    const isCreating = id === 'new';
+    const isOwner = (user && property && user.uid === property.owner_id) || (isCreating && user);
+    const isFav = property && !isCreating ? isFavorite(property.id) : false;
 
     const toggleFavorite = (e) => {
         e.stopPropagation();
@@ -249,6 +305,12 @@ const PropertyDetails = () => {
             alert(t('common.login_required') || 'Please login to favorite properties');
             return;
         }
+
+        if (isOwner) {
+            alert(t('common.cannot_favorite_own') || 'You cannot favorite your own property');
+            return;
+        }
+
         if (isFav) {
             removeFavorite(property.id);
             setFavCount(c => Math.max(0, c - 1));
@@ -258,9 +320,65 @@ const PropertyDetails = () => {
         }
     };
 
+    const renderAddress = () => {
+        const fullAddr = (isOwner || property.show_exact_address)
+            ? property.display_address
+            : maskAddress(property.display_address, t('property_card.location_not_specified'));
+
+        if (!fullAddr || fullAddr === t('property_card.location_not_specified')) {
+            return (
+                <div className="flex flex-col min-h-[2.5rem] justify-center ml-1">
+                    <span className="font-medium text-slate-400 italic">{t('property_card.location_not_specified')}</span>
+                </div>
+            );
+        }
+
+        const parts = fullAddr.split(',').map(s => s.trim());
+        let line1 = '';
+        let line2 = '';
+
+        if (isOwner || property.show_exact_address) {
+            // Full address: Break after neighborhood
+            if (parts.length >= 4) {
+                const breakIndex = Math.min(3, parts.length - 2);
+                line1 = parts.slice(0, breakIndex).join(', ');
+                line2 = parts.slice(breakIndex).join(', ');
+            } else {
+                line1 = fullAddr;
+            }
+        } else {
+            // Masked address: Break after neighborhood
+            if (parts.length >= 2) {
+                line1 = parts[0];
+                line2 = parts.slice(1).join(', ');
+            } else {
+                line1 = fullAddr;
+            }
+        }
+
+        return (
+            <div className="flex flex-col min-h-[3rem] justify-center ml-1">
+                <span className="font-bold text-slate-700 leading-tight text-xl">{line1}</span>
+                <span className="text-sm font-medium text-slate-400 leading-tight mt-0.5">
+                    {line2 || ''}
+                </span>
+            </div>
+        );
+    };
+
     const navigate = useNavigate();
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+
+        // Clear error for this field if it exists
+        if (errors[name]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
+
         if (name.includes('.')) {
             const [parent, child] = name.split('.');
             setEditData(prev => ({
@@ -272,11 +390,94 @@ const PropertyDetails = () => {
         }
     };
 
+    const getFieldStatus = (key) => {
+        const err = errors[key];
+        if (!isEditing || !err) return '';
+
+        let val;
+        if (key.includes('.')) {
+            const [p, c] = key.split('.');
+            val = editData[p]?.[c];
+        } else {
+            val = editData[key];
+        }
+
+        const numVal = parseFloat(val);
+        // Error (Red) if negative number
+        if (!isNaN(numVal) && numVal < 0) return 'neon-error';
+
+        // Warning (Yellow) if empty/missing
+        return 'neon-warning';
+    };
+
+    const checkValidity = (data) => {
+        if (!data) return false;
+
+        // Title required
+        if (!data.title?.trim()) return false;
+
+        // Price validation based on listing type
+        const type = data.listing_type;
+        if (type === 'sale' || type === 'both' || type === 'sale_rent') {
+            if (data.sale_price === '' || data.sale_price === null || data.sale_price === undefined) return false;
+            if (parseFloat(data.sale_price) < 0) return false;
+        }
+        if (type === 'rent' || type === 'both' || type === 'sale_rent') {
+            if (data.rent_price === '' || data.rent_price === null || data.rent_price === undefined) return false;
+            if (parseFloat(data.rent_price) < 0) return false;
+        }
+        if (type === 'vacation') {
+            if (data.vacation_price === '' || data.vacation_price === null || data.vacation_price === undefined) return false;
+            if (parseFloat(data.vacation_price) < 0) return false;
+        }
+
+        // Negative check for char fields
+        const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
+        for (const field of charFields) {
+            if (parseFloat(data.characteristics?.[field]) < 0) return false;
+        }
+
+        // Fee validation
+        if (parseFloat(data.condo_fee) < 0) return false;
+        if (parseFloat(data.annual_fee) < 0) return false;
+
+        return true;
+    };
+
+    const isFormValid = checkValidity(editData);
+
     const validate = () => {
         const newErrors = {};
-        if (!editData.title.trim()) newErrors.title = t('common.title_required');
-        if (!editData.price && editData.price !== 0) newErrors.price = t('common.price_required');
-        else if (parseFloat(editData.price) < 0) newErrors.price = t('common.price_negative');
+        // Reuse logic or keep separate for specific error messages?
+        // Keeping it separate to allow descriptive error messages in 'validate' vs simple boolean in 'checkValidity'
+
+        if (!editData.title?.trim()) newErrors.title = t('common.title_required');
+
+        const type = editData.listing_type;
+
+        if (type === 'sale' || type === 'both' || type === 'sale_rent') {
+            if (editData.sale_price === '' || editData.sale_price === null || editData.sale_price === undefined) {
+                newErrors.sale_price = t('common.price_required');
+            } else if (parseFloat(editData.sale_price) < 0) {
+                newErrors.sale_price = t('common.price_negative');
+            }
+        }
+
+        if (type === 'rent' || type === 'both' || type === 'sale_rent') {
+            if (editData.rent_price === '' || editData.rent_price === null || editData.rent_price === undefined) {
+                newErrors.rent_price = t('common.price_required');
+            } else if (parseFloat(editData.rent_price) < 0) {
+                newErrors.rent_price = t('common.price_negative');
+            }
+        }
+
+        if (type === 'vacation') {
+            if (editData.vacation_price === '' || editData.vacation_price === null || editData.vacation_price === undefined) {
+                newErrors.vacation_price = t('common.price_required');
+            } else if (parseFloat(editData.vacation_price) < 0) {
+                newErrors.vacation_price = t('common.price_negative');
+            }
+        }
 
         const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
         charFields.forEach(field => {
@@ -285,19 +486,33 @@ const PropertyDetails = () => {
             }
         });
 
+        if (parseFloat(editData.condo_fee) < 0) newErrors.condo_fee = t('common.field_negative');
+        if (parseFloat(editData.annual_fee) < 0) newErrors.annual_fee = t('common.field_negative');
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSave = async () => {
-        if (!validate()) return;
+        if (!validate()) {
+            if (scrollRef.current) {
+                scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            return;
+        }
         setSaving(true);
         try {
-            await api.put(`/announcements/${id}`, editData);
-            setProperty(editData);
-            setIsEditing(false);
+            if (isCreating) {
+                const res = await api.post('/announcements', editData);
+                // Navigate to the new property or my listings
+                navigate('/my-listings');
+            } else {
+                await api.put(`/announcements/${id}`, editData);
+                setProperty(editData);
+                setIsEditing(false);
+            }
         } catch (err) {
-            console.error('Failed to update property:', err);
+            console.error('Failed to save property:', err);
             alert('Failed to save changes.');
         } finally {
             setSaving(false);
@@ -573,6 +788,35 @@ const PropertyDetails = () => {
     }, []);
 
     useEffect(() => {
+        if (id === 'new') {
+            const defaultData = {
+                title: '',
+                description: '',
+                listing_type: 'sale',
+                property_type: 'apartment',
+                status: 'available',
+                price: 0,
+                sale_price: 0,
+                rent_price: 0,
+                vacation_price: 0,
+                currency: 'BRL',
+                location: { lat: -23.5505, lng: -46.6333 }, // Default generic location
+                address: { private: '' },
+                characteristics: {
+                    bedrooms: 0, suites: 0, bathrooms: 0, rooms: 0, garages: 0, area: 0, total_area: 0
+                },
+                images: [],
+                amenities: [],
+                owner_id: user?.uid,
+                show_exact_address: false
+            };
+            setProperty(defaultData);
+            setEditData(defaultData);
+            setIsEditing(true);
+            setLoading(false);
+            return;
+        }
+
         const fetchProperty = async () => {
             try {
                 const res = await api.get(`/announcements/${id}?coords=true`);
@@ -585,7 +829,7 @@ const PropertyDetails = () => {
             }
         };
         fetchProperty();
-    }, [id]);
+    }, [id, user]);
 
 
 
@@ -637,12 +881,13 @@ const PropertyDetails = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-8 md:px-12 py-8">
 
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+            <div className={`grid grid-cols-1 ${isCreating ? 'gap-0' : 'lg:grid-cols-3 gap-12'}`}>
                 {/* Left Column: Media & Content */}
-                <div className="lg:col-span-2 space-y-12">
+                <div className={`${isCreating ? 'w-full max-w-5xl mx-auto' : 'lg:col-span-2'} space-y-12`}>
                     {/* Media Section: Carousel or Image Manager */}
                     {isEditing ? (
                         <div className="space-y-8">
@@ -805,7 +1050,7 @@ const PropertyDetails = () => {
                     )}
 
                     {/* Property Header */}
-                    <div className="flex items-start justify-between mt-8 mb-6">
+                    <div ref={scrollRef} className="flex items-start justify-between mt-8 mb-6 landscape:mt-4 landscape:mb-4">
                         <div className="flex flex-col gap-2">
                             <div className="flex flex-wrap items-center gap-3">
                                 {isEditing ? (
@@ -859,24 +1104,90 @@ const PropertyDetails = () => {
                                 ) : (
                                     <PropertyStatusBadges property={property} />
                                 )}
-                                <div className="relative">
-                                    <button
-                                        onClick={toggleFavorite}
-                                        className="p-3 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-all group/fav"
-                                        title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-                                    >
-                                        <Heart className={`w-6 h-6 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
-                                    </button>
-                                    {favCount > 0 && (
-                                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 pointer-events-none">
-                                            {favCount}
-                                        </span>
-                                    )}
-                                </div>
+                                {!isEditing && !isCreating && (
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative">
+                                            <button
+                                                onClick={toggleFavorite}
+                                                className={`p-3 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-all group/fav ${isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                title={isOwner ? t('common.your_property') : (isFav ? t('favorites.remove') || 'Remove from favorites' : t('favorites.add') || 'Add to favorites')}
+                                            >
+                                                <Heart className={`w-6 h-6 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                                            </button>
+                                            {favCount > 0 && (
+                                                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                                                    {favCount}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setIsShareOpen(!isShareOpen)}
+                                                className={`p-3 rounded-full transition-all ${isShareOpen ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                                                title={t('common.share') || 'Share'}
+                                            >
+                                                <Share2 className="w-6 h-6" />
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {isShareOpen && (
+                                                    <>
+                                                        <div
+                                                            className="fixed inset-0 z-40"
+                                                            onClick={() => setIsShareOpen(false)}
+                                                        />
+                                                        <Motion.div
+                                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                            className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 overflow-hidden"
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <button
+                                                                onClick={handleShareWhatsApp}
+                                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                                                                    <MessageCircle className="w-4 h-4" />
+                                                                </div>
+                                                                WhatsApp
+                                                            </button>
+                                                            <button
+                                                                onClick={handleShareEmail}
+                                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                                                                    <Mail className="w-4 h-4" />
+                                                                </div>
+                                                                Email
+                                                            </button>
+                                                            <button
+                                                                onClick={handleCopyLink}
+                                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                                                                    <Copy className="w-4 h-4" />
+                                                                </div>
+                                                                {t('common.copy_link') || 'Copy Link'}
+                                                            </button>
+                                                        </Motion.div>
+                                                    </>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="text-slate-500 font-bold text-sm flex items-center gap-2 mt-6">
                                 <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">{t('property_details.listed_on')}</span>
                                 <span>{property.created_at ? new Date(property.created_at).toLocaleDateString() : t('common.new')}</span>
+                                {property.friendly_id && (
+                                    <>
+                                        <span className="w-1 h-1 bg-slate-300 rounded-full mx-1"></span>
+                                        <span className="text-primary-600 font-black">{property.friendly_id}</span>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -891,14 +1202,14 @@ const PropertyDetails = () => {
                                         name="title"
                                         value={editData?.title || ''}
                                         onChange={handleInputChange}
-                                        className={`text-4xl font-extrabold text-slate-900 border-b-2 bg-transparent outline-none w-full transition-all ${errors.title ? 'border-red-500' : 'border-primary-500 focus:border-primary-600'}`}
+                                        className={`text-4xl font-extrabold text-slate-900 border-b-2 bg-transparent outline-none w-full transition-all ${getFieldStatus('title') || 'border-primary-500 focus:border-primary-600'}`}
                                         placeholder={t('property_details.property_title_placeholder')}
                                     />
                                     {errors.title && <p className="text-red-500 text-xs font-bold">{errors.title}</p>}
                                 </div>
                             ) : (
                                 <div className="flex items-start gap-3 justify-between">
-                                    <h1 className="text-4xl font-extrabold text-slate-900">
+                                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 landscape:text-2xl">
                                         {translations.title.active ? translations.title.text : property.title}
                                     </h1>
                                     {!isEditing && (
@@ -922,11 +1233,9 @@ const PropertyDetails = () => {
                                     )}
                                 </div>
                             )}
-                            <div className="flex items-center text-slate-500 mt-3">
-                                <MapPin className="w-5 h-5 mr-2 text-primary-500" />
-                                <span className="font-medium">
-                                    {isOwner ? (property.display_address || t('property_card.location_not_specified')) : maskAddress(property.display_address, t('property_card.location_not_specified'))}
-                                </span>
+                            <div className="flex items-start text-slate-500 mt-3">
+                                <MapPin className="w-5 h-5 mr-1 text-primary-500 shrink-0 mt-2" />
+                                {renderAddress()}
                             </div>
                         </div>
                         <div className="text-right">
@@ -935,69 +1244,14 @@ const PropertyDetails = () => {
                             </p>
                             <div className="text-4xl font-black text-primary-600">
                                 {isEditing ? (
-                                    <div className="flex flex-col items-end gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <label className="text-xs font-bold text-slate-400 uppercase">{t('common.currency')}</label>
-                                            <select
-                                                name="currency"
-                                                value={editData.currency || 'BRL'}
-                                                onChange={handleInputChange}
-                                                className="text-xl font-bold text-primary-600 bg-transparent border-b-2 border-primary-500 outline-none p-1 cursor-pointer"
-                                            >
-                                                {Object.entries(t('common.currencies') || {}).map(([code, label]) => (
-                                                    <option key={code} value={code} className="text-slate-800 text-sm font-bold">{code}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {(editData.listing_type === 'sale' || editData.listing_type === 'both' || editData.listing_type === 'sale_rent') && (
-                                            <div className="flex flex-col items-end">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-400 uppercase">{t('common.sale')}</span>
-                                                    <input
-                                                        type="number"
-                                                        name="sale_price"
-                                                        value={(editData.sale_price !== undefined && editData.sale_price !== null) ? editData.sale_price : (editData.price || '')}
-                                                        onChange={handleInputChange}
-                                                        className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.sale_price ? 'border-red-500' : 'border-primary-500'}`}
-                                                    />
-                                                </div>
-                                                {errors.sale_price && <p className="text-red-500 text-xs font-bold mt-1">{errors.sale_price}</p>}
-                                            </div>
-                                        )}
-
-                                        {(editData.listing_type === 'rent' || editData.listing_type === 'both' || editData.listing_type === 'sale_rent') && (
-                                            <div className="flex flex-col items-end">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
-                                                    <input
-                                                        type="number"
-                                                        name="rent_price"
-                                                        value={(editData.rent_price !== undefined && editData.rent_price !== null) ? editData.rent_price : (editData.price || '')}
-                                                        onChange={handleInputChange}
-                                                        className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.rent_price ? 'border-red-500' : 'border-primary-500'}`}
-                                                    />
-                                                </div>
-                                                {errors.rent_price && <p className="text-red-500 text-xs font-bold mt-1">{errors.rent_price}</p>}
-                                            </div>
-                                        )}
-
-                                        {editData.listing_type === 'vacation' && (
-                                            <div className="flex flex-col items-end">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-400 uppercase">{t('common.for_vacation')}</span>
-                                                    <input
-                                                        type="number"
-                                                        name="vacation_price"
-                                                        value={(editData.vacation_price !== undefined && editData.vacation_price !== null) ? editData.vacation_price : (editData.price || '')}
-                                                        onChange={handleInputChange}
-                                                        className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${errors.vacation_price ? 'border-red-500' : 'border-primary-500'}`}
-                                                    />
-                                                </div>
-                                                {errors.vacation_price && <p className="text-red-500 text-xs font-bold mt-1">{errors.vacation_price}</p>}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <PropertyPriceFields
+                                        data={editData}
+                                        onChange={handleInputChange}
+                                        getFieldStatus={getFieldStatus}
+                                        errors={errors}
+                                        t={t}
+                                        isEditMode={true}
+                                    />
                                 ) : (
                                     <div className="flex flex-col items-end gap-1">
                                         {(() => {
@@ -1006,29 +1260,55 @@ const PropertyDetails = () => {
 
                                             if (isBoth) {
                                                 return (
-                                                    <>
+                                                    <div className="flex flex-col items-end">
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xs font-bold text-slate-400 uppercase">{t('common.sale')}</span>
                                                             <span>{formatCurrency(property.sale_price || property.price, property.currency)}</span>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
-                                                            <span>{formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                                            <div className="flex items-baseline gap-1">
+                                                                <span>{formatCurrency(calculateTotalRent(), property.currency)}</span>
+                                                                <span className="text-xs font-medium text-slate-400 lowercase">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
+                                                            </div>
                                                         </div>
-                                                    </>
+                                                        {(property.rent_period === 'month' || property.rent_period === 'year') && (
+                                                            <div className="flex items-center gap-3 mt-1 opacity-60 text-[10px] font-bold uppercase tracking-wider">
+                                                                <span>{t('common.rent')}: {formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                                                {parseFloat(property.condo_fee) > 0 && <span>{t('common.condo_fee')}: {formatCurrency(property.condo_fee, property.currency)}</span>}
+                                                                {parseFloat(property.annual_fee) > 0 && <span>{t(`common.annual_fee_labels.${property.annual_fee_label || 'iptu'}`)}: {formatCurrency(property.annual_fee, property.currency)}</span>}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 );
-                                            } else if (isVacation) {
+                                            }
+                                            else if (isVacation) {
                                                 return (
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-bold text-slate-400 uppercase">{t('common.for_vacation')}</span>
-                                                        <span>{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span>{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
+                                                            <span className="text-xs font-medium text-slate-400 lowercase">{t(`common.periods.${property.vacation_period || 'day'}`)}</span>
+                                                        </div>
                                                     </div>
                                                 );
                                             } else if (property.listing_type === 'rent') {
                                                 return (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-bold text-slate-400 uppercase">{t('common.rent')}</span>
-                                                        <span>{formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                                    <div className="flex flex-col items-end">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.total_rent')}</span>
+                                                            <div className="flex items-baseline gap-1">
+                                                                <span>{formatCurrency(calculateTotalRent(), property.currency)}</span>
+                                                                <span className="text-xs font-medium text-slate-400 lowercase">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
+                                                            </div>
+                                                        </div>
+                                                        {(property.rent_period === 'month' || property.rent_period === 'year') && (
+                                                            <div className="flex items-center gap-3 mt-1 opacity-60 text-xs font-bold uppercase tracking-wider">
+                                                                <span>{t('common.rent')}: {formatCurrency(property.rent_price || property.price, property.currency)}</span>
+                                                                {parseFloat(property.condo_fee) > 0 && <span>{t('common.condo_fee')}: {formatCurrency(property.condo_fee, property.currency)}</span>}
+                                                                {parseFloat(property.annual_fee) > 0 && <span>{t(`common.annual_fee_labels.${property.annual_fee_label || 'iptu'}`)}: {formatCurrency(property.annual_fee, property.currency)}</span>}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             }
@@ -1037,540 +1317,607 @@ const PropertyDetails = () => {
                                         })()}
                                     </div>
                                 )}
+                                {!isEditing && (property.listing_type === 'sale' || property.listing_type === 'both' || property.listing_type === 'sale_rent') && (
+                                    <p className="text-2xl font-black text-slate-500 mt-1 tracking-tight">
+                                        {getPricePerArea()}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* Characteristics Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                        {[
-                            { label: t('common.bedrooms'), name: 'characteristics.bedrooms', icon: Bed },
-                            { label: t('common.suites'), name: 'characteristics.suites', icon: DoorOpen },
-                            { label: t('common.rooms'), name: 'characteristics.rooms', icon: Layout },
-                            { label: t('common.bathrooms'), name: 'characteristics.bathrooms', icon: BathIcon },
-                            { label: t('common.garages'), name: 'characteristics.garages', icon: Car },
-                            { label: t('common.area'), name: 'characteristics.area', icon: SquareDashed },
-                            { label: t('common.total'), name: 'characteristics.total_area', icon: Square }
-                        ].map((field) => {
-                            const Icon = field.icon;
-                            let value = field.name.split('.').reduce((obj, key) => obj?.[key], isEditing ? editData : property);
-                            // Ensure 0 is treated as 0 and not empty
-                            if (value === undefined || value === null) value = 0;
-                            const hasError = errors[field.name];
-                            const isAreaField = field.name.includes('area');
+                    {isEditing ? (
+                        <PropertyCharacteristicsFields
+                            data={editData}
+                            onChange={handleInputChange}
+                            getFieldStatus={getFieldStatus}
+                            errors={errors}
+                            t={t}
+                        />
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                            {[
+                                { label: t('common.bedrooms'), name: 'characteristics.bedrooms', icon: Bed },
+                                { label: t('common.suites'), name: 'characteristics.suites', icon: DoorOpen },
+                                { label: t('common.rooms'), name: 'characteristics.rooms', icon: Layout },
+                                { label: t('common.bathrooms'), name: 'characteristics.bathrooms', icon: BathIcon },
+                                { label: t('common.garages'), name: 'characteristics.garages', icon: Car },
+                                { label: t('common.area'), name: 'characteristics.area_combined', icon: SquareDashed, isCombined: true }
+                            ].map((field) => {
+                                const Icon = field.icon;
+                                const targetObj = property;
 
-                            return (
-                                <div key={field.name} className={`glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all ${hasError ? 'border-red-500 bg-red-50' : ''}`}>
-                                    <div className={`bg-primary-50 p-3 rounded-xl ${hasError ? 'text-red-600' : 'text-primary-600'}`}>
-                                        <Icon className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{field.label}</p>
-                                        {isEditing ? (
-                                            <div className="space-y-2">
-                                                <input
-                                                    type="number"
-                                                    name={field.name}
-                                                    value={value}
-                                                    onChange={handleInputChange}
-                                                    className={`text-xl font-bold text-slate-800 bg-transparent border-b outline-none w-full ${hasError ? 'border-red-500 focus:border-red-600' : 'border-primary-200 focus:border-primary-500'}`}
-                                                />
-                                                {isAreaField && (
-                                                    <select
-                                                        name={field.name === 'characteristics.area' ? "characteristics.area_unit" : "characteristics.total_area_unit"}
-                                                        value={field.name === 'characteristics.area' ? (editData.characteristics?.area_unit || 'm2') : (editData.characteristics?.total_area_unit || 'm2')}
-                                                        onChange={handleInputChange}
-                                                        className="text-[10px] font-bold text-primary-600 uppercase bg-primary-50 px-2 py-1 rounded-md outline-none"
-                                                    >
-                                                        {Object.entries(t('common.area_units') || {}).map(([code, label]) => (
-                                                            <option key={code} value={code}>{label}</option>
-                                                        ))}
-                                                    </select>
-                                                )}
+                                if (field.isCombined) {
+                                    const areaValue = targetObj?.characteristics?.area;
+                                    const totalValue = targetObj?.characteristics?.total_area;
+                                    const areaUnitRaw = targetObj?.characteristics?.area_unit;
+                                    const totalUnitRaw = targetObj?.characteristics?.total_area_unit;
+
+                                    const areaUnit = t(`common.area_units.${areaUnitRaw}`) || areaUnitRaw || t('common.area_unit');
+                                    const totalUnit = t(`common.area_units.${totalUnitRaw}`) || totalUnitRaw || t('common.area_unit');
+
+                                    return (
+                                        <div key={field.name} className="glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all">
+                                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
+                                                <Icon className="w-6 h-6" />
                                             </div>
-                                        ) : (
-                                            <p className="text-xl font-bold text-slate-800">
-                                                {value} {isAreaField ? (t(`common.area_units.${field.name === 'characteristics.area' ? property.characteristics?.area_unit : property.characteristics?.total_area_unit}`) || (field.name === 'characteristics.area' ? property.characteristics?.area_unit : property.characteristics?.total_area_unit) || t('common.area_unit')) : ''}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{field.label}</p>
+                                                <p className="text-xl font-bold text-slate-800">
+                                                    {(() => {
+                                                        const sameUnit = areaUnitRaw === totalUnitRaw;
+                                                        if (sameUnit) {
+                                                            return <span>{areaValue || 0} / {totalValue || 0} {areaUnit}</span>;
+                                                        } else {
+                                                            return (
+                                                                <span className="flex flex-col text-sm leading-tight gap-1">
+                                                                    <span>{areaValue || 0} {areaUnit} (Util)</span>
+                                                                    <span>{totalValue || 0} {totalUnit} (Total)</span>
+                                                                </span>
+                                                            )
+                                                        }
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                } else {
+                                    // Standard View Mode
+                                    let value = field.name.split('.').reduce((obj, key) => obj?.[key], targetObj);
+                                    if (value === undefined || value === null) value = 0;
+
+                                    return (
+                                        <div key={field.name} className="glass-card p-5 rounded-2xl flex items-center space-x-4 transition-all">
+                                            <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
+                                                <Icon className="w-6 h-6" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{field.label}</p>
+                                                <p className="text-xl font-bold text-slate-800">
+                                                    {value}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            })}
+                        </div>
+                    )}
 
                     {/* Description */}
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-2xl font-bold text-slate-800">{t('property_details.about_property')}</h3>
-                            {!isEditing && (
-                                <button
-                                    onClick={() => handleTranslate('description')}
-                                    disabled={translations.description.loading}
-                                    className={`
+                    {(isEditing || property.description?.trim()) && (
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-2xl font-bold text-slate-800">{t('property_details.about_property')}</h3>
+                                {!isEditing && (
+                                    <button
+                                        onClick={() => handleTranslate('description')}
+                                        disabled={translations.description.loading}
+                                        className={`
                                         flex-shrink-0 p-2 rounded-xl transition-all
                                         ${translations.description.active
-                                            ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
-                                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}
+                                                ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}
                                     `}
-                                    title={translations.description.active ? t('common.show_original') : t('common.translate')}
-                                >
-                                    {translations.description.loading ? (
-                                        <Loader className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <Languages className="w-5 h-5" />
-                                    )}
-                                </button>
-                            )}
-                        </div>
-                        {isEditing ? (
-                            <textarea
-                                name="description"
-                                value={editData.description}
-                                onChange={handleInputChange}
-                                rows="6"
-                                className="w-full p-4 bg-slate-50 border-2 border-primary-100 rounded-2xl text-slate-600 leading-relaxed text-lg outline-none focus:border-primary-500 transition-all resize-none"
-                                placeholder={t('property_details.describe_property_placeholder')}
-                            />
-                        ) : (
-                            <div className="relative">
-                                <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-line">
-                                    {translations.description.active ? translations.description.text : property.description}
-                                </p>
-                                {translations.description.active && (
-                                    <p className="text-xs text-slate-400 mt-2 italic flex items-center gap-1">
-                                        <Languages className="w-3 h-3" />
-                                        {t('common.translated_automatically')}
-                                    </p>
+                                        title={translations.description.active ? t('common.show_original') : t('common.translate')}
+                                    >
+                                        {translations.description.loading ? (
+                                            <Loader className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <Languages className="w-5 h-5" />
+                                        )}
+                                    </button>
                                 )}
                             </div>
-                        )}
-                    </div>
-
-                    {/* Amenities Section */}
-                    <div className="py-8 border-t border-slate-100">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
-                            {isEditing && (
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
-                                    {t('property_details.drag_to_reorder')}
-                                </span>
+                            {isEditing ? (
+                                <div className="w-full">
+                                    <textarea
+                                        name="description"
+                                        value={editData.description}
+                                        onChange={handleInputChange}
+                                        rows="6"
+                                        className={`w-full p-4 bg-slate-50 border-2 rounded-2xl text-slate-600 leading-relaxed text-lg outline-none transition-all resize-none ${getFieldStatus('description') || 'border-primary-100 focus:border-primary-500'}`}
+                                        placeholder={t('property_details.describe_property_placeholder')}
+                                    />
+                                    {errors.description && <p className="text-red-500 text-xs font-bold mt-1">{errors.description}</p>}
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                    <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-line">
+                                        {translations.description.active ? translations.description.text : property.description}
+                                    </p>
+                                    {translations.description.active && (
+                                        <p className="text-xs text-slate-400 mt-2 italic flex items-center gap-1">
+                                            <Languages className="w-3 h-3" />
+                                            {t('common.translated_automatically')}
+                                        </p>
+                                    )}
+                                </div>
                             )}
                         </div>
+                    )}
 
-                        {isEditing ? (
-                            <div className="space-y-4">
-                                {/* Google Keep Style Add Input */}
-                                <div className="relative">
-                                    <div className="flex items-center gap-3 bg-white border-2 border-slate-100 rounded-2xl p-2 pl-4 focus-within:border-primary-500 transition-all shadow-sm">
-                                        <button
-                                            onClick={() => setShowAmenitySuggestions(!showAmenitySuggestions)}
-                                            className={`p-1 rounded-lg transition-colors ${showAmenitySuggestions ? 'bg-primary-50 text-primary-600' : 'text-primary-500 hover:bg-slate-50'}`}
-                                            title={t('property_details.view_all_amenities') || 'View all amenities'}
-                                        >
-                                            <Plus className={`w-5 h-5 transition-transform duration-300 ${showAmenitySuggestions ? 'rotate-45' : ''}`} />
-                                        </button>
-                                        <input
-                                            type="text"
-                                            placeholder={t('property_details.add_amenity_placeholder')}
-                                            className="flex-1 bg-transparent outline-none text-slate-700 font-medium"
-                                            value={amenityInput}
-                                            onChange={(e) => {
-                                                setAmenityInput(e.target.value);
-                                                setShowAmenitySuggestions(true);
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    addAmenity(amenityInput);
-                                                }
-                                            }}
-                                            onFocus={() => setShowAmenitySuggestions(true)}
-                                        />
-                                        {amenityInput && (
+                    {/* Amenities Section */}
+                    {(isEditing || (property.amenities && property.amenities.length > 0)) && (
+                        <div className="py-8 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
+                                {isEditing && (
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
+                                        {t('property_details.drag_to_reorder')}
+                                    </span>
+                                )}
+                            </div>
+
+                            {isEditing ? (
+                                <div className="space-y-4">
+                                    {/* Google Keep Style Add Input */}
+                                    <div className="relative">
+                                        <div className="flex items-center gap-3 bg-white border-2 border-slate-100 rounded-2xl p-2 pl-4 focus-within:border-primary-500 transition-all shadow-sm">
                                             <button
-                                                onClick={() => addAmenity(amenityInput)}
-                                                className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors"
+                                                onClick={() => setShowAmenitySuggestions(!showAmenitySuggestions)}
+                                                className={`p-1 rounded-lg transition-colors ${showAmenitySuggestions ? 'bg-primary-50 text-primary-600' : 'text-primary-500 hover:bg-slate-50'}`}
+                                                title={t('property_details.view_all_amenities') || 'View all amenities'}
                                             >
-                                                {t('common.add') || 'Add'}
+                                                <Plus className={`w-5 h-5 transition-transform duration-300 ${showAmenitySuggestions ? 'rotate-45' : ''}`} />
                                             </button>
-                                        )}
-                                    </div>
-
-                                    {/* Suggestions Dropdown */}
-                                    <AnimatePresence>
-                                        {showAmenitySuggestions && (
-                                            <>
-                                                {/* Backdrop to close on click outside */}
-                                                <div
-                                                    className="fixed inset-0 z-[90]"
-                                                    onClick={() => setShowAmenitySuggestions(false)}
-                                                />
-                                                <Motion.div
-                                                    initial={{ opacity: 0, y: -10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -10 }}
-                                                    className="absolute z-[100] left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto p-2"
+                                            <input
+                                                type="text"
+                                                placeholder={t('property_details.add_amenity_placeholder')}
+                                                className="flex-1 bg-transparent outline-none text-slate-700 font-medium"
+                                                value={amenityInput}
+                                                onChange={(e) => {
+                                                    setAmenityInput(e.target.value);
+                                                    setShowAmenitySuggestions(true);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        addAmenity(amenityInput);
+                                                    }
+                                                }}
+                                                onFocus={() => setShowAmenitySuggestions(true)}
+                                            />
+                                            {amenityInput && (
+                                                <button
+                                                    onClick={() => addAmenity(amenityInput)}
+                                                    className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors"
                                                 >
-                                                    {availableAmenities
-                                                        .filter(a => {
+                                                    {t('common.add') || 'Add'}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Suggestions Dropdown */}
+                                        <AnimatePresence>
+                                            {showAmenitySuggestions && (
+                                                <>
+                                                    {/* Backdrop to close on click outside */}
+                                                    <div
+                                                        className="fixed inset-0 z-[90]"
+                                                        onClick={() => setShowAmenitySuggestions(false)}
+                                                    />
+                                                    <Motion.div
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        className="absolute z-[100] left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto p-2"
+                                                    >
+                                                        {availableAmenities
+                                                            .filter(a => {
+                                                                const translatedName = getAmenityLabel(a);
+                                                                return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
+                                                                    !editData.amenities.includes(a);
+                                                            })
+                                                            .map((suggestion, idx) => {
+                                                                const translatedName = getAmenityLabel(suggestion);
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => addAmenity(suggestion)}
+                                                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-slate-600 font-medium transition-colors flex items-center justify-between group"
+                                                                    >
+                                                                        <span>{translatedName}</span>
+                                                                        <Plus className="w-4 h-4 text-slate-300 group-hover:text-primary-500" />
+                                                                    </button>
+                                                                );
+                                                            })
+                                                        }
+                                                        {availableAmenities.filter(a => {
                                                             const translatedName = getAmenityLabel(a);
                                                             return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
                                                                 !editData.amenities.includes(a);
-                                                        })
-                                                        .map((suggestion, idx) => {
-                                                            const translatedName = getAmenityLabel(suggestion);
-                                                            return (
-                                                                <button
-                                                                    key={idx}
-                                                                    onClick={() => addAmenity(suggestion)}
-                                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-slate-600 font-medium transition-colors flex items-center justify-between group"
-                                                                >
-                                                                    <span>{translatedName}</span>
-                                                                    <Plus className="w-4 h-4 text-slate-300 group-hover:text-primary-500" />
-                                                                </button>
-                                                            );
-                                                        })
-                                                    }
-                                                    {availableAmenities.filter(a => {
-                                                        const translatedName = getAmenityLabel(a);
-                                                        return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
-                                                            !editData.amenities.includes(a);
-                                                    }).length === 0 && (
-                                                            <div className="px-4 py-3 text-slate-400 text-sm italic">
-                                                                {amenityInput
-                                                                    ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
-                                                                    : t('property_details.no_more_amenities')
-                                                                }
-                                                            </div>
-                                                        )}
-                                                </Motion.div>
-                                            </>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                                        }).length === 0 && (
+                                                                <div className="px-4 py-3 text-slate-400 text-sm italic">
+                                                                    {amenityInput
+                                                                        ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
+                                                                        : t('property_details.no_more_amenities')
+                                                                    }
+                                                                </div>
+                                                            )}
+                                                    </Motion.div>
+                                                </>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
 
-                                {/* Draggable List */}
-                                <Reorder.Group
-                                    axis="y"
-                                    values={editData.amenities || []}
-                                    onReorder={reorderAmenities}
-                                    className="space-y-2"
-                                >
-                                    {(editData.amenities || []).map((item) => {
-                                        const translatedName = getAmenityLabel(item);
-                                        return (
-                                            <Reorder.Item
-                                                key={item}
-                                                value={item}
-                                                className="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-primary-200 transition-colors"
-                                            >
-                                                <GripVertical className="w-5 h-5 text-slate-300 group-hover:text-slate-400" />
-                                                <span className="flex-1 font-medium text-slate-700">{translatedName}</span>
-                                                <button
-                                                    onClick={() => removeAmenity(item)}
-                                                    className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
+                                    {/* Draggable List */}
+                                    <Reorder.Group
+                                        axis="y"
+                                        values={editData.amenities || []}
+                                        onReorder={reorderAmenities}
+                                        className="space-y-2"
+                                    >
+                                        {(editData.amenities || []).map((item) => {
+                                            const translatedName = getAmenityLabel(item);
+                                            return (
+                                                <Reorder.Item
+                                                    key={item}
+                                                    value={item}
+                                                    className="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-primary-200 transition-colors"
                                                 >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </Reorder.Item>
+                                                    <GripVertical className="w-5 h-5 text-slate-300 group-hover:text-slate-400" />
+                                                    <span className="flex-1 font-medium text-slate-700">{translatedName}</span>
+                                                    <button
+                                                        onClick={() => removeAmenity(item)}
+                                                        className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </Reorder.Item>
+                                            );
+                                        })}
+                                    </Reorder.Group>
+
+                                    {(!editData.amenities || editData.amenities.length === 0) && (
+                                        <div className="text-center py-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-medium">
+                                            {t('property_details.no_amenities_yet')}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    {(property.amenities || []).map((item, idx) => {
+                                        const translatedName = getAmenityLabel(item);
+
+                                        return (
+                                            <Motion.div
+                                                key={idx}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: idx * 0.05 }}
+                                                className="flex items-center gap-3 group"
+                                            >
+                                                <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-green-200">
+                                                    <Check className="w-4 h-4 text-white" />
+                                                </div>
+                                                <span className="text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
+                                                    {translatedName}
+                                                </span>
+                                            </Motion.div>
                                         );
                                     })}
-                                </Reorder.Group>
-
-                                {(!editData.amenities || editData.amenities.length === 0) && (
-                                    <div className="text-center py-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-medium">
-                                        {t('property_details.no_amenities_yet')}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {(property.amenities || []).map((item, idx) => {
-                                    const translatedName = getAmenityLabel(item);
-
-                                    return (
-                                        <Motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className="flex items-center gap-3 group"
-                                        >
-                                            <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-green-200">
-                                                <Check className="w-4 h-4 text-white" />
-                                            </div>
-                                            <span className="text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
-                                                {translatedName}
-                                            </span>
-                                        </Motion.div>
-                                    );
-                                })}
-                                {(!property.amenities || property.amenities.length === 0) && (
-                                    <p className="text-slate-400 italic col-span-full">{t('common.no_amenities_listed') || 'No specific amenities listed for this property.'}</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Property Location */}
-                    {property.location && (
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
-                                <MapPin className="w-6 h-6 mr-2 text-primary-600" />
-                                {t('property_details.location') || 'Location'}
-                            </h3>
-                            <div
-                                className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-10 relative group"
-                            >
-                                <MapContainer
-                                    center={[Number(editData?.location?.lat || property.location.lat), Number(editData?.location?.lng || property.location.lng)]}
-                                    zoom={14}
-                                    scrollWheelZoom={true}
-                                    dragging={true}
-                                    style={{ height: '100%', width: '100%' }}
-                                >
-                                    <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    />
-                                    {isEditing ? (
-                                        <>
-                                            <LocationPicker
-                                                location={editData.location}
-                                                setEditData={setEditData}
-                                                anchorLocation={anchorLocation}
-                                                onLocationChange={fetchAddress}
-                                            />
-                                            <RecenterMap center={editData.location} />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Circle
-                                                center={[Number(property.location.lat), Number(property.location.lng)]}
-                                                radius={1000}
-                                                pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.2, weight: 2 }}
-                                            />
-                                            {isOwner && (
-                                                <Marker
-                                                    position={[Number(property.location.lat), Number(property.location.lng)]}
-                                                    icon={faviconIcon}
-                                                />
-                                            )}
-                                        </>
+                                    {(!property.amenities || property.amenities.length === 0) && (
+                                        <p className="text-slate-400 italic col-span-full">{t('common.no_amenities_listed') || 'No specific amenities listed for this property.'}</p>
                                     )}
-                                </MapContainer>
-                                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200">
-                                    {isEditing && editData.location
-                                        ? `${Number(editData.location.lat).toFixed(4)}, ${Number(editData.location.lng).toFixed(4)}`
-                                        : (isOwner
-                                            ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}`
-                                            : t('property_details.approximate_location')
-                                        )
-                                    }
-                                </div>
-                                {isEditing && (
-                                    <div className="absolute top-4 left-4 bg-primary-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg z-[400] pointer-events-none animate-pulse">
-                                        {t('property_details.click_map_to_change')}
-                                    </div>
-                                )}
-                            </div>
-                            {isEditing && (
-                                <div className="mt-4 space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter ml-1">{t('property_details.property_address')}</label>
-                                    <AddressAutocomplete
-                                        name="address.private"
-                                        value={editData.address?.private || ''}
-                                        onChange={handleInputChange}
-                                        onSelect={handleAddressSelect}
-                                        disabled={isResolvingAddress}
-                                        placeholder={t('property_details.search_address_placeholder')}
-                                    />
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* Building Layout */}
-                    {property.layout_image && !isEditing && (
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
-                                <Layout className="w-7 h-7 mr-3 text-primary-600" />
-                                {t('property_details.building_layout')}
-                            </h3>
-                            <p className="text-slate-500 mb-6 text-sm">{t('property_details.floor_plan_description')}</p>
-                            <div className="glass-card p-6 rounded-3xl overflow-hidden flex items-center justify-center bg-slate-900" style={{ minHeight: '400px', maxHeight: '800px' }}>
-                                <CompressedImage
-                                    src={property.layout_image}
-                                    alt="Building Layout"
-                                    className="max-w-full max-h-full object-contain cursor-zoom-in transition-transform hover:scale-[1.01]"
-                                    onClick={() => openLightbox([property.layout_image], 0)}
-                                />
+                    {/* Property Location */}
+                    {
+                        property.location && (
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
+                                    <MapPin className="w-6 h-6 mr-2 text-primary-600" />
+                                    {t('property_details.location') || 'Location'}
+                                </h3>
+                                <div
+                                    className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-10 relative group"
+                                >
+                                    <MapContainer
+                                        center={[Number(editData?.location?.lat || property.location.lat), Number(editData?.location?.lng || property.location.lng)]}
+                                        zoom={14}
+                                        scrollWheelZoom={true}
+                                        dragging={true}
+                                        style={{ height: '100%', width: '100%' }}
+                                    >
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+                                        {isEditing ? (
+                                            <>
+                                                <LocationPicker
+                                                    location={editData.location}
+                                                    setEditData={setEditData}
+                                                    anchorLocation={anchorLocation}
+                                                    onLocationChange={fetchAddress}
+                                                />
+                                                <RecenterMap center={editData.location} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Circle
+                                                    center={[Number(property.location.lat), Number(property.location.lng)]}
+                                                    radius={1000}
+                                                    pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.2, weight: 2 }}
+                                                />
+                                                {isOwner && (
+                                                    <Marker
+                                                        position={[Number(property.location.lat), Number(property.location.lng)]}
+                                                        icon={faviconIcon}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
+                                    </MapContainer>
+                                    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200">
+                                        {isEditing && editData.location
+                                            ? `${Number(editData.location.lat).toFixed(4)}, ${Number(editData.location.lng).toFixed(4)}`
+                                            : (isOwner
+                                                ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}`
+                                                : t('property_details.approximate_location')
+                                            )
+                                        }
+                                    </div>
+                                    {isEditing && (
+                                        <div className="absolute top-4 left-4 bg-primary-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg z-[400] pointer-events-none animate-pulse">
+                                            {t('property_details.click_map_to_change')}
+                                        </div>
+                                    )}
+                                </div>
+                                {isEditing && (
+                                    <div className="mt-4 space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter ml-1">{t('property_details.property_address')}</label>
+                                        <AddressAutocomplete
+                                            name="address.private"
+                                            value={editData.address?.private || ''}
+                                            onChange={handleInputChange}
+                                            onSelect={handleAddressSelect}
+                                            disabled={isResolvingAddress}
+                                            placeholder={t('property_details.search_address_placeholder')}
+                                        />
+                                        <div className="flex items-center gap-2 mt-4 p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary-200">
+                                            <input
+                                                type="checkbox"
+                                                id="show_exact_address"
+                                                className="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                                                checked={editData.show_exact_address || false}
+                                                onChange={(e) => setEditData(prev => ({ ...prev, show_exact_address: e.target.checked }))}
+                                            />
+                                            <label htmlFor="show_exact_address" className="text-sm font-bold text-slate-700 cursor-pointer">
+                                                {t('property_details.show_exact_address') || 'Show exact address to public'}
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+                        )
+                    }
+
+                    {/* Building Layout */}
+                    {
+                        property.layout_image && !isEditing && (
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-800 mb-1 flex items-center">
+                                    <Layout className="w-7 h-7 mr-3 text-primary-600" />
+                                    {t('property_details.building_layout')}
+                                </h3>
+                                <p className="text-slate-500 mb-6 text-sm">{t('property_details.floor_plan_description')}</p>
+                                <div className="glass-card p-6 rounded-3xl overflow-hidden flex items-center justify-center bg-slate-900" style={{ minHeight: '400px', maxHeight: '800px' }}>
+                                    <CompressedImage
+                                        src={property.layout_image}
+                                        alt="Building Layout"
+                                        className="max-w-full max-h-full object-contain cursor-zoom-in transition-transform hover:scale-[1.01]"
+                                        onClick={() => openLightbox([property.layout_image], 0)}
+                                    />
+                                </div>
+                            </div>
+                        )
+                    }
+
+
+
+                    {/* Create Action Button (Bottom of form for new listings) */}
+                    {isCreating && (
+                        <div className="mt-12 flex justify-end">
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className={`bg-primary-600 text-white px-8 py-4 rounded-2xl font-bold shadow-xl hover:bg-primary-700 transition-all text-lg flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${!isFormValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                {saving ? <Loader className="w-6 h-6 animate-spin" /> : <PlusCircle className="w-6 h-6" />}
+                                <span>{t('common.create_listing')}</span>
+                            </button>
                         </div>
                     )}
-
-
                 </div>
 
                 {/* Right Column: Sidebar */}
                 <div className="space-y-8">
-                    {/* Contact Card */}
-                    <div className="p-8 rounded-3xl sticky top-28 premium-shadow bg-primary-600 text-white shadow-2xl overflow-hidden relative">
-                        {/* Background Pattern */}
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
-                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-primary-500/30 rounded-full blur-3xl"></div>
+                    {/* Contact Card - Hide when creating new listing */}
+                    {!isCreating && (
+                        <div className="p-8 rounded-3xl sticky top-28 premium-shadow bg-primary-600 text-white shadow-2xl overflow-hidden relative">
+                            {/* Background Pattern */}
+                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-primary-500/30 rounded-full blur-3xl"></div>
 
-                        {property.owner && (
-                            <div className="flex items-center gap-4 mb-8 pb-8 border-b border-white/20 relative z-10">
-                                <CompressedImage
-                                    src={(property.owner && property.owner.photo) || `https://ui-avatars.com/api/?name=${encodeURIComponent((property.owner && property.owner.name) || 'Owner')}&background=random`}
-                                    alt={(property.owner && property.owner.name) || 'Owner'}
-                                    className="w-16 h-16 rounded-full border-2 border-white/30 object-cover shadow-lg cursor-zoom-in transition-transform hover:scale-105"
-                                    onClick={() => openLightbox([(property.owner && property.owner.photo) || `https://ui-avatars.com/api/?name=${encodeURIComponent((property.owner && property.owner.name) || 'Owner')}&background=random`], 0)}
-                                />
-                                <div>
-                                    <p className="text-primary-100 text-xs font-bold uppercase tracking-widest mb-1">{t('property_details.listed_by')}</p>
-                                    <h4 className="text-xl font-bold text-white leading-tight">{property.owner.name || t('property_details.property_owner') || 'Property Owner'}</h4>
+                            {property.owner && (
+                                <div className="flex items-center gap-4 mb-8 pb-8 border-b border-white/20 relative z-10">
+                                    <CompressedImage
+                                        src={(property.owner && property.owner.photo) || `https://ui-avatars.com/api/?name=${encodeURIComponent((property.owner && property.owner.name) || 'Owner')}&background=random`}
+                                        alt={(property.owner && property.owner.name) || 'Owner'}
+                                        className="w-16 h-16 rounded-full border-2 border-white/30 object-cover shadow-lg cursor-zoom-in transition-transform hover:scale-105"
+                                        onClick={() => openLightbox([(property.owner && property.owner.photo) || `https://ui-avatars.com/api/?name=${encodeURIComponent((property.owner && property.owner.name) || 'Owner')}&background=random`], 0)}
+                                    />
+                                    <div>
+                                        <p className="text-primary-100 text-xs font-bold uppercase tracking-widest mb-1">{t('property_details.listed_by')}</p>
+                                        <h4 className="text-xl font-bold text-white leading-tight">{property.owner.name || t('property_details.property_owner') || 'Property Owner'}</h4>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                        <h3 className="text-2xl font-bold mb-6 italic relative z-10">
-                            {isOwner ? t('property_details.manage_listing') : t('property_details.interested')}
-                        </h3>
-                        <div className="space-y-4 relative z-10">
-                            {isOwner ? (
-                                <>
-                                    {isEditing ? (
-                                        <div className="flex flex-col gap-3">
-                                            <button
-                                                onClick={handleSave}
-                                                disabled={saving}
-                                                className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2"
-                                            >
-                                                {saving ? <Loader className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                                <span>{t('property_details.save_changes')}</span>
-                                            </button>
-                                            <button
-                                                onClick={() => { setIsEditing(false); setErrors({}); }}
-                                                disabled={saving}
-                                                className="w-full bg-primary-500 text-white border-2 border-primary-400/50 py-4 rounded-2xl font-bold hover:bg-primary-400 transition-all text-lg flex items-center justify-center gap-2"
-                                            >
-                                                <Undo2 className="w-5 h-5" />
-                                                <span>{t('property_details.cancel_edit')}</span>
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col gap-3">
-                                            <button
-                                                onClick={handleEditStart}
-                                                className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2"
-                                            >
-                                                <Edit className="w-5 h-5" />
-                                                <span>{t('property_details.edit_listing')}</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setIsDeleteModalOpen(true)}
-                                                className="w-full bg-red-500 text-white border-2 border-red-400/50 py-4 rounded-2xl font-bold hover:bg-red-600 transition-all text-lg flex items-center justify-center gap-2"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                                <span>{t('property_details.delete_listing')}</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <div className="relative group/cs">
-                                        <button
-                                            disabled
-                                            className="w-full bg-white/50 text-primary-600/50 py-4 rounded-2xl font-bold border-2 border-white/20 transition-all text-lg cursor-not-allowed"
-                                        >
-                                            {t('property_details.contact_agent')}
-                                        </button>
-                                        <div className="absolute -top-3 -right-2 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
-                                            {t('common.coming_soon')}
-                                        </div>
-                                    </div>
-                                    <div className="relative group/cs">
-                                        <button
-                                            disabled
-                                            className="w-full bg-primary-500/50 text-white/50 border-2 border-primary-400/20 py-4 rounded-2xl font-bold transition-all text-lg cursor-not-allowed"
-                                        >
-                                            {t('property_details.schedule_tour')}
-                                        </button>
-                                        <div className="absolute -top-3 -right-2 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
-                                            {t('common.coming_soon')}
-                                        </div>
-                                    </div>
-                                </>
                             )}
+                            <h3 className="text-2xl font-bold mb-6 italic relative z-10">
+                                {isOwner ? t('property_details.manage_listing') : t('property_details.interested')}
+                            </h3>
+                            <div className="space-y-4 relative z-10">
+                                {isOwner ? (
+                                    <>
+                                        {isEditing ? (
+                                            <div className="flex flex-col gap-3">
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={saving || Object.keys(errors).length > 0}
+                                                    className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {saving ? <Loader className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                                                    <span>{t('property_details.save_changes')}</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => { setIsEditing(false); setErrors({}); }}
+                                                    disabled={saving}
+                                                    className="w-full bg-primary-500 text-white border-2 border-primary-400/50 py-4 rounded-2xl font-bold hover:bg-primary-400 transition-all text-lg flex items-center justify-center gap-2"
+                                                >
+                                                    <Undo2 className="w-5 h-5" />
+                                                    <span>{t('property_details.cancel_edit')}</span>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-3">
+                                                <button
+                                                    onClick={handleEditStart}
+                                                    className="w-full bg-white text-primary-600 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-50 transition-all text-lg flex items-center justify-center gap-2"
+                                                >
+                                                    <Edit className="w-5 h-5" />
+                                                    <span>{t('property_details.edit_listing')}</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsDeleteModalOpen(true)}
+                                                    className="w-full bg-red-500 text-white border-2 border-red-400/50 py-4 rounded-2xl font-bold hover:bg-red-600 transition-all text-lg flex items-center justify-center gap-2"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                    <span>{t('property_details.delete_listing')}</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="relative group/cs">
+                                            <button
+                                                disabled
+                                                className="w-full bg-white/50 text-primary-600/50 py-4 rounded-2xl font-bold border-2 border-white/20 transition-all text-lg cursor-not-allowed"
+                                            >
+                                                {t('property_details.contact_agent')}
+                                            </button>
+                                            <div className="absolute -top-3 -right-2 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
+                                                {t('common.coming_soon')}
+                                            </div>
+                                        </div>
+                                        <div className="relative group/cs">
+                                            <button
+                                                disabled
+                                                className="w-full bg-primary-500/50 text-white/50 border-2 border-primary-400/20 py-4 rounded-2xl font-bold transition-all text-lg cursor-not-allowed"
+                                            >
+                                                {t('property_details.schedule_tour')}
+                                            </button>
+                                            <div className="absolute -top-3 -right-2 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
+                                                {t('common.coming_soon')}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
             {/* Delete Confirmation Modal */}
-            {createPortal(
-                <AnimatePresence>
-                    {isDeleteModalOpen && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-                            <Motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
-                                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
-                            />
-                            <Motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                className="relative bg-white rounded-[32px] p-10 max-w-md w-full shadow-2xl overflow-hidden border border-slate-100"
-                            >
-                                <div className="bg-red-50 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 rotate-12">
-                                    <Trash2 className="w-10 h-10 text-red-500" />
-                                </div>
-                                <h3 className="text-3xl font-black text-slate-800 mb-3 tracking-tight">{t('property_details.delete_confirmation_title')}</h3>
-                                <p className="text-slate-500 mb-10 leading-relaxed text-lg">
-                                    {t('property_details.delete_confirmation_text').replace('{title}', property.title)}
-                                </p>
-                                <div className="flex gap-4">
-                                    <button
-                                        onClick={() => setIsDeleteModalOpen(false)}
-                                        disabled={isDeleting}
-                                        className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition-all disabled:opacity-50"
-                                    >
-                                        {t('property_details.cancel')}
-                                    </button>
-                                    <button
-                                        onClick={handleDelete}
-                                        disabled={isDeleting}
-                                        className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold shadow-xl shadow-red-200 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-                                    >
-                                        {isDeleting ? (
-                                            <Loader className="w-6 h-6 animate-spin" />
-                                        ) : (
-                                            <>
-                                                <Trash2 className="w-5 h-5" />
-                                                <span>{t('property_details.delete_forever')}</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </Motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
+            {
+                createPortal(
+                    <AnimatePresence>
+                        {isDeleteModalOpen && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+                                <Motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+                                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                                />
+                                <Motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                    className="relative bg-white rounded-[32px] p-10 max-w-md w-full shadow-2xl overflow-hidden border border-slate-100"
+                                >
+                                    <div className="bg-red-50 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 rotate-12">
+                                        <Trash2 className="w-10 h-10 text-red-500" />
+                                    </div>
+                                    <h3 className="text-3xl font-black text-slate-800 mb-3 tracking-tight">{t('property_details.delete_confirmation_title')}</h3>
+                                    <p className="text-slate-500 mb-10 leading-relaxed text-lg">
+                                        {t('property_details.delete_confirmation_text').replace('{title}', property.title)}
+                                    </p>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setIsDeleteModalOpen(false)}
+                                            disabled={isDeleting}
+                                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition-all disabled:opacity-50"
+                                        >
+                                            {t('property_details.cancel')}
+                                        </button>
+                                        <button
+                                            onClick={handleDelete}
+                                            disabled={isDeleting}
+                                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold shadow-xl shadow-red-200 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                                        >
+                                            {isDeleting ? (
+                                                <Loader className="w-6 h-6 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <Trash2 className="w-5 h-5" />
+                                                    <span>{t('property_details.delete_forever')}</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </Motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )
+            }
             <ImageLightbox
                 images={lightboxImages}
                 initialIndex={lightboxIndex}
                 isOpen={lightboxOpen}
                 onClose={() => setLightboxOpen(false)}
             />
-        </div>
+        </div >
     );
 };
 

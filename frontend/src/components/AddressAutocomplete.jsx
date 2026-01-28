@@ -146,12 +146,12 @@ const AddressAutocomplete = ({
                     onFocus={() => setShowSuggestions(true)}
                     placeholder={placeholder}
                     disabled={disabled}
-                    className="w-full px-4 py-3 pl-11 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none text-slate-800 font-medium"
+                    className="w-full px-3 py-2.5 pl-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none text-slate-800 font-medium sm:text-sm"
                     autoComplete="off"
                 />
-                <Search className="absolute left-4 w-5 h-5 text-slate-400" />
+                <Search className="absolute left-3 w-4 h-4 text-slate-400" />
                 {loading && (
-                    <div className="absolute right-12">
+                    <div className="absolute right-9">
                         <Loader className="w-4 h-4 animate-spin text-primary-500" />
                     </div>
                 )}
@@ -159,7 +159,7 @@ const AddressAutocomplete = ({
                     <button
                         type="button"
                         onClick={clearInput}
-                        className="absolute right-4 p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
+                        className="absolute right-3 p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
                     >
                         <X className="w-4 h-4" />
                     </button>

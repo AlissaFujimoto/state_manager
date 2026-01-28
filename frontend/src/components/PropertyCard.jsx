@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { useLanguage } from '../contexts/LanguageContext';
-import { ChevronLeft, ChevronRight, Loader2, Languages, Heart, MapPin, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Languages, Heart, MapPin, Calendar, Copy, Check, Share2, Mail, MessageCircle } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import CompressedImage from './CompressedImage';
 import PropertyStatusBadges from './PropertyStatusBadges';
@@ -28,6 +28,127 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
     const isOwner = user && property.owner_id === user.uid;
 
     const [favCount, setFavCount] = useState(property.favorite_count || 0);
+    const [copied, setCopied] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
+
+    const shareUrl = `${window.location.origin}/property/${property.id}`;
+    const shareTitle = property.title;
+
+    const handleCopy = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(property.friendly_id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleCopyLink = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(shareUrl);
+        alert(t('common.link_copied') || 'Link copied to clipboard!');
+        setIsShareOpen(false);
+    };
+
+    const handleShareWhatsApp = (e) => {
+        e.stopPropagation();
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}`, '_blank');
+        setIsShareOpen(false);
+    };
+
+    const handleShareEmail = (e) => {
+        e.stopPropagation();
+        window.location.href = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareUrl)}`;
+        setIsShareOpen(false);
+    };
+
+    const calculateTotalRent = () => {
+        const rent = parseFloat(property.rent_price || property.price || 0);
+        const period = property.rent_period || 'month';
+
+        if (period === 'day' || period === 'week') return rent;
+
+        const condo = parseFloat(property.condo_fee || 0);
+        const annual = parseFloat(property.annual_fee || 0);
+
+        if (period === 'year') return rent + condo + annual;
+        return rent + condo + (annual / 12);
+    };
+
+    const getPricePerArea = () => {
+        const isLand = property.property_type === 'land';
+        const areaValue = isLand ? property.characteristics?.total_area : property.characteristics?.area;
+        const areaUnitRaw = isLand ? property.characteristics?.total_area_unit : property.characteristics?.area_unit;
+        const areaUnit = t(`common.area_units.${areaUnitRaw}`) || areaUnitRaw || t('common.area_unit') || 'm²';
+
+        if (!areaValue || areaValue <= 0) return formatCurrency(0, property.currency) + ' / ' + areaUnit;
+
+        const salePrice = property.sale_price || (property.listing_type === 'sale' ? property.price : 0);
+        if (!salePrice) return formatCurrency(0, property.currency) + ' / ' + areaUnit;
+
+        const pricePer = salePrice / areaValue;
+
+        return `${formatCurrency(pricePer, property.currency)} / ${areaUnit}`;
+    };
+
+    const maskAddress = (address) => {
+        if (!address) return '';
+        const parts = address.split(',').map(s => s.trim());
+        if (parts.length >= 4) {
+            return `${parts[parts.length - 4]}, ${parts[parts.length - 3]} - ${parts[parts.length - 2]}`;
+        }
+        if (parts.length === 3) {
+            return `${parts[0]} - ${parts[1]}`;
+        }
+        return address;
+    };
+
+    const renderAddress = () => {
+        const fullAddr = (isOwner || property.show_exact_address)
+            ? property.display_address
+            : maskAddress(property.display_address);
+
+        if (!fullAddr) return (
+            <div className="h-8 flex flex-col justify-center">
+                <span className="text-xs font-medium text-slate-400 italic line-clamp-1">
+                    {t('property_card.location_not_specified')}
+                </span>
+                <span className="h-3.5 invisible">_</span>
+            </div>
+        );
+
+        const parts = fullAddr.split(',').map(s => s.trim());
+        let line1 = '';
+        let line2 = '';
+
+        if (isOwner || property.show_exact_address) {
+            // Full address: Break after neighborhood
+            // Common structure: Street, Number, Neighborhood, City, State...
+            // We break before the last 2 parts (usually City, State/Country) OR at index 3 if long
+            if (parts.length >= 4) {
+                const breakIndex = Math.min(3, parts.length - 2);
+                line1 = parts.slice(0, breakIndex).join(', ');
+                line2 = parts.slice(breakIndex).join(', ');
+            } else {
+                line1 = fullAddr;
+            }
+        } else {
+            // Masked address: "Neighborhood, City - State"
+            if (parts.length >= 2) {
+                line1 = parts[0];
+                line2 = parts.slice(1).join(', ');
+            } else {
+                line1 = fullAddr;
+            }
+        }
+
+        return (
+            <div className="h-8 flex flex-col justify-center gap-0">
+                <span className="text-xs font-bold text-slate-700 line-clamp-1 leading-tight">{line1}</span>
+                <span className="text-[10px] font-medium text-slate-400 line-clamp-1 leading-tight h-3.5 min-w-[1px]">
+                    {line2 || ' '}
+                </span>
+            </div>
+        );
+    };
 
     useEffect(() => {
         setFavCount(property.favorite_count || 0);
@@ -39,6 +160,12 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
             alert(t('common.login_required') || 'Please login to favorite properties');
             return;
         }
+
+        if (isOwner) {
+            alert(t('common.cannot_favorite_own') || 'You cannot favorite your own property');
+            return;
+        }
+
         if (isFav) {
             removeFavorite(property.id);
             setFavCount(c => Math.max(0, c - 1));
@@ -239,31 +366,61 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
                 <div className="absolute top-4 left-4 z-10 transition-transform duration-300 group-hover:scale-105">
                     <PropertyStatusBadges property={property} size="sm" />
                 </div>
+
+                {property.created_at && (
+                    <div className="absolute bottom-4 left-4 z-10">
+                        <div className="bg-white/70 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg border border-white/30 flex items-center gap-1.5 transition-all group-hover:bg-white/90">
+                            <Calendar className="w-3.5 h-3.5 text-primary-600" />
+                            <span className="text-[10px] font-bold text-slate-800">
+                                {new Date(property.created_at).toLocaleDateString()}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="absolute bottom-4 right-4 z-10">
-                    <div className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg flex flex-col items-end">
+                    <div className="relative group/price bg-primary-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg flex flex-col items-end overflow-hidden cursor-help">
                         {(() => {
                             const isBoth = property.listing_type === 'both' || property.listing_type === 'sale_rent';
                             const isVacation = property.listing_type === 'vacation';
+                            const isSaleListing = property.listing_type === 'sale' || isBoth;
 
-                            if (isBoth) {
-                                return (
-                                    <>
-                                        <span className="text-sm">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
-                                        <div className="w-full h-px bg-white/20 my-1"></div>
-                                        <span className="text-sm">{formatCurrency(property.rent_price || property.price, property.currency)}</span>
-                                    </>
-                                );
-                            } else if (isVacation) {
-                                return (
-                                    <span className="text-lg">{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
-                                );
-                            } else if (property.listing_type === 'rent') {
-                                return (
-                                    <span className="text-lg">{formatCurrency(property.rent_price || property.price, property.currency)}</span>
-                                );
-                            }
+                            return (
+                                <>
+                                    <div className={`transition-all duration-300 ${isSaleListing ? 'group-hover/price:opacity-0 group-hover/price:translate-y-2' : ''}`}>
+                                        {isBoth ? (
+                                            <>
+                                                <span className="text-sm">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                                <div className="w-full h-px bg-white/20 my-1"></div>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-sm">{formatCurrency(calculateTotalRent(), property.currency)}</span>
+                                                    <span className="text-[10px] opacity-70 italic font-medium">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
+                                                </div>
+                                            </>
+                                        ) : isVacation ? (
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-lg">{formatCurrency(property.vacation_price || property.price, property.currency)}</span>
+                                                <span className="text-xs opacity-80 italic font-medium">{t(`common.periods.${property.vacation_period || 'day'}`)}</span>
+                                            </div>
+                                        ) : property.listing_type === 'rent' ? (
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-lg">{formatCurrency(calculateTotalRent(), property.currency)}</span>
+                                                <span className="text-xs opacity-80 italic font-medium">{t(`common.periods.${property.rent_period || 'month'}`)}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-lg">{formatCurrency(property.sale_price || property.price, property.currency)}</span>
+                                        )}
+                                    </div>
 
-                            return <span className="text-lg">{formatCurrency(property.sale_price || property.price, property.currency)}</span>;
+                                    {isSaleListing && (
+                                        <div className="absolute inset-0 bg-primary-700 flex flex-col items-center justify-center opacity-0 group-hover/price:opacity-100 transition-all duration-300 -translate-y-2 group-hover/price:translate-y-0 p-2 text-center pointer-events-none">
+                                            <span className="text-sm font-black tracking-tight leading-normal">
+                                                {getPricePerArea()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </>
+                            );
                         })()}
                     </div>
                 </div>
@@ -271,27 +428,29 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
 
             <div className="p-6">
                 <div className="flex justify-between items-start gap-2">
-                    <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors leading-tight">
-                        {translations.active ? translations.title : property.title}
-                    </h3>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="relative flex-1 pl-7">
+                        <h3 className="text-xl font-bold text-slate-800 group-hover:text-primary-600 transition-colors leading-tight">
+                            {translations.active ? translations.title : property.title}
+                        </h3>
                         <button
                             onClick={handleTranslate}
                             disabled={translations.loading}
-                            className={`p-2 rounded-xl transition-all ${translations.active ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                            className={`absolute -top-1 left-0 p-1.5 rounded-lg transition-all ${translations.active ? 'bg-primary-50 text-primary-600' : 'text-slate-300 hover:text-primary-600 hover:bg-slate-50'}`}
                             title={translations.active ? t('common.show_original') : t('common.translate')}
                         >
                             {translations.loading ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             ) : (
-                                <Languages className="w-4 h-4" />
+                                <Languages className="w-3.5 h-3.5" />
                             )}
                         </button>
-                        <div className="relative">
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="relative shrink-0">
                             <button
                                 onClick={toggleFavorite}
-                                className={`p-2 rounded-xl transition-all ${isFav ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
-                                title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                                className={`p-2 rounded-xl transition-all ${isFav ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500 hover:bg-rose-50'} ${isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                title={isOwner ? t('common.your_property') : (isFav ? t('favorites.remove') || 'Remove from favorites' : t('favorites.add') || 'Add to favorites')}
                             >
                                 <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500' : ''}`} />
                             </button>
@@ -301,77 +460,139 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
                                 </span>
                             )}
                         </div>
+
+                        <div className="relative">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setIsShareOpen(!isShareOpen); }}
+                                className={`p-2 rounded-xl transition-all ${isShareOpen ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                                title={t('common.share') || 'Share'}
+                            >
+                                <Share2 className="w-4 h-4" />
+                            </button>
+
+                            <AnimatePresence>
+                                {isShareOpen && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={(e) => { e.stopPropagation(); setIsShareOpen(false); }}
+                                        />
+                                        <Motion.div
+                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                            className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 overflow-hidden"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            <button
+                                                onClick={handleShareWhatsApp}
+                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                                                    <MessageCircle className="w-4 h-4" />
+                                                </div>
+                                                WhatsApp
+                                            </button>
+                                            <button
+                                                onClick={handleShareEmail}
+                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                                                    <Mail className="w-4 h-4" />
+                                                </div>
+                                                Email
+                                            </button>
+                                            <button
+                                                onClick={handleCopyLink}
+                                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 text-sm font-bold"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                                                    <Copy className="w-4 h-4" />
+                                                </div>
+                                                {t('common.copy_link') || 'Copy Link'}
+                                            </button>
+                                        </Motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </div>
                 <div className="flex flex-col gap-y-1.5 text-slate-500 mt-5">
-                    <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0" />
-                        <span className="text-xs font-medium line-clamp-1">
-                            {property.display_address || t('property_card.location_not_specified')}
-                        </span>
+                    <div className="flex items-start gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0 mt-0.5" />
+                        {renderAddress()}
                     </div>
-                    {property.created_at && (
-                        <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-xs font-medium">{new Date(property.created_at).toLocaleDateString()}</span>
+                    <p className="text-slate-500 text-sm mt-2 line-clamp-2">
+                        {translations.active ? translations.description : property.description}
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
+                        <div className="flex flex-col items-center">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bedrooms')}</span>
+                            <span className="text-slate-700 font-semibold">{property.characteristics?.bedrooms || 0}</span>
                         </div>
-                    )}
-                </div>
-                <p className="text-slate-500 text-sm mt-2 line-clamp-2">
-                    {translations.active ? translations.description : property.description}
-                </p>
+                        <div className="flex flex-col items-center border-x border-slate-100">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.suites')}</span>
+                            <span className="text-slate-700 font-semibold">{property.characteristics?.suites || 0}</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.rooms')}</span>
+                            <span className="text-slate-700 font-semibold">{property.characteristics?.rooms || 0}</span>
+                        </div>
+                        <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bathrooms')}</span>
+                            <span className="text-slate-700 font-semibold">{property.characteristics?.bathrooms || 0}</span>
+                        </div>
+                        <div className="flex flex-col items-center pt-2 mt-2 border-x border-t border-slate-50">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.garages')}</span>
+                            <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
+                        </div>
+                        <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
+                            <div className="text-slate-700 font-semibold text-center w-full px-1">
+                                {(() => {
+                                    const areaUnit = t(`common.area_units.${property.characteristics?.area_unit}`) || property.characteristics?.area_unit || t('common.area_unit');
+                                    const totalUnit = t(`common.area_units.${property.characteristics?.total_area_unit}`) || property.characteristics?.total_area_unit || t('common.area_unit');
+                                    const sameUnit = property.characteristics?.area_unit === property.characteristics?.total_area_unit;
 
-                <div className="grid grid-cols-3 gap-2 mt-6 py-4 border-y border-slate-100">
-                    <div className="flex flex-col items-center">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bedrooms')}</span>
-                        <span className="text-slate-700 font-semibold">{property.characteristics?.bedrooms || 0}</span>
-                    </div>
-                    <div className="flex flex-col items-center border-x border-slate-100">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.suites')}</span>
-                        <span className="text-slate-700 font-semibold">{property.characteristics?.suites || 0}</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.rooms')}</span>
-                        <span className="text-slate-700 font-semibold">{property.characteristics?.rooms || 0}</span>
-                    </div>
-                    <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.bathrooms')}</span>
-                        <span className="text-slate-700 font-semibold">{property.characteristics?.bathrooms || 0}</span>
-                    </div>
-                    <div className="flex flex-col items-center pt-2 mt-2 border-x border-t border-slate-50">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">{t('common.garages')}</span>
-                        <span className="text-slate-700 font-semibold">{property.characteristics?.garages || 0}</span>
-                    </div>
-                    <div className="flex flex-col items-center pt-2 mt-2 border-t border-slate-50 overflow-hidden">
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tighter text-center">{t('common.area')}</span>
-                        <div className="text-slate-700 font-semibold text-center w-full px-1">
-                            {(() => {
-                                const areaUnit = t(`common.area_units.${property.characteristics?.area_unit}`) || property.characteristics?.area_unit || t('common.area_unit');
-                                const totalUnit = t(`common.area_units.${property.characteristics?.total_area_unit}`) || property.characteristics?.total_area_unit || t('common.area_unit');
-                                const sameUnit = property.characteristics?.area_unit === property.characteristics?.total_area_unit;
-
-                                if (sameUnit) {
-                                    return (
-                                        <span>
-                                            {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0} {areaUnit}
-                                        </span>
-                                    );
-                                } else {
-                                    return (
-                                        <div className="flex flex-col leading-tight -mt-0.5">
-                                            <span className="text-[11px]">{property.characteristics?.area || 0} {areaUnit} /</span>
-                                            <span className="text-[11px]">{property.characteristics?.total_area || 0} {totalUnit}</span>
-                                        </div>
-                                    );
-                                }
-                            })()}
+                                    if (sameUnit) {
+                                        return (
+                                            <span>
+                                                {property.characteristics?.area || 0} / {property.characteristics?.total_area || 0} {areaUnit}
+                                            </span>
+                                        );
+                                    } else {
+                                        return (
+                                            <div className="flex flex-col leading-tight -mt-0.5">
+                                                <span className="text-[11px]">{property.characteristics?.area || 0} {areaUnit} /</span>
+                                                <span className="text-[11px]">{property.characteristics?.total_area || 0} {totalUnit}</span>
+                                            </div>
+                                        );
+                                    }
+                                })()}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex justify-end gap-3 mt-6">
                 </div>
             </div>
+            {property.friendly_id && (
+                <div className="absolute bottom-3 left-6 group/id">
+                    <div className="relative">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
+                            {property.friendly_id}
+                        </span>
+                        <button
+                            onClick={handleCopy}
+                            className={`absolute -top-3.5 -right-3.5 p-1.5 rounded-lg border shadow-sm transition-all duration-300 ${copied ? 'bg-green-500 border-green-600 text-white scale-110' : 'bg-white border-slate-200 text-slate-400 hover:text-primary-600 hover:border-primary-500 opacity-0 group-hover/id:opacity-100'}`}
+                            title={t('common.copy')}
+                        >
+                            {copied ? <Check className="w-2 h-2" /> : <Copy className="w-2 h-2" />}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

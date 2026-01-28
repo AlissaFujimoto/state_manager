@@ -17,30 +17,30 @@ const PropertyStatusBadges = ({ property, size = 'md' }) => {
         <div className={`flex flex-wrap items-center ${gap}`}>
             {/* New Badge */}
             {isNew && (
-                <div className={`${badgeBase} bg-gradient-to-r from-violet-600 to-indigo-600 text-white animate-pulse`}>
+                <div className={`${badgeBase} bg-violet-500 text-white`}>
                     {t('common.new')}
                 </div>
             )}
 
             {/* Property Type Badge */}
-            <div className={`${badgeBase} bg-white text-slate-800 border border-slate-100`}>
+            <div className={`${badgeBase} bg-white text-slate-800 border border-slate-200`}>
                 {property.property_type ? t(`home.${property.property_type.toLowerCase()}`) : 'Property'}
             </div>
 
             {/* Listing Type Badge */}
             {(() => {
-                let badgeStyle = 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white';
+                let badgeStyle = 'bg-emerald-500 text-white';
                 let label = t('common.for_sale');
 
                 const type = property.listing_type;
                 if (type === 'rent') {
-                    badgeStyle = 'bg-gradient-to-r from-amber-500 to-orange-600 text-white';
+                    badgeStyle = 'bg-orange-600 text-white';
                     label = t('common.for_rent');
                 } else if (type === 'both' || type === 'sale_rent') {
-                    badgeStyle = 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white';
+                    badgeStyle = 'bg-blue-600 text-white';
                     label = t('common.for_both');
                 } else if (type === 'vacation') {
-                    badgeStyle = 'bg-gradient-to-r from-rose-500 to-pink-600 text-white';
+                    badgeStyle = 'bg-rose-500 text-white';
                     label = t('common.for_vacation');
                 }
 

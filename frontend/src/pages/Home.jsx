@@ -238,13 +238,19 @@ const Home = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    useEffect(() => {
+        // Hide navbar when advanced filter is open
+        window.dispatchEvent(new CustomEvent('toggle-navbar', { detail: isFilterOpen }));
+    }, [isFilterOpen]);
+
     const [availableAmenities, setAvailableAmenities] = useState([]);
-    const [allCountries, setAllCountries] = useState([]);
+    // const [allCountries, setAllCountries] = useState([]); // Unused
     const [countryStates, setCountryStates] = useState([]);
     const [stateCities, setStateCities] = useState([]);
     const { t, regions, formatCurrency, currentLanguage } = useLanguage();
 
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
     const ITEMS_PER_PAGE = isMobile ? 6 : 9;
 
@@ -349,7 +355,7 @@ const Home = () => {
     const currentItems = filteredProperties.slice(indexOfFirstItem, indexOfLastItem);
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -397,50 +403,15 @@ const Home = () => {
     }, []);
 
     // Fetch countries and translate based on current language
+    // Fetch countries logic removed (unused)
+    /*
     useEffect(() => {
         const fetchCountries = async () => {
-            try {
-                const res = await fetch('https://countriesnow.space/api/v0.1/countries/iso');
-                const json = await res.json();
-
-                if (!json.error && json.data) {
-                    // Use currentLanguage from context, default to 'en-US'
-                    // Intl.DisplayNames expects standard locale codes (e.g., pt-BR, en-US)
-                    const langMap = {
-                        'pt-br': 'pt-BR',
-                        'pt-pt': 'pt-PT',
-                        'es-es': 'es-ES',
-                        'en-us': 'en-US'
-                    };
-                    const locale = langMap[currentLanguage] || 'en-US';
-
-                    const regionNames = new Intl.DisplayNames([locale], { type: 'region' });
-
-                    const formatted = json.data.map(c => {
-                        let label = c.name;
-                        try {
-                            if (c.Iso2) {
-                                label = regionNames.of(c.Iso2);
-                            }
-                        } catch (e) {
-                            // Fallback to original name
-                        }
-                        return { value: c.name, label: label };
-                    });
-
-                    // Sort by the translated label
-                    formatted.sort((a, b) => a.label.localeCompare(b.label));
-
-                    setAllCountries(formatted);
-                } else {
-                    console.error('API Error:', json.msg);
-                }
-            } catch (err) {
-                console.error('Failed to fetch countries:', err);
-            }
+            // ... (removed)
         };
         fetchCountries();
     }, [currentLanguage]);
+    */
 
     // Fetch states when country changes
     useEffect(() => {
@@ -546,16 +517,16 @@ const Home = () => {
 
     return (
         <div
-            className="max-w-7xl mx-auto px-4 py-8 min-h-screen"
+            className="max-w-7xl mx-auto px-8 md:px-12 py-8 min-h-screen"
         >
-            <header className="mb-12">
-                <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
+            <header className="mb-12 landscape:mb-6">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight landscape:text-2xl">
                     {t('home.hero_title')} <span className="text-primary-600">{t('home.dream_state')}</span>
                 </h1>
-                <p className="text-slate-500 mt-4 text-lg">{t('home.hero_subtitle')}</p>
+                <p className="hidden lg:block text-slate-500 mt-4 text-lg landscape:hidden">{t('home.hero_subtitle')}</p>
 
-                <div className="mt-8 flex flex-col gap-6">
-                    <div className="flex flex-col md:flex-row gap-4">
+                <div className="mt-8 landscape:mt-4 flex flex-col gap-6">
+                    <div className="flex gap-3 lg:gap-4">
                         <div className="flex-1 relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                             <input
@@ -569,71 +540,65 @@ const Home = () => {
 
                         <button
                             onClick={() => setIsFilterOpen(true)}
-                            className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center space-x-2 group"
+                            className="bg-primary-600 hover:bg-primary-700 text-white p-4 lg:px-8 lg:py-4 rounded-2xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center gap-2 group shrink-0"
                         >
                             <Filter className="w-5 h-5" />
-                            <span>{t('common.advanced_filters')}</span>
-                            {Object.values(filter).filter(v => v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
+                            <span className="hidden lg:inline">{t('common.advanced_filters')}</span>
+                            {Object.entries(filter).filter(([k, v]) => k !== 'country' && v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
                                 <span className="bg-white text-primary-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
-                                    {Object.values(filter).filter(v => v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length}
+                                    {Object.entries(filter).filter(([k, v]) => k !== 'country' && v !== 'all' && v !== '' && v !== 'newest' && (Array.isArray(v) ? v.length > 0 : true)).length}
                                 </span>
                             )}
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full">
-                        {/* Listing Type */}
-                        <SearchableSelect
-                            value={filter.listingType}
-                            onChange={(val) => setFilter({ ...filter, listingType: val })}
-                            options={listingTypes.map(type => ({ value: type, label: t(`common.for_${type}`) }))}
-                            placeholder={t('common.all_types')}
-                            allLabel={t('common.all_types')}
-                            className="w-full"
-                        />
+                    {!isMobile && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full">
+                            {/* Listing Type */}
+                            <SearchableSelect
+                                value={filter.listingType}
+                                onChange={(val) => setFilter({ ...filter, listingType: val })}
+                                options={listingTypes.map(type => ({ value: type, label: t(`common.for_${type}`) }))}
+                                placeholder={t('common.all_types')}
+                                allLabel={t('common.all_types')}
+                                className="w-full"
+                            />
 
-                        {/* Property Type */}
-                        <SearchableSelect
-                            value={filter.type}
-                            onChange={(val) => setFilter({ ...filter, type: val })}
-                            options={propertyTypes.map(type => ({ value: type, label: t(`home.${type}s`) }))}
-                            placeholder={t('home.all_properties')}
-                            allLabel={t('home.all_properties')}
-                            className="w-full"
-                        />
+                            {/* Property Type */}
+                            <SearchableSelect
+                                value={filter.type}
+                                onChange={(val) => setFilter({ ...filter, type: val })}
+                                options={propertyTypes.map(type => ({ value: type, label: t(`home.${type}s`) }))}
+                                placeholder={t('home.all_properties')}
+                                allLabel={t('home.all_properties')}
+                                className="w-full"
+                            />
 
-                        {/* Country */}
-                        <SearchableSelect
-                            value={filter.country}
-                            onChange={(val) => setFilter({ ...filter, country: val, state: 'all', city: 'all' })}
-                            options={allCountries}
-                            placeholder={t('home.all_countries')}
-                            allLabel={t('home.all_countries')}
-                            className="w-full"
-                        />
+                            {/* Country removed from UI (hardcoded to Brazil) */}
 
-                        {/* State */}
-                        <SearchableSelect
-                            value={filter.state}
-                            onChange={(val) => setFilter({ ...filter, state: val, city: 'all' })}
-                            options={countryStates.map(s => ({ value: s, label: s }))}
-                            placeholder={t('home.all_states')}
-                            allLabel={t('home.all_states')}
-                            disabled={filter.country === 'all'}
-                            className="w-full"
-                        />
+                            {/* State */}
+                            <SearchableSelect
+                                value={filter.state}
+                                onChange={(val) => setFilter({ ...filter, state: val, city: 'all' })}
+                                options={countryStates.map(s => ({ value: s, label: s }))}
+                                placeholder={t('home.all_states')}
+                                allLabel={t('home.all_states')}
+                                disabled={filter.country === 'all'}
+                                className="w-full"
+                            />
 
-                        {/* City */}
-                        <SearchableSelect
-                            value={filter.city}
-                            onChange={(val) => setFilter({ ...filter, city: val })}
-                            options={stateCities.map(c => ({ value: c, label: c }))}
-                            placeholder={t('home.all_cities')}
-                            allLabel={t('home.all_cities')}
-                            disabled={filter.state === 'all'}
-                            className="w-full"
-                        />
-                    </div>
+                            {/* City */}
+                            <SearchableSelect
+                                value={filter.city}
+                                onChange={(val) => setFilter({ ...filter, city: val })}
+                                options={stateCities.map(c => ({ value: c, label: c }))}
+                                placeholder={t('home.all_cities')}
+                                allLabel={t('home.all_cities')}
+                                disabled={filter.state === 'all'}
+                                className="w-full"
+                            />
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -666,6 +631,58 @@ const Home = () => {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
+                                {isMobile && (
+                                    <section className="space-y-4 border-b border-slate-100 pb-8">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {/* Listing Type */}
+                                            <SearchableSelect
+                                                value={filter.listingType}
+                                                onChange={(val) => setFilter({ ...filter, listingType: val })}
+                                                options={listingTypes.map(type => ({ value: type, label: t(`common.for_${type}`) }))}
+                                                placeholder={t('common.all_types')}
+                                                allLabel={t('common.all_types')}
+                                                className="w-full"
+                                            />
+
+                                            {/* Property Type */}
+                                            <SearchableSelect
+                                                value={filter.type}
+                                                onChange={(val) => setFilter({ ...filter, type: val })}
+                                                options={propertyTypes.map(type => ({ value: type, label: t(`home.${type}s`) }))}
+                                                placeholder={t('home.all_properties')}
+                                                allLabel={t('home.all_properties')}
+                                                className="w-full"
+                                            />
+                                        </div>
+
+                                        {/* Country removed from UI */}
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {/* State */}
+                                            <SearchableSelect
+                                                value={filter.state}
+                                                onChange={(val) => setFilter({ ...filter, state: val, city: 'all' })}
+                                                options={countryStates.map(s => ({ value: s, label: s }))}
+                                                placeholder={t('home.all_states')}
+                                                allLabel={t('home.all_states')}
+                                                disabled={filter.country === 'all'}
+                                                className="w-full"
+                                            />
+
+                                            {/* City */}
+                                            <SearchableSelect
+                                                value={filter.city}
+                                                onChange={(val) => setFilter({ ...filter, city: val })}
+                                                options={stateCities.map(c => ({ value: c, label: c }))}
+                                                placeholder={t('home.all_cities')}
+                                                allLabel={t('home.all_cities')}
+                                                disabled={filter.state === 'all'}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    </section>
+                                )}
+
                                 {/* Sort Section */}
                                 <section>
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('common.sort_by')}</h3>
@@ -804,6 +821,7 @@ const Home = () => {
                                         maxArea: '',
                                         state: 'all',
                                         city: 'all',
+                                        country: 'Brazil',
                                         amenities: [],
                                         sortBy: 'newest'
                                     })}

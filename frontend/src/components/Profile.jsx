@@ -2,9 +2,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Shield, LogOut, Settings } from 'lucide-react';
 import { auth } from '../utils/databaseAuth';
 import CompressedImage from './CompressedImage';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Profile = ({ user }) => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     if (!user) return null;
 
     return (
@@ -43,10 +45,10 @@ const Profile = ({ user }) => {
 
                     <div className="mt-4 flex flex-wrap justify-center md:justify-start gap-2">
                         <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-semibold border border-primary-100 uppercase tracking-wider">
-                            Verified Owner
+                            {t('profile_card.verified_owner')}
                         </span>
                         <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold border border-slate-200 uppercase tracking-wider">
-                            Premium Member
+                            {t('profile_card.premium_member')}
                         </span>
                     </div>
                 </div>
@@ -57,14 +59,14 @@ const Profile = ({ user }) => {
                         className="flex items-center space-x-2 px-4 py-2 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 transition-all font-medium border border-slate-200"
                     >
                         <Settings className="w-4 h-4" />
-                        <span>Profile Settings</span>
+                        <span>{t('profile_card.profile_settings')}</span>
                     </Link>
                     <button
                         onClick={() => auth.signOut()}
                         className="flex items-center space-x-2 px-4 py-2 border border-slate-200 rounded-xl text-red-500 hover:bg-red-50 transition-all font-medium"
                     >
                         <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
+                        <span>{t('profile_card.sign_out')}</span>
                     </button>
                 </div>
             </div>
