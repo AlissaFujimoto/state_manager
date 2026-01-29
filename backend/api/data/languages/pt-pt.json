@@ -1,4 +1,48 @@
 {
+    "property_types": {
+        "apartment": "Apartamento",
+        "house": "Moradia",
+        "land": "Terreno",
+        "farm": "Herdade",
+        "small_farm": "Quinta",
+        "country_house": "Casa de Campo",
+        "commercial": "Comercial",
+        "warehouse": "Armazém",
+        "shed": "Barracão",
+        "office": "Escritório",
+        "commercial_room": "Sala Comercial",
+        "commercial_hall": "Salão",
+        "building": "Prédio",
+        "inn": "Pousada",
+        "store": "Loja",
+        "commercial_point": "Estabelecimento Comercial",
+        "penthouse": "Penthouse",
+        "duplex": "Duplex",
+        "studio": "Estúdio",
+        "kitnet": "Kitnet",
+        "flat": "Flat",
+        "condo_house": "Moradia em Condomínio",
+        "village_house": "Moradia em Banda",
+        "single_story_house": "Moradia Térrea",
+        "two_story_house": "Moradia de 2 Pisos",
+        "condo_apartment": "Apartamento em Condomínio",
+        "land_area": "Área de Terreno",
+        "corporate_floor": "Piso Corporativo",
+        "allotment": "Loteamento",
+        "gated_community_lot": "Lote em Condomínio",
+        "mall": "Centro Comercial",
+        "rural": "Rural",
+        "gated_community_land": "Terreno em Condomínio",
+        "villagio": "Aldeamento"
+    },
+    "listing_types": {
+        "sale": "Venda",
+        "rent": "Arrendamento",
+        "vacation": "Férias",
+        "business_transfer": "Trespasse",
+        "launch": "Lançamento",
+        "both": "Venda e Arrendamento"
+    },
     "common": {
         "search": "Pesquisar",
         "search_placeholder": "Pesquisar por localização, descrição...",
@@ -37,13 +81,17 @@
             "iptu": "IMI",
             "tax": "Imposto"
         },
-        "period": "Período",
+        "for_sale": "Venda",
+        "for_rent": "Arrendamento",
         "periods": {
             "day": "/ dia",
             "week": "/ semana",
             "month": "/ mês",
             "year": "/ ano"
         },
+        "for_both": "Venda e Arrendamento",
+        "for_launch": "Lançamento",
+        "for_vacation": "Temporada",
         "currency": "Moeda",
         "currency_symbol": "€",
         "currencies": {
@@ -82,10 +130,6 @@
         "sort_by": "Ordenar Por",
         "amenities": "Características Adicionais",
         "total": "Total",
-        "for_sale": "Venda",
-        "for_rent": "Alugar",
-        "for_both": "Venda e Arrendamento",
-        "for_vacation": "Temporada",
         "uploading": "A carregar...",
         "submitting": "A submeter...",
         "new": "Novo",
@@ -104,7 +148,15 @@
         "cannot_favorite_own": "Não pode adicionar o seu próprio imóvel aos favoritos",
         "your_property": "O Seu Imóvel",
         "price_per_area": "Preço / Área",
-        "price_per_total_area": "Preço / Área Total"
+        "price_per_total_area": "Preço / Área Total",
+        "launch_price": "Preço de Lançamento",
+        "launch_price_required": "Preço de Lançamento é obrigatório",
+        "launch_price_negative": "Preço de Lançamento não pode ser negativo",
+        "add_amenities": {
+            "title": "Adicionar Características",
+            "placeholder": "Digite uma característica...",
+            "add_button": "Adicionar"
+        }
     },
     "home": {
         "hero_title": "Encontre o Seu",
@@ -273,6 +325,10 @@
         "under_option": "Sob Opção",
         "sold": "Vendido",
         "rented": "Arrendado",
+        "coming_soon": "Em Breve",
+        "launched": "Lançado",
+        "under_construction": "Em Construção",
+        "finished": "Finalizado",
         "location_not_specified": "Localização não especificada"
     },
     "auth": {

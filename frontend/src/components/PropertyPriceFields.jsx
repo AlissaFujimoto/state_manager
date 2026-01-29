@@ -207,6 +207,38 @@ const PropertyPriceFields = ({ data, onChange, getFieldStatus, errors, t, isEdit
                 </div>
             )}
 
+            {/* Launch Price */}
+            {type === 'launch' && (
+                <div className={isEditMode ? "flex flex-col items-end" : "field-container"}>
+                    {isEditMode ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.launch_price')}</span>
+                            <input
+                                type="number"
+                                name="launch_price"
+                                value={(data.launch_price !== undefined && data.launch_price !== null) ? data.launch_price : ''}
+                                onChange={onChange}
+                                placeholder=""
+                                className={`text-3xl font-black text-primary-600 border-b-2 bg-transparent outline-none w-48 text-right transition-all ${getFieldStatus('launch_price') || (errors?.launch_price ? 'border-red-500' : 'border-primary-500')}`}
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('common.launch_price')}</label>
+                            <input
+                                type="number"
+                                name="launch_price"
+                                value={(data.launch_price !== undefined && data.launch_price !== null) ? data.launch_price : ''}
+                                onChange={onChange}
+                                placeholder=""
+                                className={`w-full px-3 py-2.5 text-sm bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-all outline-none ${getFieldStatus('launch_price') === 'error' ? 'neon-error' : getFieldStatus('launch_price') === 'warning' ? 'neon-warning' : 'border-slate-200'}`}
+                            />
+                        </>
+                    )}
+                    {errors?.launch_price && <p className={`text-red-500 text-xs font-bold ${isEditMode ? 'mt-1' : 'mt-1'}`}>{errors.launch_price}</p>}
+                </div>
+            )}
+
         </div>
     );
 };

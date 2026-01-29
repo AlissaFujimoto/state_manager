@@ -1,4 +1,48 @@
 {
+    "property_types": {
+        "apartment": "Piso",
+        "house": "Casa/Chalet",
+        "land": "Terreno",
+        "farm": "Finca Rústica",
+        "small_farm": "Casa de Campo",
+        "country_house": "Cortijo",
+        "commercial": "Comercial",
+        "warehouse": "Nave Industrial",
+        "shed": "Cobertizo",
+        "office": "Oficina",
+        "commercial_room": "Despacho",
+        "commercial_hall": "Sala de Reuniones",
+        "building": "Edificio",
+        "inn": "Hostal",
+        "store": "Local Comercial",
+        "commercial_point": "Traspaso de Negocio",
+        "penthouse": "Ático",
+        "duplex": "Dúplex",
+        "studio": "Estudio",
+        "kitnet": "Minipiso",
+        "flat": "Apartamento",
+        "condo_house": "Chalet en Urbanización",
+        "village_house": "Casa de Pueblo",
+        "single_story_house": "Casa de Una Planta",
+        "two_story_house": "Casa de Dos Plantas",
+        "condo_apartment": "Piso en Urbanización",
+        "land_area": "Parcela",
+        "corporate_floor": "Planta de Oficinas",
+        "allotment": "Parcelación",
+        "gated_community_lot": "Parcela en Urbanización",
+        "mall": "Centro Comercial",
+        "rural": "Finca Rústica",
+        "gated_community_land": "Terreno en Urbanización",
+        "villagio": "Complejo Residencial"
+    },
+    "listing_types": {
+        "sale": "Venta",
+        "rent": "Alquiler",
+        "vacation": "Vacacional",
+        "business_transfer": "Traspaso",
+        "launch": "Obra Nueva",
+        "both": "Venta y Alquiler"
+    },
     "common": {
         "search": "Buscar",
         "search_placeholder": "Buscar por ubicación, descripción...",
@@ -76,8 +120,8 @@
         "sort_by": "Ordenar Por",
         "amenities": "Características Adicionales",
         "total": "Total",
-        "for_sale": "En Venta",
-        "for_rent": "En Alquiler",
+        "for_sale": "Venta",
+        "for_rent": "Alquiler",
         "periods": {
             "day": "/ día",
             "week": "/ semana",
@@ -85,6 +129,7 @@
             "year": "/ año"
         },
         "for_both": "Venta y Alquiler",
+        "for_launch": "Obra Nueva",
         "for_vacation": "Alquiler Vacacional",
         "uploading": "Subiendo...",
         "submitting": "Enviando...",
@@ -104,7 +149,15 @@
         "cannot_favorite_own": "No puedes marcar tu propia propiedad como favorita",
         "your_property": "Tu Propiedad",
         "price_per_area": "Precio / Área",
-        "price_per_total_area": "Precio / Área Total"
+        "price_per_total_area": "Precio / Área Total",
+        "launch_price": "Precio de Salida",
+        "launch_price_required": "Se requiere precio de salida",
+        "launch_price_negative": "El precio de salida no puede ser negativo",
+        "add_amenities": {
+            "title": "Añadir Características",
+            "placeholder": "Escribe una característica...",
+            "add_button": "Añadir"
+        }
     },
     "home": {
         "hero_title": "Encuentra Tu",
@@ -273,6 +326,10 @@
         "under_option": "Bajo Opción",
         "sold": "Vendido",
         "rented": "Alquilado",
+        "coming_soon": "Próximamente",
+        "launched": "Lanzamiento",
+        "under_construction": "En Construcción",
+        "finished": "Terminado",
         "location_not_specified": "Ubicación no especificada"
     },
     "auth": {

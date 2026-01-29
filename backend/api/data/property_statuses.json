@@ -33,5 +33,33 @@
         "color": "orange",
         "textColor": "white",
         "showRibbon": true
+    },
+    {
+        "id": "coming_soon",
+        "label": "Coming Soon",
+        "color": "indigo",
+        "textColor": "white",
+        "showRibbon": true
+    },
+    {
+        "id": "launched",
+        "label": "Launched",
+        "color": "emerald",
+        "textColor": "white",
+        "showRibbon": true
+    },
+    {
+        "id": "under_construction",
+        "label": "Under Construction",
+        "color": "amber",
+        "textColor": "white",
+        "showRibbon": true
+    },
+    {
+        "id": "finished",
+        "label": "Finished",
+        "color": "blue",
+        "textColor": "white",
+        "showRibbon": true
     }
 ]

@@ -1,4 +1,48 @@
 {
+    "property_types": {
+        "apartment": "Apartment",
+        "house": "House",
+        "land": "Land",
+        "farm": "Farm",
+        "small_farm": "Small Farm",
+        "country_house": "Country House",
+        "commercial": "Commercial",
+        "warehouse": "Warehouse",
+        "shed": "Shed",
+        "office": "Office",
+        "commercial_room": "Commercial Room",
+        "commercial_hall": "Commercial Hall",
+        "building": "Building",
+        "inn": "Inn",
+        "store": "Store",
+        "commercial_point": "Commercial Point",
+        "penthouse": "Penthouse",
+        "duplex": "Duplex",
+        "studio": "Studio",
+        "kitnet": "Micro-apartment",
+        "flat": "Flat",
+        "condo_house": "Gated Community House",
+        "village_house": "Village House",
+        "single_story_house": "Single Story House",
+        "two_story_house": "Two Story House",
+        "condo_apartment": "Condo Apartment",
+        "land_area": "Land Area",
+        "corporate_floor": "Corporate Floor",
+        "allotment": "Allotment",
+        "gated_community_lot": "Gated Community Lot",
+        "mall": "Mall",
+        "rural": "Rural Property",
+        "gated_community_land": "Gated Community Land",
+        "villagio": "Villagio"
+    },
+    "listing_types": {
+        "sale": "Sale",
+        "rent": "Rent",
+        "vacation": "Vacation",
+        "business_transfer": "Business Transfer",
+        "launch": "Launch",
+        "both": "Sale & Rent"
+    },
     "common": {
         "search": "Search",
         "search_placeholder": "Search by location, description...",
@@ -85,6 +129,7 @@
             "year": "/ year"
         },
         "for_both": "Sale & Rent",
+        "for_launch": "Launch",
         "for_vacation": "Vacation Rental",
         "uploading": "Uploading...",
         "submitting": "Submitting...",
@@ -104,7 +149,15 @@
         "cannot_favorite_own": "You cannot favorite your own property",
         "your_property": "Your Property",
         "price_per_area": "Price / Area",
-        "price_per_total_area": "Price / Total Area"
+        "price_per_total_area": "Price / Total Area",
+        "launch_price": "Launch Price",
+        "launch_price_required": "Launch Price is required",
+        "launch_price_negative": "Launch Price cannot be negative",
+        "add_amenities": {
+            "title": "Add Amenities",
+            "placeholder": "Type an amenity...",
+            "add_button": "Add"
+        }
     },
     "home": {
         "hero_title": "Find Your",
@@ -273,6 +326,10 @@
         "under_option": "Under Option",
         "sold": "Sold",
         "rented": "Rented",
+        "coming_soon": "Coming Soon",
+        "launched": "Launched",
+        "under_construction": "Under Construction",
+        "finished": "Finished",
         "location_not_specified": "Location not specified"
     },
     "auth": {

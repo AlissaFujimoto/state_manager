@@ -1,4 +1,48 @@
 {
+    "property_types": {
+        "apartment": "Apartamento",
+        "house": "Casa",
+        "land": "Terreno",
+        "farm": "Fazenda",
+        "small_farm": "Sítio",
+        "country_house": "Chácara",
+        "commercial": "Comercial",
+        "warehouse": "Galpão",
+        "shed": "Barracão",
+        "office": "Sala",
+        "commercial_room": "Sala Comercial",
+        "commercial_hall": "Salão",
+        "building": "Prédio",
+        "inn": "Pousada",
+        "store": "Loja",
+        "commercial_point": "Ponto Comercial",
+        "penthouse": "Cobertura",
+        "duplex": "Duplex",
+        "studio": "Studio",
+        "kitnet": "Kitnet",
+        "flat": "Flat",
+        "condo_house": "Casa em Condomínio",
+        "village_house": "Casa de Vila",
+        "single_story_house": "Casa Térrea",
+        "two_story_house": "Sobrado",
+        "condo_apartment": "Apartamento em Condomínio",
+        "land_area": "Área de Terra",
+        "corporate_floor": "Laje Corporativa",
+        "allotment": "Loteamento",
+        "gated_community_lot": "Loteamento em Condomínio",
+        "mall": "Shopping",
+        "rural": "Rural",
+        "gated_community_land": "Terreno em Condomínio",
+        "villagio": "Villagio"
+    },
+    "listing_types": {
+        "sale": "Venda",
+        "rent": "Aluguel",
+        "vacation": "Temporada",
+        "business_transfer": "Trespasse",
+        "launch": "Lançamento",
+        "both": "Venda e Aluguel"
+    },
     "common": {
         "search": "Buscar",
         "search_placeholder": "Busque por localização, descrição...",
@@ -77,7 +121,7 @@
         "amenities": "Características Adicionais",
         "total": "Total",
         "for_sale": "Venda",
-        "for_rent": "Alugar",
+        "for_rent": "Aluguel",
         "periods": {
             "day": "/ dia",
             "week": "/ semana",
@@ -85,7 +129,8 @@
             "year": "/ ano"
         },
         "for_both": "Venda e Aluguel",
-        "for_vacation": "Para Temporada",
+        "for_launch": "Lançamento",
+        "for_vacation": "Temporada",
         "uploading": "Enviando...",
         "submitting": "Enviando anúncio...",
         "new": "Novo",
@@ -104,7 +149,15 @@
         "cannot_favorite_own": "Você não pode favoritar seu próprio imóvel",
         "your_property": "Seu Imóvel",
         "price_per_area": "Preço / Área",
-        "price_per_total_area": "Preço / Área Total"
+        "price_per_total_area": "Preço / Área Total",
+        "launch_price": "Preço de Lançamento",
+        "launch_price_required": "Preço de Lançamento é obrigatório",
+        "launch_price_negative": "Preço de Lançamento não pode ser negativo",
+        "add_amenities": {
+            "title": "Adicionar Características",
+            "placeholder": "Digite uma característica...",
+            "add_button": "Adicionar"
+        }
     },
     "home": {
         "hero_title": "Encontre Seu",
@@ -273,6 +326,10 @@
         "under_option": "Em Opção",
         "sold": "Vendido",
         "rented": "Alugado",
+        "coming_soon": "Em Breve",
+        "launched": "Lançado",
+        "under_construction": "Em Construção",
+        "finished": "Finalizado",
         "location_not_specified": "Localização não especificada"
     },
     "auth": {

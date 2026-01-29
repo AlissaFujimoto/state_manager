@@ -400,13 +400,11 @@ const Home = () => {
 
         // 2. Add from Static Lists (Types, Amenities, etc)
         (propertyTypes || []).forEach(type => {
-            addPhrase(t(`home.${type}s`));
-            addPhrase(t(`home.${type}`));
+            addPhrase(t(`property_types.${type}`));
         });
 
         (listingTypes || []).forEach(type => {
-            addPhrase(t(`common.for_${type}`));
-            addPhrase(t(`common.${type}`));
+            addPhrase(t(`listing_types.${type}`));
         });
 
         (availableAmenities || []).forEach(amenity => {
@@ -451,9 +449,9 @@ const Home = () => {
             const searchTerms = normalize(searchQuery).split(/\s+/).filter(t => t.length > 0);
 
             // Localized values for search
-            const typeTranslated = p.property_type ? normalize(t(`home.${p.property_type.toLowerCase()}`)) : '';
-            const listingTypeTranslated = p.listing_type ? normalize(t(`common.${p.listing_type.toLowerCase()}`)) : '';
-            const listingTypeForTranslated = p.listing_type ? normalize(t(`common.for_${p.listing_type.toLowerCase()}`)) : '';
+            const typeTranslated = p.property_type ? normalize(t(`property_types.${p.property_type.toLowerCase()}`)) : '';
+            const listingTypeTranslated = p.listing_type ? normalize(t(`listing_types.${p.listing_type.toLowerCase()}`)) : '';
+            // const listingTypeForTranslated = p.listing_type ? normalize(t(`common.for_${p.listing_type.toLowerCase()}`)) : ''; // Redundant now
 
             let statusTranslated = '';
             if (p.status) {
@@ -480,7 +478,7 @@ const Home = () => {
                 normalize(p.friendly_id).includes(term) ||
                 typeTranslated.includes(term) ||
                 listingTypeTranslated.includes(term) ||
-                listingTypeForTranslated.includes(term) ||
+                // listingTypeForTranslated.includes(term) ||
                 statusTranslated.includes(term) ||
                 propertyAmenitiesTranslated.some(a => a.includes(term))
             );
@@ -788,7 +786,7 @@ const Home = () => {
                             <SearchableSelect
                                 value={filter.listingType}
                                 onChange={(val) => setFilter({ ...filter, listingType: val })}
-                                options={listingTypes.map(type => ({ value: type, label: t(`common.for_${type}`) }))}
+                                options={listingTypes.map(type => ({ value: type, label: t(`listing_types.${type}`) }))}
                                 placeholder={t('common.all_types')}
                                 allLabel={t('common.all_types')}
                                 className="w-full"
@@ -798,7 +796,7 @@ const Home = () => {
                             <SearchableSelect
                                 value={filter.type}
                                 onChange={(val) => setFilter({ ...filter, type: val })}
-                                options={propertyTypes.map(type => ({ value: type, label: t(`home.${type}s`) }))}
+                                options={propertyTypes.map(type => ({ value: type, label: t(`property_types.${type}`) }))}
                                 placeholder={t('home.all_properties')}
                                 allLabel={t('home.all_properties')}
                                 className="w-full"

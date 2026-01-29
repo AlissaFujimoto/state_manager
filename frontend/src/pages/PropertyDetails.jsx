@@ -234,7 +234,7 @@ const PropertyDetails = () => {
 
         if (!areaValue || areaValue <= 0) return formatCurrency(0, property.currency) + ' / ' + areaUnit;
 
-        const salePrice = property.sale_price || (property.listing_type === 'sale' || property.listing_type === 'both' || property.listing_type === 'sale_rent' ? property.price : 0);
+        const salePrice = property.sale_price || property.launch_price || (property.listing_type === 'sale' || property.listing_type === 'both' || property.listing_type === 'sale_rent' || property.listing_type === 'launch' ? property.price : 0);
         if (!salePrice) return null;
 
         const pricePer = salePrice / areaValue;
@@ -447,6 +447,10 @@ const PropertyDetails = () => {
             if (data.vacation_price === '' || data.vacation_price === null || data.vacation_price === undefined) return false;
             if (parseFloat(data.vacation_price) < 0) return false;
         }
+        if (type === 'launch') {
+            if (data.launch_price === '' || data.launch_price === null || data.launch_price === undefined) return false;
+            if (parseFloat(data.launch_price) < 0) return false;
+        }
 
         // Negative check for char fields
         const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
@@ -496,6 +500,14 @@ const PropertyDetails = () => {
             }
         }
 
+        if (type === 'launch') {
+            if (editData.launch_price === '' || editData.launch_price === null || editData.launch_price === undefined) {
+                newErrors.launch_price = t('common.launch_price_required');
+            } else if (parseFloat(editData.launch_price) < 0) {
+                newErrors.launch_price = t('common.launch_price_negative');
+            }
+        }
+
         const charFields = ['bedrooms', 'suites', 'rooms', 'bathrooms', 'garages', 'area', 'total_area'];
         charFields.forEach(field => {
             if (parseFloat(editData.characteristics?.[field]) < 0) {
@@ -518,11 +530,9 @@ const PropertyDetails = () => {
             return;
         }
 
-        // Enforce address clearing if location is missing
-        if (!editData.location || (!editData.location.lat && !editData.location.lng)) {
-            editData.address.private = "";
-            editData.address.public = "";
-            editData.location = null;
+        // Sync location to address object for backend consistency
+        if (editData.address) {
+            editData.address.location = editData.location;
         }
 
         setSaving(true);
@@ -824,6 +834,7 @@ const PropertyDetails = () => {
                 sale_price: 0,
                 rent_price: 0,
                 vacation_price: 0,
+                launch_price: 0,
                 currency: 'BRL',
                 location: { lat: -23.5505, lng: -46.6333 }, // Default generic location
                 address: { private: '' },
@@ -1133,7 +1144,7 @@ const PropertyDetails = () => {
                                         >
                                             {propertyTypes.map(type => (
                                                 <option key={type} value={type}>
-                                                    {t(`home.${type}s`).replace(/s$/, '')}
+                                                    {t(`property_types.${type}`)}
                                                 </option>
                                             ))}
                                         </select>
@@ -1145,10 +1156,7 @@ const PropertyDetails = () => {
                                         >
                                             {listingTypes.map(type => (
                                                 <option key={type} value={type}>
-                                                    {type === 'sale' ? t('common.for_sale') :
-                                                        type === 'rent' ? t('common.for_rent') :
-                                                            type === 'both' ? t('common.for_both') :
-                                                                type === 'vacation' ? t('common.for_vacation') : type}
+                                                    {t(`listing_types.${type}`)}
                                                 </option>
                                             ))}
                                         </select>
@@ -1160,15 +1168,30 @@ const PropertyDetails = () => {
                                         >
                                             {propertyStatuses.map(status => {
                                                 const currentType = editData?.listing_type || property.listing_type;
-                                                let label = t(`property_card.${status.id}`);
+                                                const launchStatuses = ['coming_soon', 'launched', 'under_construction', 'finished'];
+                                                const isLaunchStatus = launchStatuses.includes(status.id);
 
-                                                if (status.id === 'sold') {
-                                                    label = t('property_card.sold');
-                                                    if (currentType === 'rent' || currentType === 'vacation') return null;
+                                                // Logic for Launch Listing Type
+                                                if (currentType === 'launch') {
+                                                    // Only show launch statuses
+                                                    if (!isLaunchStatus) return null;
+                                                } else {
+                                                    // Logic for Non-Launch Listing Types
+                                                    // Hide launch statuses
+                                                    if (isLaunchStatus) return null;
+
+                                                    // Standard filtering for other types
+                                                    if (status.id === 'sold') {
+                                                        if (currentType === 'rent' || currentType === 'vacation') return null;
+                                                    }
+                                                    if (status.id === 'rented') {
+                                                        if (currentType === 'sale') return null;
+                                                    }
                                                 }
 
-                                                if (status.id === 'rented') {
-                                                    if (currentType === 'sale') return null;
+                                                let label = t(`property_card.${status.id}`);
+                                                if (status.id === 'sold') {
+                                                    label = t('property_card.sold');
                                                 }
 
                                                 return (
@@ -1413,6 +1436,18 @@ const PropertyDetails = () => {
                                                         )}
                                                     </div>
                                                 );
+                                            } else if (property.listing_type === 'launch') {
+                                                return (
+                                                    <div className="flex flex-col items-end">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-slate-400 uppercase">{t('common.launch_price')}</span>
+                                                            <span>{formatCurrency(property.launch_price || property.price, property.currency)}</span>
+                                                        </div>
+                                                        <p className="text-lg font-bold text-slate-600 mt-1">
+                                                            {getPricePerArea()}
+                                                        </p>
+                                                    </div>
+                                                );
                                             }
 
                                             return (
@@ -1593,13 +1628,13 @@ const PropertyDetails = () => {
                                         <button
                                             onClick={() => setShowAmenitySuggestions(!showAmenitySuggestions)}
                                             className={`p-1 rounded-lg transition-colors ${showAmenitySuggestions ? 'bg-primary-50 text-primary-600' : 'text-primary-500 hover:bg-slate-50'}`}
-                                            title={t('property_details.view_all_amenities') || 'View all amenities'}
+                                            title={t('common.add_amenities.title') || 'Add Amenities'}
                                         >
                                             <Plus className={`w-5 h-5 transition-transform duration-300 ${showAmenitySuggestions ? 'rotate-45' : ''}`} />
                                         </button>
                                         <input
                                             type="text"
-                                            placeholder={t('property_details.add_amenity_placeholder')}
+                                            placeholder={t('common.add_amenities.placeholder')}
                                             className="flex-1 bg-transparent outline-none text-slate-700 font-medium"
                                             value={amenityInput}
                                             onChange={(e) => {
@@ -1619,7 +1654,7 @@ const PropertyDetails = () => {
                                                 onClick={() => addAmenity(amenityInput)}
                                                 className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors"
                                             >
-                                                {t('common.add') || 'Add'}
+                                                {t('common.add_amenities.add_button')}
                                             </button>
                                         )}
                                     </div>

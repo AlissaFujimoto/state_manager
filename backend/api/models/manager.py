@@ -47,6 +47,7 @@ class PropertyData:
     sale_price: Optional[float] = None
     rent_price: Optional[float] = None
     vacation_price: Optional[float] = None
+    launch_price: Optional[float] = None
     property_type: str = "house"
     listing_type: str = "sale"
     status: str = "available"
@@ -142,6 +143,7 @@ class Property:
             "sale_price": d.sale_price,
             "rent_price": d.rent_price,
             "vacation_price": d.vacation_price,
+            "launch_price": d.launch_price,
             "property_type": d.property_type,
             "listing_type": d.listing_type,
             "status": d.status,
@@ -253,6 +255,7 @@ class Property:
         sale_price = safe_float(data.get("sale_price"))
         rent_price = safe_float(data.get("rent_price"))
         vacation_price = safe_float(data.get("vacation_price"))
+        launch_price = safe_float(data.get("launch_price"))
         
         # Primary price logic based on listing_type
         listing_type = data.get("listing_type", "sale")
@@ -264,6 +267,8 @@ class Property:
             price = rent_price
         elif listing_type == "vacation" and vacation_price is not None:
             price = vacation_price
+        elif listing_type == "launch" and launch_price is not None:
+            price = launch_price
 
         # Prepare IDs
         prop_id = data.get("id")
@@ -293,6 +298,7 @@ class Property:
             sale_price=sale_price,
             rent_price=rent_price,
             vacation_price=vacation_price,
+            launch_price=launch_price,
             property_type=data.get("property_type", "house"),
             listing_type=listing_type,
             status=data.get("status", "available"),

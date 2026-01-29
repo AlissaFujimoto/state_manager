@@ -1,6 +1,8 @@
 [
     "sale",
     "rent",
-    "both",
-    "vacation"
+    "vacation",
+    "business_transfer",
+    "launch",
+    "both"
 ]
