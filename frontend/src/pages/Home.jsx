@@ -274,89 +274,225 @@ const Home = () => {
             .toLowerCase();
     };
 
-    const filteredProperties = (properties || []).filter(p => {
-        const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
-        const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
-        const searchTerms = normalize(searchQuery).split(/\s+/).filter(t => t.length > 0);
+    // 1. Base Filter (Non-Text) - Matches everything EXCEPT search query
+    const propertiesMatchingFilter = React.useMemo(() => {
+        return (properties || []).filter(p => {
+            const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
+            const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
 
-        // Localized values for search
-        const typeTranslated = p.property_type ? normalize(t(`home.${p.property_type.toLowerCase()}`)) : '';
-        const listingTypeTranslated = p.listing_type ? normalize(t(`common.${p.listing_type.toLowerCase()}`)) : '';
-        const listingTypeForTranslated = p.listing_type ? normalize(t(`common.for_${p.listing_type.toLowerCase()}`)) : '';
+            const price = Number(p.price);
+            const matchesMinPrice = filter.minPrice === '' || price >= Number(filter.minPrice);
+            const matchesMaxPrice = filter.maxPrice === '' || price <= Number(filter.maxPrice);
 
-        let statusTranslated = '';
-        if (p.status) {
-            if (p.status === 'sold') {
-                statusTranslated = normalize(p.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold'));
-            } else {
-                statusTranslated = normalize(t(`property_card.${p.status.toLowerCase()}`));
+            const chars = p.characteristics || {};
+            const matchesBedrooms = filter.minBedrooms === '' || Number(chars.bedrooms) >= Number(filter.minBedrooms);
+            const matchesBathrooms = filter.minBathrooms === '' || Number(chars.bathrooms) >= Number(filter.minBathrooms);
+            const matchesSuites = filter.minSuites === '' || Number(chars.suites) >= Number(filter.minSuites);
+            const matchesRooms = filter.minRooms === '' || Number(chars.rooms) >= Number(filter.minRooms);
+            const matchesGarages = filter.minGarages === '' || Number(chars.garages) >= Number(filter.minGarages);
+
+            const area = Number(chars.area || 0);
+            const matchesMinArea = filter.minArea === '' || area >= Number(filter.minArea);
+            const matchesMaxArea = filter.maxArea === '' || area <= Number(filter.maxArea);
+
+            const matchesAmenities = filter.amenities.length === 0 ||
+                filter.amenities.every(a => (p.amenities || []).includes(a));
+
+            const matchesCountry = filter.country === 'all' ||
+                normalize(p.address?.country) === normalize(filter.country) ||
+                normalize(p.display_address).includes(normalize(filter.country));
+
+            const matchesState = filter.state === 'all' ||
+                normalize(p.display_address).includes(normalize(filter.state)) ||
+                normalize(p.address?.public).includes(normalize(filter.state));
+
+            const matchesCity = filter.city === 'all' ||
+                normalize(p.display_address).includes(normalize(filter.city)) ||
+                normalize(p.address?.public).includes(normalize(filter.city));
+
+            return matchesType && matchesListingType && matchesMinPrice && matchesMaxPrice &&
+                matchesBedrooms && matchesBathrooms && matchesSuites && matchesRooms && matchesGarages &&
+                matchesMinArea && matchesMaxArea && matchesAmenities && matchesCountry && matchesState && matchesCity;
+        });
+    }, [properties, filter, t]);
+
+    // 2. Search Suggestions Logic
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [allCities, setAllCities] = useState([]);
+    const [allStates, setAllStates] = useState([]);
+
+    // Fetch Global Cities/States for Search (Defaulting to Brazil as context)
+    useEffect(() => {
+        const fetchGlobalLocations = async () => {
+            try {
+                // Fetch States
+                const resStates = await fetch('https://countriesnow.space/api/v0.1/countries/states', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ country: 'Brazil' })
+                });
+                const jsonStates = await resStates.json();
+                if (!jsonStates.error) {
+                    const states = jsonStates.data.states.map(s => s.name);
+                    setAllStates(states);
+
+                    // Fetch Cities for each state (This might be heavy, let's try a bulk endpoint if available or just major ones?)
+                    // The API 'countries/cities' returns ALL cities for a country.
+                    const resCities = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ country: 'Brazil' })
+                    });
+                    const jsonCities = await resCities.json();
+                    if (!jsonCities.error) {
+                        setAllCities(jsonCities.data);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch global locations for search:', err);
             }
-        }
+        };
+        fetchGlobalLocations();
+    }, []);
 
-        const propertyAmenitiesTranslated = (p.amenities || []).map(a => {
-            const key = a.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-            return normalize(t(`amenities.${key}`));
+    // Memoized suggestions based on ALL properties + Global Static Lists
+    const suggestions = React.useMemo(() => {
+        const fullQ = normalize(searchQuery);
+        // Find the last word being typed
+        const lastToken = (searchQuery || '').split(/(\s+)/).filter(s => s.trim().length > 0).pop();
+
+        if ((!lastToken || lastToken.length < 2) && fullQ.length < 2) return [];
+
+        const q = normalize(lastToken || '');
+        const words = new Set();
+
+        // Helper to add individual words (Token Match)
+        const addWords = (text) => {
+            if (!text) return;
+            text.split(/[\s,.-]+/).forEach(w => {
+                if (w.length > 2 && !/^\d+$/.test(w) && normalize(w).startsWith(q)) {
+                    words.add(w);
+                }
+            });
+        };
+
+        // Helper to add FULL phrases (Phrase Match)
+        const addPhrase = (text) => {
+            if (!text) return;
+            // Check if the full phrase starts with the FULL query
+            if (fullQ.length >= 1 && normalize(text).startsWith(fullQ)) {
+                words.add(text);
+            }
+            // ALSO check individual words to support token matching inside phrases
+            addWords(text);
+        };
+
+        // 1. Add from ALL properties (Titles, Descriptions, Addresses)
+        (properties || []).forEach(p => {
+            addWords(p.title);
+            addWords(p.description);
+            addPhrase(p.display_address); // Phrase
+            addPhrase(p.address?.public); // Phrase
+            addPhrase(p.address?.city);   // Phrase
+            addPhrase(p.address?.state);  // Phrase
+            addPhrase(p.address?.country); // Phrase
         });
 
-        const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
-            normalize(p.title).includes(term) ||
-            normalize(p.description).includes(term) ||
-            normalize(p.display_address).includes(term) ||
-            normalize(p.address?.public).includes(term) ||
-            normalize(p.property_type).includes(term) ||
-            normalize(p.listing_type).includes(term) ||
-            normalize(p.status).includes(term) ||
-            normalize(p.friendly_id).includes(term) ||
-            typeTranslated.includes(term) ||
-            listingTypeTranslated.includes(term) ||
-            listingTypeForTranslated.includes(term) ||
-            statusTranslated.includes(term) ||
-            propertyAmenitiesTranslated.some(a => a.includes(term))
-        );
+        // 2. Add from Static Lists (Types, Amenities, etc)
+        (propertyTypes || []).forEach(type => {
+            addPhrase(t(`home.${type}s`));
+            addPhrase(t(`home.${type}`));
+        });
 
-        const price = Number(p.price);
-        const matchesMinPrice = filter.minPrice === '' || price >= Number(filter.minPrice);
-        const matchesMaxPrice = filter.maxPrice === '' || price <= Number(filter.maxPrice);
+        (listingTypes || []).forEach(type => {
+            addPhrase(t(`common.for_${type}`));
+            addPhrase(t(`common.${type}`));
+        });
 
-        const chars = p.characteristics || {};
-        const matchesBedrooms = filter.minBedrooms === '' || Number(chars.bedrooms) >= Number(filter.minBedrooms);
-        const matchesBathrooms = filter.minBathrooms === '' || Number(chars.bathrooms) >= Number(filter.minBathrooms);
-        const matchesSuites = filter.minSuites === '' || Number(chars.suites) >= Number(filter.minSuites);
-        const matchesRooms = filter.minRooms === '' || Number(chars.rooms) >= Number(filter.minRooms);
-        const matchesGarages = filter.minGarages === '' || Number(chars.garages) >= Number(filter.minGarages);
+        (availableAmenities || []).forEach(amenity => {
+            const key = amenity.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            addPhrase(t(`amenities.${key}`));
+        });
 
-        const area = Number(chars.area || 0);
-        const matchesMinArea = filter.minArea === '' || area >= Number(filter.minArea);
-        const matchesMaxArea = filter.maxArea === '' || area <= Number(filter.maxArea);
+        (countryStates || []).forEach(state => addPhrase(state));
+        (allStates || []).forEach(state => addPhrase(state));
 
-        const matchesAmenities = filter.amenities.length === 0 ||
-            filter.amenities.every(a => (p.amenities || []).includes(a));
+        (stateCities || []).forEach(city => addPhrase(city));
+        (allCities || []).forEach(city => addPhrase(city));
 
-        const matchesCountry = filter.country === 'all' ||
-            normalize(p.address?.country) === normalize(filter.country) ||
-            normalize(p.display_address).includes(normalize(filter.country));
+        // Convert to array, sort by length (prefer shorter matches usually, or alpha)
+        return Array.from(words).sort((a, b) => {
+            const normA = normalize(a);
+            const normB = normalize(b);
 
-        const matchesState = filter.state === 'all' ||
-            normalize(p.display_address).includes(normalize(filter.state)) ||
-            normalize(p.address?.public).includes(normalize(filter.state));
+            // Prioritize exact phrase match with fullQ
+            if (normA === fullQ && normB !== fullQ) return -1;
+            if (normB === fullQ && normA !== fullQ) return 1;
 
-        const matchesCity = filter.city === 'all' ||
-            normalize(p.display_address).includes(normalize(filter.city)) ||
-            normalize(p.address?.public).includes(normalize(filter.city));
+            // Prioritize suggestions that start with the full query
+            if (normA.startsWith(fullQ) && !normB.startsWith(fullQ)) return -1;
+            if (normB.startsWith(fullQ) && !normA.startsWith(fullQ)) return 1;
 
-        return matchesType && matchesListingType && matchesSearch && matchesMinPrice && matchesMaxPrice &&
-            matchesBedrooms && matchesBathrooms && matchesSuites && matchesRooms && matchesGarages &&
-            matchesMinArea && matchesMaxArea && matchesAmenities && matchesCountry && matchesState && matchesCity;
-    }).sort((a, b) => {
-        if (filter.sortBy === 'price_asc') return Number(a.price) - Number(b.price);
-        if (filter.sortBy === 'price_desc') return Number(b.price) - Number(a.price);
-        if (filter.sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        if (filter.sortBy === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-        if (filter.sortBy === 'beds_desc') return Number(b.characteristics?.bedrooms || 0) - Number(a.characteristics?.bedrooms || 0);
+            // Then prioritize suggestions that start with the last token
+            if (normA.startsWith(q) && !normB.startsWith(q)) return -1;
+            if (normB.startsWith(q) && !normA.startsWith(q)) return 1;
 
-        // Default: newest
-        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    });
+            // Then by length (shorter first)
+            if (a.length !== b.length) return a.length - b.length;
+
+            // Finally, alphabetical
+            return a.localeCompare(b);
+        }).slice(0, 8);
+    }, [searchQuery, properties, propertyTypes, listingTypes, availableAmenities, countryStates, stateCities, t]);
+
+    // 3. Final Filter (Search + Sort)
+    const filteredProperties = React.useMemo(() => {
+        return propertiesMatchingFilter.filter(p => {
+            const searchTerms = normalize(searchQuery).split(/\s+/).filter(t => t.length > 0);
+
+            // Localized values for search
+            const typeTranslated = p.property_type ? normalize(t(`home.${p.property_type.toLowerCase()}`)) : '';
+            const listingTypeTranslated = p.listing_type ? normalize(t(`common.${p.listing_type.toLowerCase()}`)) : '';
+            const listingTypeForTranslated = p.listing_type ? normalize(t(`common.for_${p.listing_type.toLowerCase()}`)) : '';
+
+            let statusTranslated = '';
+            if (p.status) {
+                if (p.status === 'sold') {
+                    statusTranslated = normalize(p.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold'));
+                } else {
+                    statusTranslated = normalize(t(`property_card.${p.status.toLowerCase()}`));
+                }
+            }
+
+            const propertyAmenitiesTranslated = (p.amenities || []).map(a => {
+                const key = a.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                return normalize(t(`amenities.${key}`));
+            });
+
+            return searchTerms.length === 0 || searchTerms.some(term =>
+                normalize(p.title).includes(term) ||
+                normalize(p.description).includes(term) ||
+                normalize(p.display_address).includes(term) ||
+                normalize(p.address?.public).includes(term) ||
+                normalize(p.property_type).includes(term) ||
+                normalize(p.listing_type).includes(term) ||
+                normalize(p.status).includes(term) ||
+                normalize(p.friendly_id).includes(term) ||
+                typeTranslated.includes(term) ||
+                listingTypeTranslated.includes(term) ||
+                listingTypeForTranslated.includes(term) ||
+                statusTranslated.includes(term) ||
+                propertyAmenitiesTranslated.some(a => a.includes(term))
+            );
+        }).sort((a, b) => {
+            if (filter.sortBy === 'price_asc') return Number(a.price) - Number(b.price);
+            if (filter.sortBy === 'price_desc') return Number(b.price) - Number(a.price);
+            if (filter.sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+            if (filter.sortBy === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+            if (filter.sortBy === 'beds_desc') return Number(b.characteristics?.bedrooms || 0) - Number(a.characteristics?.bedrooms || 0);
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+    }, [propertiesMatchingFilter, searchQuery, filter.sortBy, t]);
 
     const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
 
@@ -486,13 +622,9 @@ const Home = () => {
     useEffect(() => {
         const fetchProperties = async () => {
             try {
-                const params = {};
-                if (filter.type !== 'all') params.type = filter.type;
-                if (filter.listingType !== 'all') params.listing_type = filter.listingType;
-                if (filter.minPrice) params.min_price = filter.minPrice;
-                if (filter.maxPrice) params.max_price = filter.maxPrice;
-
-                const res = await api.get('/announcements', { params });
+                // Fetch ALL properties to support global autocomplete and client-side filtering
+                // The filtering logic is fully handled in 'propertiesMatchingFilter' and 'filteredProperties' hashes
+                const res = await api.get('/announcements');
                 setProperties(res.data);
                 sessionStorage.setItem('home_properties', JSON.stringify(res.data));
                 sessionStorage.setItem('home_filter', JSON.stringify(filter));
@@ -506,7 +638,17 @@ const Home = () => {
             }
         };
         fetchProperties();
-    }, [filter]);
+    }, []); // Only fetch once on mount (since we fetch ALL), or maybe re-fetch if needed? 
+    // Actually, 'filter' dependency was causing re-fetch on every filter change.
+    // Now we want client-side filtering, so we DON'T need to re-fetch on filter change.
+    // So dependency array should be empty [] or maybe just on mount.
+    // However, if the user adds a property via another tab/component, we might want to refresh?
+    // For now, [] is correct for "Load all once, filter locally".
+    // But wait, the original code had `[filter]` dependency.
+    // If I change it to `[]`, I must remove `filter` from dependency array inside the `useEffect` block?
+    // Actually, I should remove `params` construction which uses `filter`.
+    // And also remove `[filter]` from the dependency array, otherwise it runs redundantly (though harmlessly if no params).
+    // Let's stick to `[]`.
 
     const jumpToPage = (page) => {
         setCurrentPage(page);
@@ -538,15 +680,92 @@ const Home = () => {
 
                 <div className="mt-8 landscape:mt-4 flex flex-col gap-6">
                     <div className="flex gap-3 lg:gap-4">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder={t('common.search_placeholder')}
-                                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                        <div className="flex-1 relative z-20 group">
+                            {/* Best match calculation */}
+                            {(() => {
+                                // 1. Try Full Phrase Match first (High priority for Cities/States)
+                                const fullMatch = suggestions.find(s =>
+                                    normalize(s).startsWith(normalize(searchQuery)) &&
+                                    normalize(s) !== normalize(searchQuery)
+                                );
+
+                                // 2. Try Last Token Match (Fallback for random words)
+                                const lastTokenMatch = searchQuery.match(/(\S+)$/);
+                                const lastToken = lastTokenMatch ? lastTokenMatch[1] : '';
+                                const tokenMatch = lastToken && suggestions.find(s =>
+                                    normalize(s).startsWith(normalize(lastToken)) &&
+                                    normalize(s) !== normalize(lastToken)
+                                );
+
+                                let ghostText = '';
+                                let fullCompletion = '';
+
+                                if (fullMatch) {
+                                    // Ghost shows the remainder of the phrase
+                                    ghostText = searchQuery + fullMatch.slice(searchQuery.length);
+                                    fullCompletion = fullMatch;
+                                } else if (tokenMatch) {
+                                    // Ghost shows the remainder of the word
+                                    ghostText = searchQuery.slice(0, searchQuery.length - lastToken.length) + tokenMatch;
+                                    fullCompletion = searchQuery.slice(0, searchQuery.length - lastToken.length) + tokenMatch;
+                                }
+
+                                return (
+                                    <>
+                                        {/* Ghost Input (Background) */}
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            className="absolute inset-0 w-full pl-12 pr-4 py-4 bg-transparent border border-transparent rounded-2xl text-slate-300 pointer-events-none z-0"
+                                            value={ghostText}
+                                        />
+
+                                        {/* Real Input (Foreground) */}
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none z-20" />
+                                        <input
+                                            type="text"
+                                            placeholder={t('common.search_placeholder')}
+                                            className="w-full pl-12 pr-4 py-4 bg-transparent border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all relative z-10 text-slate-900 placeholder:text-slate-400"
+                                            style={{ backgroundColor: searchQuery ? 'transparent' : 'white' }}
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onFocus={() => setShowSuggestions(true)}
+                                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                            onKeyDown={(e) => {
+                                                if ((e.key === 'Tab' || e.key === 'ArrowRight') && fullCompletion) {
+                                                    e.preventDefault();
+                                                    setSearchQuery(fullCompletion);
+                                                }
+                                            }}
+                                            autoComplete="off"
+                                        />
+                                    </>
+                                );
+                            })()}
+                            {/* Suggestions Autocomplete */}
+                            <AnimatePresence>
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <Motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 ring-1 ring-slate-100"
+                                    >
+                                        <div className="py-2">
+                                            {suggestions.map((suggestion, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => { setSearchQuery(suggestion); setShowSuggestions(false); }}
+                                                    className="w-full text-left px-6 py-3 hover:bg-slate-50 text-slate-600 font-medium transition-colors flex items-center gap-3"
+                                                >
+                                                    <Search className="w-4 h-4 text-slate-300" />
+                                                    <span>{suggestion}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </Motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         <button
