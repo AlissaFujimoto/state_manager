@@ -6,6 +6,7 @@
         "filters": "Filtros",
         "advanced_filters": "Filtros Avançados",
         "reset_all": "Repor Tudo",
+        "cancel": "Cancelar",
         "share": "Partilhar",
         "copy": "Copiar",
         "copy_link": "Copiar Link",
@@ -81,10 +82,10 @@
         "sort_by": "Ordenar Por",
         "amenities": "Características Adicionais",
         "total": "Total",
-        "for_sale": "Para Venda",
-        "for_rent": "Para Arrendar",
+        "for_sale": "Venda",
+        "for_rent": "Alugar",
         "for_both": "Venda e Arrendamento",
-        "for_vacation": "Para Temporada",
+        "for_vacation": "Temporada",
         "uploading": "A carregar...",
         "submitting": "A submeter...",
         "new": "Novo",
@@ -184,7 +185,8 @@
         "describe_property_placeholder": "Descreva a propriedade...",
         "location": "Localização",
         "search_address_label": "Pesquisar Morada",
-        "show_exact_address": "Mostrar morada exata ao público"
+        "show_exact_address": "Mostrar morada exata ao público",
+        "no_description": "Nenhuma descrição fornecida."
     },
     "my_listings": {
         "title": "Os Meus Anúncios",

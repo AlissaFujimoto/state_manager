@@ -6,6 +6,7 @@
         "filters": "Filtros",
         "advanced_filters": "Filtros Avanzados",
         "reset_all": "Restablecer Todo",
+        "cancel": "Cancelar",
         "share": "Compartir",
         "copy": "Copiar",
         "copy_link": "Compartir Enlace",
@@ -184,7 +185,8 @@
         "describe_property_placeholder": "Describe la propiedad...",
         "location": "Ubicación",
         "search_address_label": "Buscar Dirección",
-        "show_exact_address": "Mostrar dirección exacta al público"
+        "show_exact_address": "Mostrar dirección exacta al público",
+        "no_description": "No se proporcionó descripción."
     },
     "my_listings": {
         "title": "Mis Anuncios",

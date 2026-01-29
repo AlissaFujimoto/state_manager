@@ -48,22 +48,46 @@ const SearchableSelect = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [value, options, allLabel]);
 
-    const getFilteredOptions = () => {
-        // If searching (searchTerm doesn't match the selected value label exactly OR we are focused/open)
-        // Actually simplest is: filter by searchTerm if it's not equal to the currently selected label
-        // But cleaner: just filter by searchTerm always, unless searchTerm === allLabel?
+    // Helper functions for smart search
+    const normalize = (str) => {
+        return str
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+    };
 
+    const fuzzyMatch = (needle, haystack) => {
+        const nLen = needle.length;
+        const hLen = haystack.length;
+        if (nLen > hLen) return false;
+
+        if (nLen === 0) return true;
+
+        let nIdx = 0;
+        let hIdx = 0;
+
+        while (nIdx < nLen && hIdx < hLen) {
+            if (needle[nIdx] === haystack[hIdx]) {
+                nIdx++;
+            }
+            hIdx++;
+        }
+
+        return nIdx === nLen;
+    };
+
+    const getFilteredOptions = () => {
         if (!searchTerm || searchTerm === allLabel) return options;
 
-        // If the search term is exactly the selected label, show all options (user just clicked open)
-        // or should we filter? Standard combobox behavior: if text is selected, show all.
         const selectedOption = options.find(opt => opt.value === value);
         if (selectedOption && searchTerm === selectedOption.label) return options;
 
-        const lowerValue = searchTerm.toLowerCase();
-        return options.filter(opt =>
-            opt.label.toLowerCase().includes(lowerValue)
-        );
+        const normalizedSearch = normalize(searchTerm);
+
+        return options.filter(opt => {
+            const normalizedLabel = normalize(opt.label);
+            return fuzzyMatch(normalizedSearch, normalizedLabel);
+        });
     };
 
     const filteredOptions = getFilteredOptions();

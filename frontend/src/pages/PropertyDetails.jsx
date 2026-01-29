@@ -517,6 +517,14 @@ const PropertyDetails = () => {
             }
             return;
         }
+
+        // Enforce address clearing if location is missing
+        if (!editData.location || (!editData.location.lat && !editData.location.lng)) {
+            editData.address.private = "";
+            editData.address.public = "";
+            editData.location = null;
+        }
+
         setSaving(true);
         try {
             if (isCreating) {
@@ -1506,11 +1514,12 @@ const PropertyDetails = () => {
                     )}
 
                     {/* Description */}
-                    {(isEditing || property.description?.trim()) && (
-                        <div className="px-4 md:px-0">
+                    <div className="px-4 md:px-0">
+                        {/* Always render header */}
+                        {(isEditing || property.description?.trim() || true) && (
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-2xl font-bold text-slate-800">{t('property_details.about_property')}</h3>
-                                {!isEditing && (
+                                {!isEditing && property.description?.trim() && (
                                     <button
                                         onClick={() => handleTranslate('description')}
                                         disabled={translations.description.loading}
@@ -1530,204 +1539,210 @@ const PropertyDetails = () => {
                                     </button>
                                 )}
                             </div>
-                            {isEditing ? (
-                                <div className="w-full">
-                                    <textarea
-                                        name="description"
-                                        value={editData.description}
-                                        onChange={handleInputChange}
-                                        rows="6"
-                                        className={`w-full p-4 bg-slate-50 border-2 rounded-2xl text-slate-600 leading-relaxed text-lg outline-none transition-all resize-none ${getFieldStatus('description') || 'border-primary-100 focus:border-primary-500'}`}
-                                        placeholder={t('property_details.describe_property_placeholder')}
-                                    />
-                                    {errors.description && <p className="text-red-500 text-xs font-bold mt-1">{errors.description}</p>}
-                                </div>
-                            ) : (
-                                <div className="relative">
-                                    <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-line">
-                                        {translations.description.active ? translations.description.text : property.description}
-                                    </p>
-                                    {translations.description.active && (
-                                        <p className="text-xs text-slate-400 mt-2 italic flex items-center gap-1">
-                                            <Languages className="w-3 h-3" />
-                                            {t('common.translated_automatically')}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
 
-                    {/* Amenities Section */}
-                    {(isEditing || (property.amenities && property.amenities.length > 0)) && (
-                        <div className="py-8 border-t border-slate-100 px-4 md:px-0">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
-                                {isEditing && (
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
-                                        {t('property_details.drag_to_reorder')}
-                                    </span>
+                        {isEditing ? (
+                            <div className="w-full">
+                                <textarea
+                                    name="description"
+                                    value={editData.description}
+                                    onChange={handleInputChange}
+                                    rows="6"
+                                    className={`w-full p-4 bg-slate-50 border-2 rounded-2xl text-slate-600 leading-relaxed text-lg outline-none transition-all resize-none ${getFieldStatus('description') || 'border-primary-100 focus:border-primary-500'}`}
+                                    placeholder={t('property_details.describe_property_placeholder')}
+                                />
+                                {errors.description && <p className="text-red-500 text-xs font-bold mt-1">{errors.description}</p>}
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                {property.description?.trim() ? (
+                                    <>
+                                        <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-line">
+                                            {translations.description.active ? translations.description.text : property.description}
+                                        </p>
+                                        {translations.description.active && (
+                                            <p className="text-xs text-slate-400 mt-2 italic flex items-center gap-1">
+                                                <Languages className="w-3 h-3" />
+                                                {t('common.translated_automatically')}
+                                            </p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-slate-400 italic">{t('property_details.no_description') || 'No description provided.'}</p>
                                 )}
                             </div>
+                        )}
+                    </div>
 
-                            {isEditing ? (
-                                <div className="space-y-4">
-                                    {/* Google Keep Style Add Input */}
-                                    <div className="relative">
-                                        <div className="flex items-center gap-3 bg-white border-2 border-slate-100 rounded-2xl p-2 pl-4 focus-within:border-primary-500 transition-all shadow-sm">
+                    {/* Amenities Section */}
+                    <div className="py-8 border-t border-slate-100 px-4 md:px-0">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-2xl font-bold text-slate-800">{t('property_details.key_amenities')}</h3>
+                            {isEditing && (
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
+                                    {t('property_details.drag_to_reorder')}
+                                </span>
+                            )}
+                        </div>
+
+                        {isEditing ? (
+                            <div className="space-y-4">
+                                {/* Google Keep Style Add Input */}
+                                <div className="relative">
+                                    <div className="flex items-center gap-3 bg-white border-2 border-slate-100 rounded-2xl p-2 pl-4 focus-within:border-primary-500 transition-all shadow-sm">
+                                        <button
+                                            onClick={() => setShowAmenitySuggestions(!showAmenitySuggestions)}
+                                            className={`p-1 rounded-lg transition-colors ${showAmenitySuggestions ? 'bg-primary-50 text-primary-600' : 'text-primary-500 hover:bg-slate-50'}`}
+                                            title={t('property_details.view_all_amenities') || 'View all amenities'}
+                                        >
+                                            <Plus className={`w-5 h-5 transition-transform duration-300 ${showAmenitySuggestions ? 'rotate-45' : ''}`} />
+                                        </button>
+                                        <input
+                                            type="text"
+                                            placeholder={t('property_details.add_amenity_placeholder')}
+                                            className="flex-1 bg-transparent outline-none text-slate-700 font-medium"
+                                            value={amenityInput}
+                                            onChange={(e) => {
+                                                setAmenityInput(e.target.value);
+                                                setShowAmenitySuggestions(true);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    addAmenity(amenityInput);
+                                                }
+                                            }}
+                                            onFocus={() => setShowAmenitySuggestions(true)}
+                                        />
+                                        {amenityInput && (
                                             <button
-                                                onClick={() => setShowAmenitySuggestions(!showAmenitySuggestions)}
-                                                className={`p-1 rounded-lg transition-colors ${showAmenitySuggestions ? 'bg-primary-50 text-primary-600' : 'text-primary-500 hover:bg-slate-50'}`}
-                                                title={t('property_details.view_all_amenities') || 'View all amenities'}
+                                                onClick={() => addAmenity(amenityInput)}
+                                                className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors"
                                             >
-                                                <Plus className={`w-5 h-5 transition-transform duration-300 ${showAmenitySuggestions ? 'rotate-45' : ''}`} />
+                                                {t('common.add') || 'Add'}
                                             </button>
-                                            <input
-                                                type="text"
-                                                placeholder={t('property_details.add_amenity_placeholder')}
-                                                className="flex-1 bg-transparent outline-none text-slate-700 font-medium"
-                                                value={amenityInput}
-                                                onChange={(e) => {
-                                                    setAmenityInput(e.target.value);
-                                                    setShowAmenitySuggestions(true);
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        addAmenity(amenityInput);
-                                                    }
-                                                }}
-                                                onFocus={() => setShowAmenitySuggestions(true)}
-                                            />
-                                            {amenityInput && (
-                                                <button
-                                                    onClick={() => addAmenity(amenityInput)}
-                                                    className="bg-primary-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors"
-                                                >
-                                                    {t('common.add') || 'Add'}
-                                                </button>
-                                            )}
-                                        </div>
+                                        )}
+                                    </div>
 
-                                        {/* Suggestions Dropdown */}
-                                        <AnimatePresence>
-                                            {showAmenitySuggestions && (
-                                                <>
-                                                    {/* Backdrop to close on click outside */}
-                                                    <div
-                                                        className="fixed inset-0 z-[90]"
-                                                        onClick={() => setShowAmenitySuggestions(false)}
-                                                    />
-                                                    <Motion.div
-                                                        initial={{ opacity: 0, y: -10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        exit={{ opacity: 0, y: -10 }}
-                                                        className="absolute z-[100] left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto p-2"
-                                                    >
-                                                        {availableAmenities
-                                                            .filter(a => {
-                                                                const translatedName = getAmenityLabel(a);
-                                                                return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
-                                                                    !editData.amenities.includes(a);
-                                                            })
-                                                            .map((suggestion, idx) => {
-                                                                const translatedName = getAmenityLabel(suggestion);
-                                                                return (
-                                                                    <button
-                                                                        key={idx}
-                                                                        onClick={() => addAmenity(suggestion)}
-                                                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-slate-600 font-medium transition-colors flex items-center justify-between group"
-                                                                    >
-                                                                        <span>{translatedName}</span>
-                                                                        <Plus className="w-4 h-4 text-slate-300 group-hover:text-primary-500" />
-                                                                    </button>
-                                                                );
-                                                            })
-                                                        }
-                                                        {availableAmenities.filter(a => {
+                                    {/* Suggestions Dropdown */}
+                                    <AnimatePresence>
+                                        {showAmenitySuggestions && (
+                                            <>
+                                                {/* Backdrop to close on click outside */}
+                                                <div
+                                                    className="fixed inset-0 z-[90]"
+                                                    onClick={() => setShowAmenitySuggestions(false)}
+                                                />
+                                                <Motion.div
+                                                    initial={{ opacity: 0, y: -10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -10 }}
+                                                    className="absolute z-[100] left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto p-2"
+                                                >
+                                                    {availableAmenities
+                                                        .filter(a => {
                                                             const translatedName = getAmenityLabel(a);
                                                             return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
                                                                 !editData.amenities.includes(a);
-                                                        }).length === 0 && (
-                                                                <div className="px-4 py-3 text-slate-400 text-sm italic">
-                                                                    {amenityInput
-                                                                        ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
-                                                                        : t('property_details.no_more_amenities')
-                                                                    }
-                                                                </div>
-                                                            )}
-                                                    </Motion.div>
-                                                </>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-
-                                    {/* Draggable List */}
-                                    <Reorder.Group
-                                        axis="y"
-                                        values={editData.amenities || []}
-                                        onReorder={reorderAmenities}
-                                        className="space-y-2"
-                                    >
-                                        {(editData.amenities || []).map((item) => {
-                                            const translatedName = getAmenityLabel(item);
-                                            return (
-                                                <Reorder.Item
-                                                    key={item}
-                                                    value={item}
-                                                    className="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-primary-200 transition-colors"
-                                                >
-                                                    <GripVertical className="w-5 h-5 text-slate-300 group-hover:text-slate-400" />
-                                                    <span className="flex-1 font-medium text-slate-700">{translatedName}</span>
-                                                    <button
-                                                        onClick={() => removeAmenity(item)}
-                                                        className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </Reorder.Item>
-                                            );
-                                        })}
-                                    </Reorder.Group>
-
-                                    {(!editData.amenities || editData.amenities.length === 0) && (
-                                        <div className="text-center py-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-medium">
-                                            {t('property_details.no_amenities_yet')}
-                                        </div>
-                                    )}
+                                                        })
+                                                        .map((suggestion, idx) => {
+                                                            const translatedName = getAmenityLabel(suggestion);
+                                                            return (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => addAmenity(suggestion)}
+                                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-slate-600 font-medium transition-colors flex items-center justify-between group"
+                                                                >
+                                                                    <span>{translatedName}</span>
+                                                                    <Plus className="w-4 h-4 text-slate-300 group-hover:text-primary-500" />
+                                                                </button>
+                                                            );
+                                                        })
+                                                    }
+                                                    {availableAmenities.filter(a => {
+                                                        const translatedName = getAmenityLabel(a);
+                                                        return (amenityInput ? translatedName.toLowerCase().includes(amenityInput.toLowerCase()) : true) &&
+                                                            !editData.amenities.includes(a);
+                                                    }).length === 0 && (
+                                                            <div className="px-4 py-3 text-slate-400 text-sm italic">
+                                                                {amenityInput
+                                                                    ? t('property_details.press_enter_to_add').replace('{name}', amenityInput)
+                                                                    : t('property_details.no_more_amenities')
+                                                                }
+                                                            </div>
+                                                        )}
+                                                </Motion.div>
+                                            </>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                    {(property.amenities || []).map((item, idx) => {
-                                        const translatedName = getAmenityLabel(item);
 
+                                {/* Draggable List */}
+                                <Reorder.Group
+                                    axis="y"
+                                    values={editData.amenities || []}
+                                    onReorder={reorderAmenities}
+                                    className="space-y-2"
+                                >
+                                    {(editData.amenities || []).map((item) => {
+                                        const translatedName = getAmenityLabel(item);
                                         return (
-                                            <Motion.div
-                                                key={idx}
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: idx * 0.05 }}
-                                                className="flex items-center gap-3 group"
+                                            <Reorder.Item
+                                                key={item}
+                                                value={item}
+                                                className="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-primary-200 transition-colors"
                                             >
-                                                <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-green-200">
-                                                    <Check className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className="text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
-                                                    {translatedName}
-                                                </span>
-                                            </Motion.div>
+                                                <GripVertical className="w-5 h-5 text-slate-300 group-hover:text-slate-400" />
+                                                <span className="flex-1 font-medium text-slate-700">{translatedName}</span>
+                                                <button
+                                                    onClick={() => removeAmenity(item)}
+                                                    className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </Reorder.Item>
                                         );
                                     })}
-                                    {(!property.amenities || property.amenities.length === 0) && (
-                                        <p className="text-slate-400 italic col-span-full">{t('common.no_amenities_listed') || 'No specific amenities listed for this property.'}</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                </Reorder.Group>
 
-                    {/* Property Location */}
-                    {property.location && (
+                                {(!editData.amenities || editData.amenities.length === 0) && (
+                                    <div className="text-center py-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-medium">
+                                        {t('property_details.no_amenities_yet')}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                {(property.amenities || []).map((item, idx) => {
+                                    const translatedName = getAmenityLabel(item);
+
+                                    return (
+                                        <Motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.05 }}
+                                            className="flex items-center gap-3 group"
+                                        >
+                                            <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-green-200">
+                                                <Check className="w-4 h-4 text-white" />
+                                            </div>
+                                            <span className="text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
+                                                {translatedName}
+                                            </span>
+                                        </Motion.div>
+                                    );
+                                })}
+                                {(!property.amenities || property.amenities.length === 0) && (
+                                    <p className="text-slate-400 italic col-span-full">{t('common.no_amenities_listed') || 'No specific amenities listed for this property.'}</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+
+                    {/* Property Location & Address */}
+                    {(property.location || isEditing) && (
                         <div className="md:px-0">
                             <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center px-4 md:px-0">
                                 <MapPin className="w-6 h-6 mr-2 text-primary-600" />
@@ -1738,8 +1753,11 @@ const PropertyDetails = () => {
                                     className="h-80 rounded-3xl overflow-hidden border border-slate-200 shadow-lg z-10 relative group"
                                 >
                                     <MapContainer
-                                        center={[Number(editData?.location?.lat || property.location.lat), Number(editData?.location?.lng || property.location.lng)]}
-                                        zoom={14}
+                                        center={[
+                                            Number(editData?.location?.lat || property.location?.lat || -23.5505),
+                                            Number(editData?.location?.lng || property.location?.lng || -46.6333)
+                                        ]}
+                                        zoom={property.location ? 14 : 10}
                                         scrollWheelZoom={true}
                                         dragging={true}
                                         style={{ height: '100%', width: '100%' }}
@@ -1760,24 +1778,26 @@ const PropertyDetails = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <Circle
-                                                    center={[Number(property.location.lat), Number(property.location.lng)]}
-                                                    radius={1000}
-                                                    pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.2, weight: 2 }}
-                                                />
-                                                {isOwner && (
-                                                    <Marker
-                                                        position={[Number(property.location.lat), Number(property.location.lng)]}
-                                                        icon={faviconIcon}
-                                                    />
+                                                {property.location && (
+                                                    <>
+                                                        <Circle
+                                                            center={[Number(property.location.lat), Number(property.location.lng)]}
+                                                            radius={1000}
+                                                            pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.2, weight: 2 }}
+                                                        />
+                                                        <Marker
+                                                            position={[Number(property.location.lat), Number(property.location.lng)]}
+                                                            icon={faviconIcon}
+                                                        />
+                                                    </>
                                                 )}
                                             </>
                                         )}
                                     </MapContainer>
-                                    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200">
+                                    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200 z-[400]">
                                         {isEditing && editData.location
                                             ? `${Number(editData.location.lat).toFixed(4)}, ${Number(editData.location.lng).toFixed(4)}`
-                                            : (isOwner
+                                            : (property.location
                                                 ? `${Number(property.location.lat).toFixed(4)}, ${Number(property.location.lng).toFixed(4)}`
                                                 : t('property_details.approximate_location')
                                             )
@@ -1790,17 +1810,22 @@ const PropertyDetails = () => {
                                     )}
                                 </div>
                                 {isEditing && (
-                                    <div className="mt-4 space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter ml-1">{t('property_details.property_address')}</label>
-                                        <AddressAutocomplete
-                                            name="address.private"
-                                            value={editData.address?.private || ''}
-                                            onChange={handleInputChange}
-                                            onSelect={handleAddressSelect}
-                                            disabled={isResolvingAddress}
-                                            placeholder={t('property_details.search_address_placeholder')}
-                                        />
-                                        <div className="flex items-center gap-2 mt-4 p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary-200">
+                                    <div className="mt-4 space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter ml-1">
+                                                {t('property_details.property_address')}
+                                            </label>
+                                            <AddressAutocomplete
+                                                name="address.private"
+                                                value={editData.address?.private || ''}
+                                                onChange={handleInputChange}
+                                                onSelect={handleAddressSelect}
+                                                disabled={isResolvingAddress}
+                                                placeholder={t('property_details.search_address_placeholder')}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center gap-2 p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary-200">
                                             <input
                                                 type="checkbox"
                                                 id="show_exact_address"
@@ -1808,7 +1833,7 @@ const PropertyDetails = () => {
                                                 checked={editData.show_exact_address || false}
                                                 onChange={(e) => setEditData(prev => ({ ...prev, show_exact_address: e.target.checked }))}
                                             />
-                                            <label htmlFor="show_exact_address" className="text-sm font-bold text-slate-700 cursor-pointer">
+                                            <label htmlFor="show_exact_address" className="text-sm font-bold text-slate-700 cursor-pointer select-none">
                                                 {t('property_details.show_exact_address') || 'Show exact address to public'}
                                             </label>
                                         </div>
@@ -1843,7 +1868,15 @@ const PropertyDetails = () => {
 
                     {/* Create Action Button (Bottom of form for new listings) */}
                     {isCreating && (
-                        <div className="mt-12 flex justify-end">
+                        <div className="mt-12 flex justify-end gap-4">
+                            <button
+                                onClick={() => navigate('/my-listings')}
+                                disabled={saving}
+                                className="bg-white text-slate-500 border-2 border-slate-100/50 px-8 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all text-lg flex items-center gap-2"
+                            >
+                                <X className="w-5 h-5" />
+                                <span>{t('common.cancel')}</span>
+                            </button>
                             <button
                                 onClick={handleSave}
                                 disabled={saving}

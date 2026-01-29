@@ -248,8 +248,8 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
             className="relative group h-full cursor-pointer"
         >
             {isNew && (
-                <div className="absolute -top-6 left-1 z-50 flex items-center gap-1 animate-pulse transition-transform duration-300 group-hover:-translate-y-1">
-                    <span className="text-green-500 font-bold text-3xl leading-none drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] pb-1.5">·</span>
+                <div className="absolute -top-6 left-1 z-10 flex items-center gap-1 animate-pulse transition-transform duration-300 group-hover:-translate-y-1">
+                    <span className="text-green-500 font-bold text-3xl leading-none drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] pb-1.5 ">·</span>
                     <span className="text-green-500 font-bold text-sm lowercase tracking-wider drop-shadow-[0_0_8px_rgba(74,222,128,0.6)]">{t('common.new').toLowerCase()}</span>
                 </div>
             )}

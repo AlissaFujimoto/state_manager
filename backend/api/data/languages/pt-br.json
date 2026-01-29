@@ -6,6 +6,7 @@
         "filters": "Filtros",
         "advanced_filters": "Filtros Avançados",
         "reset_all": "Limpar Tudo",
+        "cancel": "Cancelar",
         "share": "Compartilhar",
         "copy": "Copiar",
         "copy_link": "Copiar Link",
@@ -75,8 +76,8 @@
         "sort_by": "Ordernar por",
         "amenities": "Características Adicionais",
         "total": "Total",
-        "for_sale": "Para Venda",
-        "for_rent": "Para Alugar",
+        "for_sale": "Venda",
+        "for_rent": "Alugar",
         "periods": {
             "day": "/ dia",
             "week": "/ semana",
@@ -184,7 +185,8 @@
         "describe_property_placeholder": "Descreva o imóvel...",
         "location": "Localização",
         "search_address_label": "Buscar Endereço",
-        "show_exact_address": "Mostrar endereço exato ao público"
+        "show_exact_address": "Mostrar endereço exato ao público",
+        "no_description": "Nenhuma descrição fornecida."
     },
     "my_listings": {
         "title": "Meus Anúncios",

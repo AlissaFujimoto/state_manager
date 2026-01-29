@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/databaseAuth';
 import { LayoutDashboard, PlusCircle, LogIn, Menu, X, Landmark, LogOut, Settings, Globe, ChevronDown, ArrowLeft, Heart } from 'lucide-react';
@@ -15,6 +15,7 @@ const Navbar = () => {
     const langMenuRef = useRef(null);
     const { t, changeLanguage, currentLanguage } = useLanguage();
     const location = useLocation();
+    const navigate = useNavigate();
 
     // Hide Navbar when menu is open or event received (e.g. from Advanced Filter)
     const [isHidden, setIsHidden] = useState(false);
@@ -33,11 +34,11 @@ const Navbar = () => {
     // Back Button Logic
     const isPropertyPage = location.pathname.startsWith('/property/');
     const isLegalPage = ['/privacy', '/terms', '/cookies'].includes(location.pathname);
-    const showBackButton = isPropertyPage || isLegalPage;
+    const showBackButton = isPropertyPage || isLegalPage || isAuthPage;
 
     const backLink = location.state?.from || '/';
     const isFromMyListings = location.state?.from && location.state.from.includes('my-listings');
-    const backText = isLegalPage
+    const backText = (isLegalPage || isAuthPage)
         ? t('common.back')
         : (isFromMyListings ? t('property_details.back_to_my_listings') : t('property_details.back_to_results'));
 
@@ -143,7 +144,7 @@ const Navbar = () => {
                                         </AnimatePresence>
                                     </div>
 
-                                    {!user && (
+                                    {!user && !isAuthPage && (
                                         <Link
                                             to="/auth"
                                             className="flex bg-slate-900 text-white p-2.5 md:px-8 md:py-2.5 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all items-center space-x-2"
@@ -222,7 +223,7 @@ const Navbar = () => {
 
                                         <div className="border-t border-slate-100 pt-6 mt-6">
                                             <button
-                                                onClick={() => { auth.signOut(); setIsOpen(false); }}
+                                                onClick={() => { auth.signOut(); setIsOpen(false); navigate('/'); }}
                                                 className="w-full flex items-center space-x-3 text-left text-xl font-bold text-red-500"
                                             >
                                                 <LogOut className="w-6 h-6" />
@@ -230,7 +231,7 @@ const Navbar = () => {
                                             </button>
                                         </div>
                                     </>
-                                ) : (
+                                ) : !isAuthPage && (
                                     <Link to="/auth" className="mobile-nav-link text-primary-600" onClick={() => setIsOpen(false)}>
                                         <LogIn className="w-6 h-6" />
                                         <span>{t('navbar.login')}</span>
@@ -307,7 +308,7 @@ const Navbar = () => {
 
                                     <div className="pt-6 border-t border-slate-100">
                                         <button
-                                            onClick={() => { auth.signOut(); setIsOpen(false); }}
+                                            onClick={() => { auth.signOut(); setIsOpen(false); navigate('/'); }}
                                             className="w-full flex items-center space-x-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
                                         >
                                             <LogOut className="w-5 h-5" />

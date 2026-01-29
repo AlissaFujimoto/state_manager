@@ -6,6 +6,7 @@
         "filters": "Filters",
         "advanced_filters": "Advanced Filters",
         "reset_all": "Reset All",
+        "cancel": "Cancel",
         "share": "Share",
         "copy": "Copy",
         "copy_link": "Copy Link",
@@ -75,8 +76,8 @@
         "sort_by": "Sort By",
         "amenities": "Amenities",
         "total": "Total",
-        "for_sale": "For Sale",
-        "for_rent": "For Rent",
+        "for_sale": "Sale",
+        "for_rent": "Rent",
         "periods": {
             "day": "/ day",
             "week": "/ week",
@@ -184,7 +185,8 @@
         "describe_property_placeholder": "Describe the property...",
         "location": "Location",
         "search_address_label": "Search Address",
-        "show_exact_address": "Show exact address to public"
+        "show_exact_address": "Show exact address to public",
+        "no_description": "No description provided."
     },
     "my_listings": {
         "title": "My Listings",

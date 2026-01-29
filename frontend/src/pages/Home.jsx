@@ -267,37 +267,46 @@ const Home = () => {
         };
     }, [properties]);
 
+    const normalize = (str) => {
+        return (str || '')
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+    };
+
     const filteredProperties = (properties || []).filter(p => {
         const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
         const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
-        const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+        const searchTerms = normalize(searchQuery).split(/\s+/).filter(t => t.length > 0);
+
         // Localized values for search
-        const typeTranslated = p.property_type ? t(`home.${p.property_type.toLowerCase()}`).toLowerCase() : '';
-        const listingTypeTranslated = p.listing_type ? t(`common.${p.listing_type.toLowerCase()}`).toLowerCase() : '';
-        const listingTypeForTranslated = p.listing_type ? t(`common.for_${p.listing_type.toLowerCase()}`).toLowerCase() : '';
+        const typeTranslated = p.property_type ? normalize(t(`home.${p.property_type.toLowerCase()}`)) : '';
+        const listingTypeTranslated = p.listing_type ? normalize(t(`common.${p.listing_type.toLowerCase()}`)) : '';
+        const listingTypeForTranslated = p.listing_type ? normalize(t(`common.for_${p.listing_type.toLowerCase()}`)) : '';
 
         let statusTranslated = '';
         if (p.status) {
             if (p.status === 'sold') {
-                statusTranslated = p.listing_type === 'rent' ? t('property_card.rented').toLowerCase() : t('property_card.sold').toLowerCase();
+                statusTranslated = normalize(p.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold'));
             } else {
-                statusTranslated = t(`property_card.${p.status.toLowerCase()}`).toLowerCase();
+                statusTranslated = normalize(t(`property_card.${p.status.toLowerCase()}`));
             }
         }
 
         const propertyAmenitiesTranslated = (p.amenities || []).map(a => {
             const key = a.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-            return t(`amenities.${key}`).toLowerCase();
+            return normalize(t(`amenities.${key}`));
         });
 
         const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
-            p.title.toLowerCase().includes(term) ||
-            p.description?.toLowerCase().includes(term) ||
-            p.display_address?.toLowerCase().includes(term) ||
-            p.address?.public?.toLowerCase().includes(term) ||
-            p.property_type?.toLowerCase().includes(term) ||
-            p.listing_type?.toLowerCase().includes(term) ||
-            p.status?.toLowerCase().includes(term) ||
+            normalize(p.title).includes(term) ||
+            normalize(p.description).includes(term) ||
+            normalize(p.display_address).includes(term) ||
+            normalize(p.address?.public).includes(term) ||
+            normalize(p.property_type).includes(term) ||
+            normalize(p.listing_type).includes(term) ||
+            normalize(p.status).includes(term) ||
+            normalize(p.friendly_id).includes(term) ||
             typeTranslated.includes(term) ||
             listingTypeTranslated.includes(term) ||
             listingTypeForTranslated.includes(term) ||
@@ -324,16 +333,16 @@ const Home = () => {
             filter.amenities.every(a => (p.amenities || []).includes(a));
 
         const matchesCountry = filter.country === 'all' ||
-            p.address?.country?.toLowerCase() === filter.country.toLowerCase() ||
-            p.display_address?.toLowerCase().includes(filter.country.toLowerCase());
+            normalize(p.address?.country) === normalize(filter.country) ||
+            normalize(p.display_address).includes(normalize(filter.country));
 
         const matchesState = filter.state === 'all' ||
-            p.display_address?.toLowerCase().includes(filter.state.toLowerCase()) ||
-            p.address?.public?.toLowerCase().includes(filter.state.toLowerCase());
+            normalize(p.display_address).includes(normalize(filter.state)) ||
+            normalize(p.address?.public).includes(normalize(filter.state));
 
         const matchesCity = filter.city === 'all' ||
-            p.display_address?.toLowerCase().includes(filter.city.toLowerCase()) ||
-            p.address?.public?.toLowerCase().includes(filter.city.toLowerCase());
+            normalize(p.display_address).includes(normalize(filter.city)) ||
+            normalize(p.address?.public).includes(normalize(filter.city));
 
         return matchesType && matchesListingType && matchesSearch && matchesMinPrice && matchesMaxPrice &&
             matchesBedrooms && matchesBathrooms && matchesSuites && matchesRooms && matchesGarages &&
