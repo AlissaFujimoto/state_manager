@@ -30,7 +30,7 @@ sys.path.append(str(basedir))
 load_dotenv(basedir / ".env")
 load_dotenv(basedir / ".env.local", override=True)
 
-from api.models.manager import PropertyManager, Property
+from api.modules.manager import PropertyManager, Property
 
 # Initialize Database
 credentials = os.environ.get("DATABASE_SERVICE_ACCOUNT")
@@ -131,6 +131,7 @@ def get_amenities() -> Tuple[flask.Response, int]:
         print(f"[ERROR_SERVICE] Failed to load amenities: {e}")
         return jsonify(["Air Conditioning", "Swimming Pool", "Parking", "Garden"]), 200  # Fallback
 
+@app.route("/api/regions", methods=["GET"])
 @app.route("/api/region", methods=["GET"])
 def get_region() -> Tuple[flask.Response, int]:
     """Get list of supported countries and their language packs."""
@@ -170,8 +171,22 @@ def get_region() -> Tuple[flask.Response, int]:
         with open(lang_file, "r", encoding="utf-8") as f:
             lang_pack = json.load(f)
             
+        regions_file = Path(__file__).parent / "data" / "regions.json"
+        regions_data = {}
+        if regions_file.exists():
+            with open(regions_file, "r", encoding="utf-8") as f:
+                regions_data = json.load(f)
+        else:
+            regions_data = {
+                "Brazil": {
+                    "Santa Catarina": ["Joinville", "Florianópolis"],
+                    "São Paulo": ["São Paulo", "Campinas"],
+                }
+            }
+            
         return jsonify({
             "regions": ["Brazil"],
+            **regions_data,
             "language": target_lang,
             "availableLanguages": available_langs,
             "languagePack": lang_pack

@@ -701,7 +701,9 @@ const PropertyDetails = () => {
             address: {
                 ...prev.address,
                 private: finalAddress,
-                public: public_addr
+                public: public_addr,
+                state: state,
+                city: city
             },
             location: data.location
         }));
@@ -737,7 +739,9 @@ const PropertyDetails = () => {
                     address: {
                         ...prev.address,
                         private: fullAddress,
-                        public: public_addr
+                        public: public_addr,
+                        state: state || '',
+                        city: cityPart || ''
                     }
                 }));
             }
@@ -753,14 +757,25 @@ const PropertyDetails = () => {
         if (files.length === 0) return;
 
         try {
-            const { processPropertyImage } = await import('../utils/imageCompression');
+            const { processPropertyImage, generateMicroThumbnail } = await import('../utils/imageCompression');
+
             const uploadPromises = files.map(async (file) => {
-                const compressedData = await processPropertyImage(file);
-                return compressedData;
+                const [full, thumb] = await Promise.all([
+                    processPropertyImage(file),
+                    generateMicroThumbnail(file)
+                ]);
+                return { full, thumb };
             });
 
-            const compressedImages = await Promise.all(uploadPromises);
-            setEditData(prev => ({ ...prev, images: [...(prev.images || []), ...compressedImages] }));
+            const results = await Promise.all(uploadPromises);
+            const newImages = results.map(r => r.full);
+            const newThumbs = results.map(r => r.thumb);
+
+            setEditData(prev => ({
+                ...prev,
+                images: [...(prev.images || []), ...newImages],
+                microThumbUrls: [...(prev.microThumbUrls || []), ...newThumbs]
+            }));
         } catch (err) {
             console.error('Failed to process images:', err);
             alert('Failed to process images.');
@@ -768,7 +783,11 @@ const PropertyDetails = () => {
     };
 
     const removeImage = (index) => {
-        setEditData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
+        setEditData(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index),
+            microThumbUrls: (prev.microThumbUrls || []).filter((_, i) => i !== index)
+        }));
     };
 
     const handleLayoutUpload = async (e) => {
@@ -867,12 +886,19 @@ const PropertyDetails = () => {
         fetchProperty();
     }, [id, user]);
 
+    const safesImages = React.useMemo(() => {
+        const imgs = (property?.images || []).filter(url => url && !url.startsWith('blob:'));
+        if (imgs.length === 0) imgs.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
+        return imgs;
+    }, [property?.images]);
+
 
 
     if (loading) return <div className="min-h-screen flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
     </div>;
     if (!property) return <div className="min-h-screen flex items-center justify-center text-slate-500">{t('property_details.not_found')}</div>;
+
 
     const nextImage = () => {
         if (activeImage < (property.images?.length || 0) - 1) {
@@ -1006,74 +1032,68 @@ const PropertyDetails = () => {
                             </div>
                         ) : (
                             /* Image Carousel */
-                            (() => {
-                                const safesImages = (property.images || []).filter(url => url && !url.startsWith('blob:'));
-                                // Use default if empty
-                                if (safesImages.length === 0) safesImages.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
+                            <div className="relative">
+                                {isNew && (
+                                    <div className="absolute -top-9 left-1 z-30 flex items-center gap-1 animate-pulse">
+                                        <span className="text-green-400 font-bold text-4xl leading-none drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] pb-2">·</span>
+                                        <span className="text-green-400 font-bold text-lg lowercase tracking-wider drop-shadow-[0_0_8px_rgba(74,222,128,0.6)]">{t('common.new').toLowerCase()}</span>
+                                    </div>
+                                )}
+                                <div
+                                    className="relative h-[600px] rounded-none md:rounded-3xl overflow-hidden shadow-2xl group bg-black"
+                                    onTouchStart={onTouchStart}
+                                    onTouchMove={onTouchMove}
+                                    onTouchEnd={onTouchEnd}
+                                >
 
-                                return (
-                                    <div className="relative">
-                                        {isNew && (
-                                            <div className="absolute -top-9 left-1 z-30 flex items-center gap-1 animate-pulse">
-                                                <span className="text-green-400 font-bold text-4xl leading-none drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] pb-2">·</span>
-                                                <span className="text-green-400 font-bold text-lg lowercase tracking-wider drop-shadow-[0_0_8px_rgba(74,222,128,0.6)]">{t('common.new').toLowerCase()}</span>
-                                            </div>
-                                        )}
-                                        <div
-                                            className="relative h-[600px] rounded-none md:rounded-3xl overflow-hidden shadow-2xl group bg-black"
-                                            onTouchStart={onTouchStart}
-                                            onTouchMove={onTouchMove}
-                                            onTouchEnd={onTouchEnd}
+                                    <AnimatePresence initial={false} custom={direction}>
+                                        <Motion.div
+                                            key={activeImage}
+                                            custom={direction}
+                                            variants={slideVariants}
+                                            initial="enter"
+                                            animate="center"
+                                            exit="exit"
+                                            transition={{
+                                                x: { type: "spring", stiffness: 300, damping: 30 },
+                                                opacity: { duration: 0.2 }
+                                            }}
+                                            className="absolute inset-0 w-full h-full"
                                         >
+                                            <CompressedImage
+                                                src={safesImages?.[activeImage]}
+                                                alt={property.title}
+                                                className="w-full h-full object-contain cursor-zoom-in"
+                                                onClick={() => openLightbox(safesImages, activeImage)}
+                                            />
+                                        </Motion.div>
+                                    </AnimatePresence>
 
-                                            <AnimatePresence initial={false} custom={direction}>
-                                                <Motion.div
-                                                    key={activeImage}
-                                                    custom={direction}
-                                                    variants={slideVariants}
-                                                    initial="enter"
-                                                    animate="center"
-                                                    exit="exit"
-                                                    transition={{
-                                                        x: { type: "spring", stiffness: 300, damping: 30 },
-                                                        opacity: { duration: 0.2 }
-                                                    }}
-                                                    className="absolute inset-0 w-full h-full"
-                                                >
-                                                    <CompressedImage
-                                                        src={safesImages?.[activeImage]}
-                                                        alt={property.title}
-                                                        className="w-full h-full object-contain cursor-zoom-in"
-                                                        onClick={() => openLightbox(safesImages, activeImage)}
-                                                    />
-                                                </Motion.div>
-                                            </AnimatePresence>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
 
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+                                    {(() => {
+                                        const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
+                                        if (!statusConfig?.showRibbon) return null;
 
-                                            {(() => {
-                                                const statusConfig = (propertyStatuses || []).find(s => s.id === property.status);
-                                                if (!statusConfig?.showRibbon) return null;
+                                        let label = t(`property_card.${statusConfig.id}`);
+                                        if (property.status === 'sold') {
+                                            label = t('property_card.sold');
+                                        }
 
-                                                let label = t(`property_card.${statusConfig.id}`);
-                                                if (property.status === 'sold') {
-                                                    label = t('property_card.sold');
-                                                }
+                                        const colorMap = {
+                                            amber: 'bg-amber-500',
+                                            emerald: 'bg-emerald-500',
+                                            indigo: 'bg-indigo-500',
+                                            rose: 'bg-rose-500',
+                                            blue: 'bg-blue-500',
+                                            orange: 'bg-orange-500'
+                                        };
 
-                                                const colorMap = {
-                                                    amber: 'bg-amber-500',
-                                                    emerald: 'bg-emerald-500',
-                                                    indigo: 'bg-indigo-500',
-                                                    rose: 'bg-rose-500',
-                                                    blue: 'bg-blue-500',
-                                                    orange: 'bg-orange-500'
-                                                };
+                                        const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
 
-                                                const bgColor = colorMap[statusConfig.color] || 'bg-slate-500';
-
-                                                return (
-                                                    <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-none md:rounded-tr-3xl">
-                                                        <div className={`
+                                        return (
+                                            <div className="absolute top-0 right-0 z-20 overflow-hidden w-32 h-32 pointer-events-none rounded-tr-none md:rounded-tr-3xl">
+                                                <div className={`
                                                     ${bgColor}
                                                     text-white
                                                     text-[10px] font-bold uppercase tracking-wide py-1.5
@@ -1081,45 +1101,54 @@ const PropertyDetails = () => {
                                                     transform rotate-45
                                                     shadow-sm text-center
                                                 `}>
-                                                            {label}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-
-
-                                            {safesImages?.length > 1 && (
-                                                <>
-                                                    <button
-                                                        onClick={prevImage}
-                                                        disabled={activeImage === 0}
-                                                        className="carousel-nav-btn left-4"
-                                                    >
-                                                        <ChevronLeft className="w-6 h-6" />
-                                                    </button>
-                                                    <button
-                                                        onClick={nextImage}
-                                                        disabled={activeImage === (safesImages?.length || 0) - 1}
-                                                        className="carousel-nav-btn right-4"
-                                                    >
-                                                        <ChevronRight className="w-6 h-6" />
-                                                    </button>
-                                                </>
-                                            )}
-
-                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                                                {safesImages?.map((_, i) => (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => setActiveImage(i)}
-                                                        className={`w-2 h-2 rounded-full transition-all ${i === activeImage ? 'bg-white w-6' : 'bg-white/50'}`}
-                                                    />
-                                                ))}
+                                                    {label}
+                                                </div>
                                             </div>
-                                        </div>
+                                        );
+                                    })()}
+
+
+                                    {safesImages?.length > 1 && (
+                                        <>
+                                            <button
+                                                onClick={prevImage}
+                                                disabled={activeImage === 0}
+                                                className="carousel-nav-btn left-4"
+                                            >
+                                                <ChevronLeft className="w-6 h-6" />
+                                            </button>
+                                            <button
+                                                onClick={nextImage}
+                                                disabled={activeImage === (safesImages?.length || 0) - 1}
+                                                className="carousel-nav-btn right-4"
+                                            >
+                                                <ChevronRight className="w-6 h-6" />
+                                            </button>
+                                        </>
+                                    )}
+
+                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                                        {safesImages?.map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setActiveImage(i)}
+                                                className={`w-2 h-2 rounded-full transition-all ${i === activeImage ? 'bg-white w-6' : 'bg-white/50'}`}
+                                            />
+                                        ))}
                                     </div>
-                                );
-                            })()
+                                </div>
+
+                                {/* Lazy Loading / Preloading Strategy (3+1) */}
+                                <div className="hidden">
+                                    {safesImages.slice(activeImage + 1, activeImage + 3).map((img, idx) => (
+                                        <CompressedImage
+                                            key={`preload-${activeImage + 1 + idx}`}
+                                            src={img}
+                                            alt="preload"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
                         )}
                         <div ref={scrollRef} className="flex flex-col-reverse items-center md:flex-row md:items-center justify-between gap-4 px-4 md:px-0">
                             <div className="text-slate-500 font-bold text-sm flex justify-start items-center gap-2 w-full md:w-auto">
@@ -1829,7 +1858,7 @@ const PropertyDetails = () => {
                                             </>
                                         )}
                                     </MapContainer>
-                                    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200 z-[400]">
+                                    <div className="absolute bottom-4 right-4 bg-white px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm border border-slate-200 z-[400]">
                                         {isEditing && editData.location
                                             ? `${Number(editData.location.lat).toFixed(4)}, ${Number(editData.location.lng).toFixed(4)}`
                                             : (property.location
@@ -1860,7 +1889,7 @@ const PropertyDetails = () => {
                                             />
                                         </div>
 
-                                        <div className="flex items-center gap-2 p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary-200">
+                                        <div className="flex items-center gap-2 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary-200">
                                             <input
                                                 type="checkbox"
                                                 id="show_exact_address"
@@ -2085,7 +2114,7 @@ const PropertyDetails = () => {
                 isOpen={lightboxOpen}
                 onClose={() => setLightboxOpen(false)}
             />
-        </div >
+        </div>
     );
 };
 

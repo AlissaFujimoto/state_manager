@@ -24,7 +24,7 @@ body {
 }
 
 .glass-card {
-  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  @apply bg-white border border-slate-100 shadow-xl;
 }
 
 .hero-gradient {
@@ -223,7 +223,7 @@ body {
 
 /* Carousel Navigation Button */
 .carousel-nav-btn {
-  @apply absolute top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-md transition-all flex items-center justify-center z-30 cursor-pointer;
+  @apply absolute top-1/2 -translate-y-1/2 p-3 rounded-full transition-all flex items-center justify-center z-30 cursor-pointer;
   opacity: 1;
   /* Always visible by default (Mobile) */
   background-color: rgba(0, 0, 0, 0.3);
@@ -249,6 +249,7 @@ body {
     opacity: 1;
   }
 }
+
 /* Dual Range Slider Styles */
 .range-slider-input {
   pointer-events: none;

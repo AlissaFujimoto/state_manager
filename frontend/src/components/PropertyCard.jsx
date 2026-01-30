@@ -184,7 +184,12 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
         ...(property.images || [])
     ].filter(url => url && !url.startsWith('blob:'));
 
-    // Fallback if no images
+    // Fallback logic for snippets (lightweight object)
+    if (displayImages.length === 0 && property.first_image) {
+        displayImages.push(property.first_image);
+    }
+
+    // Fallback if truly no images
     if (displayImages.length === 0) {
         displayImages.push('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80');
     }
@@ -276,10 +281,12 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
                                 onError={(e) => {
                                     e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80';
                                 }}
-                                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                                className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-110"
                             />
                         </Motion.div>
                     </AnimatePresence>
+
+
 
                     {/* Navigation Arrows */}
                     {displayImages.length > 1 && (
@@ -350,7 +357,7 @@ const PropertyCard = ({ property, propertyStatuses = [], showEditAction = false,
                         {property.friendly_id && (
                             <button
                                 onClick={handleCopy}
-                                className="h-6 px-2.5 rounded-lg bg-white/90 backdrop-blur-sm text-slate-800 text-[9px] font-bold uppercase tracking-widest shadow-sm flex items-center gap-1 hover:bg-white transition-colors"
+                                className="h-6 px-2.5 rounded-lg bg-white text-slate-800 text-[9px] font-bold uppercase tracking-widest shadow-sm flex items-center gap-1 hover:bg-slate-50 transition-colors"
                             >
                                 {property.friendly_id}
                                 {copied && <Check className="w-3 h-3 text-green-500" />}

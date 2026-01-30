@@ -15,7 +15,8 @@ const RESOLUTIONS = {
         : { width: 1920, height: 1080 }, // Full HD for production
     profile: isDev
         ? { width: 128, height: 128 }    // Small avatar for faster dev profile updates
-        : { width: 512, height: 512 }      // Standard square for profile photos
+        : { width: 512, height: 512 },      // Standard square for profile photos
+    micro: { width: 80, height: 60 }        // Micro thumbnail for grid (approx aspect ratio)
 };
 
 /**
@@ -156,6 +157,23 @@ export const processProfilePhoto = async (file) => {
     } catch (error) {
         console.error('Failed to process profile photo:', error);
         throw error;
+    }
+};
+
+/**
+ * Generate micro-thumbnail (80px)
+ * @param {File} file - Image file
+ * @returns {Promise<string>} Base64 encoded compressed image
+ */
+export const generateMicroThumbnail = async (file) => {
+    try {
+        const resized = await resizeImage(file, RESOLUTIONS.micro);
+        // Compress more aggressively for thumbs
+        const compressed = await compressImage(resized);
+        return compressed;
+    } catch (error) {
+        console.error('Failed to generate micro thumbnail:', error);
+        return null; // Fail gracefuly
     }
 };
 

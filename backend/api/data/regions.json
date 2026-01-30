@@ -1,0 +1,174 @@
+{
+    "Brazil": {
+        "Acre": [
+            "Rio Branco",
+            "Cruzeiro do Sul",
+            "Sena Madureira"
+        ],
+        "Alagoas": [
+            "Maceió",
+            "Arapiraca",
+            "Rio Largo"
+        ],
+        "Amapá": [
+            "Macapá",
+            "Santana",
+            "Laranjal do Jari"
+        ],
+        "Amazonas": [
+            "Manaus",
+            "Parintins",
+            "Itacoatiara"
+        ],
+        "Bahia": [
+            "Salvador",
+            "Feira de Santana",
+            "Vitória da Conquista",
+            "Camaçari",
+            "Itabuna"
+        ],
+        "Ceará": [
+            "Fortaleza",
+            "Caucaia",
+            "Juazeiro do Norte",
+            "Sobral"
+        ],
+        "Distrito Federal": [
+            "Brasília"
+        ],
+        "Espírito Santo": [
+            "Vitória",
+            "Vila Velha",
+            "Serra",
+            "Cariacica"
+        ],
+        "Goiás": [
+            "Goiânia",
+            "Aparecida de Goiânia",
+            "Anápolis",
+            "Rio Verde"
+        ],
+        "Maranhão": [
+            "São Luís",
+            "Imperatriz",
+            "Timon",
+            "Caxias"
+        ],
+        "Mato Grosso": [
+            "Cuiabá",
+            "Várzea Grande",
+            "Rondonópolis",
+            "Sinop"
+        ],
+        "Mato Grosso do Sul": [
+            "Campo Grande",
+            "Dourados",
+            "Três Lagoas"
+        ],
+        "Minas Gerais": [
+            "Belo Horizonte",
+            "Uberlândia",
+            "Contagem",
+            "Juiz de Fora",
+            "Betoim"
+        ],
+        "Pará": [
+            "Belém",
+            "Ananindeua",
+            "Santarém",
+            "Marabá"
+        ],
+        "Paraíba": [
+            "João Pessoa",
+            "Campina Grande",
+            "Santa Rita"
+        ],
+        "Paraná": [
+            "Curitiba",
+            "Londrina",
+            "Maringá",
+            "Ponta Grossa",
+            "Cascavel",
+            "São José dos Pinhais",
+            "Foz do Iguaçu"
+        ],
+        "Pernambuco": [
+            "Recife",
+            "Jaboatão dos Guararapes",
+            "Olinda",
+            "Caruaru",
+            "Petrolina"
+        ],
+        "Piauí": [
+            "Teresina",
+            "Parnaíba",
+            "Picos"
+        ],
+        "Rio de Janeiro": [
+            "Rio de Janeiro",
+            "São Gonçalo",
+            "Duque de Caxias",
+            "Nova Iguaçu",
+            "Niterói",
+            "Belford Roxo",
+            "Campos dos Goytacazes",
+            "Búzios",
+            "Angra dos Reis"
+        ],
+        "Rio Grande do Norte": [
+            "Natal",
+            "Mossoró",
+            "Parnamirim"
+        ],
+        "Rio Grande do Sul": [
+            "Porto Alegre",
+            "Caxias do Sul",
+            "Canoas",
+            "Pelotas",
+            "Santa Maria",
+            "Gramado"
+        ],
+        "Rondônia": [
+            "Porto Velho",
+            "Ji-Paraná",
+            "Ariquemes"
+        ],
+        "Roraima": [
+            "Boa Vista"
+        ],
+        "Santa Catarina": [
+            "Joinville",
+            "Florianópolis",
+            "Blumenau",
+            "São José",
+            "Itajaí",
+            "Chapecó",
+            "Criciúma",
+            "Balneário Camboriú",
+            "Palhoça"
+        ],
+        "São Paulo": [
+            "São Paulo",
+            "Guarulhos",
+            "Campinas",
+            "São Bernardo do Campo",
+            "Santo André",
+            "São José dos Campos",
+            "Osasco",
+            "Ribeirão Preto",
+            "Sorocaba",
+            "Santos",
+            "Barueri"
+        ],
+        "Sergipe": [
+            "Aracaju",
+            "Nossa Senhora do Socorro",
+            "Lagarto"
+        ],
+        "Tocantins": [
+            "Palmas",
+            "Araguaína",
+            "Gurupi"
+        ]
+    }
+}

@@ -174,6 +174,7 @@ const Home = () => {
     const [propertyTypes, setPropertyTypes] = useState([]);
     const [listingTypes, setListingTypes] = useState([]);
     const [propertyStatuses, setPropertyStatuses] = useState([]);
+    const [allRegions, setAllRegions] = useState({});
     const [loading, setLoading] = useState(() => !sessionStorage.getItem('home_properties'));
 
     useEffect(() => {
@@ -181,15 +182,39 @@ const Home = () => {
             ReactGA.send({ hitType: "pageview", page: window.location.pathname, title: "Home Page" });
         }
 
+        const fetchMetadata = async () => {
+            try {
+                const [typesRes, listingTypesRes, statusesRes, amenitiesRes, regionsRes] = await Promise.all([
+                    api.get('/types'),
+                    api.get('/listing-types'),
+                    api.get('/statuses'),
+                    api.get('/amenities'),
+                    api.get('/regions')
+                ]);
+                setPropertyTypes(typesRes.data);
+                setListingTypes(listingTypesRes.data);
+                setPropertyStatuses(statusesRes.data);
+                setAvailableAmenities(amenitiesRes.data);
+                setAllRegions(regionsRes.data);
+                setCountryStates(Object.keys(regionsRes.data.Brazil || {}));
+            } catch (err) {
+                console.error('Failed to fetch metadata:', err);
+            }
+        };
+        fetchMetadata();
+
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+
         // Restore scroll position
         const savedScroll = sessionStorage.getItem('home_scroll_y');
         if (savedScroll) {
-            // Small timeout to ensure rendering has started
             setTimeout(() => window.scrollTo(0, parseInt(savedScroll)), 0);
         }
 
         return () => {
             sessionStorage.setItem('home_scroll_y', window.scrollY.toString());
+            window.removeEventListener('resize', handleResize);
         };
     }, []);
 
@@ -236,6 +261,7 @@ const Home = () => {
         }
     });
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -250,9 +276,20 @@ const Home = () => {
     const [stateCities, setStateCities] = useState([]);
     const { t, regions, formatCurrency, currentLanguage } = useLanguage();
 
+    useEffect(() => {
+        if (allRegions.Brazil && filter.state !== 'all') {
+            const cities = allRegions.Brazil[filter.state] || [];
+            setStateCities(cities);
+        } else {
+            setStateCities([]);
+        }
+    }, [filter.state, allRegions]);
+
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
-    const ITEMS_PER_PAGE = isMobile ? 6 : 9;
+    const ITEMS_PER_PAGE = 9; // Backend Limit
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     const maxValues = React.useMemo(() => {
         if (!properties || properties.length === 0) return { bedrooms: 10, bathrooms: 10, suites: 10, rooms: 15, garages: 10, price: 10000000, area: 5000 };
@@ -274,393 +311,117 @@ const Home = () => {
             .toLowerCase();
     };
 
-    // 1. Base Filter (Non-Text) - Matches everything EXCEPT search query
-    const propertiesMatchingFilter = React.useMemo(() => {
-        return (properties || []).filter(p => {
-            const matchesType = filter.type === 'all' || p.property_type.toLowerCase() === filter.type.toLowerCase();
-            const matchesListingType = filter.listingType === 'all' || p.listing_type.toLowerCase() === filter.listingType.toLowerCase();
-
-            const price = Number(p.price);
-            const matchesMinPrice = filter.minPrice === '' || price >= Number(filter.minPrice);
-            const matchesMaxPrice = filter.maxPrice === '' || price <= Number(filter.maxPrice);
-
-            const chars = p.characteristics || {};
-            const matchesBedrooms = filter.minBedrooms === '' || Number(chars.bedrooms) >= Number(filter.minBedrooms);
-            const matchesBathrooms = filter.minBathrooms === '' || Number(chars.bathrooms) >= Number(filter.minBathrooms);
-            const matchesSuites = filter.minSuites === '' || Number(chars.suites) >= Number(filter.minSuites);
-            const matchesRooms = filter.minRooms === '' || Number(chars.rooms) >= Number(filter.minRooms);
-            const matchesGarages = filter.minGarages === '' || Number(chars.garages) >= Number(filter.minGarages);
-
-            const area = Number(chars.area || 0);
-            const matchesMinArea = filter.minArea === '' || area >= Number(filter.minArea);
-            const matchesMaxArea = filter.maxArea === '' || area <= Number(filter.maxArea);
-
-            const matchesAmenities = filter.amenities.length === 0 ||
-                filter.amenities.every(a => (p.amenities || []).includes(a));
-
-            const matchesCountry = filter.country === 'all' ||
-                normalize(p.address?.country) === normalize(filter.country) ||
-                normalize(p.display_address).includes(normalize(filter.country));
-
-            const matchesState = filter.state === 'all' ||
-                normalize(p.display_address).includes(normalize(filter.state)) ||
-                normalize(p.address?.public).includes(normalize(filter.state));
-
-            const matchesCity = filter.city === 'all' ||
-                normalize(p.display_address).includes(normalize(filter.city)) ||
-                normalize(p.address?.public).includes(normalize(filter.city));
-
-            return matchesType && matchesListingType && matchesMinPrice && matchesMaxPrice &&
-                matchesBedrooms && matchesBathrooms && matchesSuites && matchesRooms && matchesGarages &&
-                matchesMinArea && matchesMaxArea && matchesAmenities && matchesCountry && matchesState && matchesCity;
-        });
-    }, [properties, filter, t]);
-
-    // 2. Search Suggestions Logic
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const [allCities, setAllCities] = useState([]);
-    const [allStates, setAllStates] = useState([]);
-
-    // Fetch Global Cities/States for Search (Defaulting to Brazil as context)
-    useEffect(() => {
-        const fetchGlobalLocations = async () => {
-            try {
-                // Fetch States
-                const resStates = await fetch('https://countriesnow.space/api/v0.1/countries/states', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ country: 'Brazil' })
-                });
-                const jsonStates = await resStates.json();
-                if (!jsonStates.error) {
-                    const states = jsonStates.data.states.map(s => s.name);
-                    setAllStates(states);
-
-                    // Fetch Cities for each state (This might be heavy, let's try a bulk endpoint if available or just major ones?)
-                    // The API 'countries/cities' returns ALL cities for a country.
-                    const resCities = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ country: 'Brazil' })
-                    });
-                    const jsonCities = await resCities.json();
-                    if (!jsonCities.error) {
-                        setAllCities(jsonCities.data);
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to fetch global locations for search:', err);
-            }
-        };
-        fetchGlobalLocations();
-    }, []);
-
-    // Memoized suggestions based on ALL properties + Global Static Lists
     const suggestions = React.useMemo(() => {
-        const fullQ = normalize(searchQuery);
-        // Find the last word being typed
-        const lastToken = (searchQuery || '').split(/(\s+)/).filter(s => s.trim().length > 0).pop();
-
-        if ((!lastToken || lastToken.length < 2) && fullQ.length < 2) return [];
-
-        const q = normalize(lastToken || '');
-        const words = new Set();
-
-        // Helper to add individual words (Token Match)
-        const addWords = (text) => {
-            if (!text) return;
-            text.split(/[\s,.-]+/).forEach(w => {
-                if (w.length > 2 && !/^\d+$/.test(w) && normalize(w).startsWith(q)) {
-                    words.add(w);
+        const s = new Set();
+        if (properties && properties.length > 0) {
+            properties.forEach(p => {
+                if (p.title) s.add(p.title);
+                if (p.display_address) {
+                    const parts = p.display_address.split(',').map(part => part.trim());
+                    parts.forEach(part => {
+                        if (part.length > 3) s.add(part);
+                    });
                 }
             });
-        };
+        }
+        // Add categories & regions
+        propertyTypes.forEach(type => s.add(t(`property_types.${type}`)));
+        listingTypes.forEach(type => s.add(t(`listing_types.${type}`)));
 
-        // Helper to add FULL phrases (Phrase Match)
-        const addPhrase = (text) => {
-            if (!text) return;
-            // Check if the full phrase starts with the FULL query
-            if (fullQ.length >= 1 && normalize(text).startsWith(fullQ)) {
-                words.add(text);
-            }
-            // ALSO check individual words to support token matching inside phrases
-            addWords(text);
-        };
-
-        // 1. Add from ALL properties (Titles, Descriptions, Addresses)
-        (properties || []).forEach(p => {
-            addWords(p.title);
-            addWords(p.description);
-            addPhrase(p.display_address); // Phrase
-            addPhrase(p.address?.public); // Phrase
-            addPhrase(p.address?.city);   // Phrase
-            addPhrase(p.address?.state);  // Phrase
-            addPhrase(p.address?.country); // Phrase
+        // Add common descriptors
+        ['new', 'sale', 'rent', 'pool', 'garage', 'garden', 'luxury', 'beach', 'center'].forEach(term => {
+            const trans = t(`common.${term}`);
+            if (trans && trans !== `common.${term}`) s.add(trans);
         });
 
-        // 2. Add from Static Lists (Types, Amenities, etc)
-        (propertyTypes || []).forEach(type => {
-            addPhrase(t(`property_types.${type}`));
-        });
-
-        (listingTypes || []).forEach(type => {
-            addPhrase(t(`listing_types.${type}`));
-        });
-
-        (availableAmenities || []).forEach(amenity => {
-            const key = amenity.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-            addPhrase(t(`amenities.${key}`));
-        });
-
-        (countryStates || []).forEach(state => addPhrase(state));
-        (allStates || []).forEach(state => addPhrase(state));
-
-        (stateCities || []).forEach(city => addPhrase(city));
-        (allCities || []).forEach(city => addPhrase(city));
-
-        // Convert to array, sort by length (prefer shorter matches usually, or alpha)
-        return Array.from(words).sort((a, b) => {
-            const normA = normalize(a);
-            const normB = normalize(b);
-
-            // Prioritize exact phrase match with fullQ
-            if (normA === fullQ && normB !== fullQ) return -1;
-            if (normB === fullQ && normA !== fullQ) return 1;
-
-            // Prioritize suggestions that start with the full query
-            if (normA.startsWith(fullQ) && !normB.startsWith(fullQ)) return -1;
-            if (normB.startsWith(fullQ) && !normA.startsWith(fullQ)) return 1;
-
-            // Then prioritize suggestions that start with the last token
-            if (normA.startsWith(q) && !normB.startsWith(q)) return -1;
-            if (normB.startsWith(q) && !normA.startsWith(q)) return 1;
-
-            // Then by length (shorter first)
-            if (a.length !== b.length) return a.length - b.length;
-
-            // Finally, alphabetical
-            return a.localeCompare(b);
-        }).slice(0, 8);
-    }, [searchQuery, properties, propertyTypes, listingTypes, availableAmenities, countryStates, stateCities, t]);
-
-    // 3. Final Filter (Search + Sort)
-    const filteredProperties = React.useMemo(() => {
-        return propertiesMatchingFilter.filter(p => {
-            const searchTerms = normalize(searchQuery).split(/\s+/).filter(t => t.length > 0);
-
-            // Localized values for search
-            const typeTranslated = p.property_type ? normalize(t(`property_types.${p.property_type.toLowerCase()}`)) : '';
-            const listingTypeTranslated = p.listing_type ? normalize(t(`listing_types.${p.listing_type.toLowerCase()}`)) : '';
-            // const listingTypeForTranslated = p.listing_type ? normalize(t(`common.for_${p.listing_type.toLowerCase()}`)) : ''; // Redundant now
-
-            let statusTranslated = '';
-            if (p.status) {
-                if (p.status === 'sold') {
-                    statusTranslated = normalize(p.listing_type === 'rent' ? t('property_card.rented') : t('property_card.sold'));
-                } else {
-                    statusTranslated = normalize(t(`property_card.${p.status.toLowerCase()}`));
+        // Add ALL states and ALL cities from the regions data
+        if (allRegions.Brazil) {
+            Object.keys(allRegions.Brazil).forEach(state => {
+                s.add(state);
+                const cities = allRegions.Brazil[state];
+                if (Array.isArray(cities)) {
+                    cities.forEach(city => s.add(city));
                 }
-            }
+            });
+        }
 
-            const propertyAmenitiesTranslated = (p.amenities || []).map(a => {
-                const key = a.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-                return normalize(t(`amenities.${key}`));
+        return Array.from(s).filter(val => val && typeof val === 'string');
+    }, [properties, propertyTypes, listingTypes, allRegions, t]);
+
+    // Backend Fetch Logic
+    const fetchProperties = async (reset = false) => {
+        if (reset) {
+            setLoading(true);
+            setProperties([]);
+        } else {
+            setIsLoadingMore(true);
+        }
+
+        try {
+            const params = {
+                limit: ITEMS_PER_PAGE,
+                snippet_only: 'true',
+                search: searchQuery,
+                property_type: filter.type,
+                listing_type: filter.listingType,
+                min_price: filter.minPrice,
+                max_price: filter.maxPrice,
+                bedrooms: filter.minBedrooms,
+                bathrooms: filter.minBathrooms,
+                suites: filter.minSuites,
+                rooms: filter.minRooms,
+                garages: filter.minGarages,
+                min_area: filter.minArea,
+                max_area: filter.maxArea,
+                state: filter.state,
+                city: filter.city,
+                sort_by: filter.sortBy,
+                amenities: filter.amenities?.length > 0 ? filter.amenities.join(',') : undefined
+            };
+
+            // Remove empty filters
+            Object.keys(params).forEach(key => {
+                if (params[key] === undefined || params[key] === null || params[key] === '' || params[key] === 'all' || (Array.isArray(params[key]) && params[key].length === 0)) {
+                    delete params[key];
+                }
             });
 
-            return searchTerms.length === 0 || searchTerms.some(term =>
-                normalize(p.title).includes(term) ||
-                normalize(p.description).includes(term) ||
-                normalize(p.display_address).includes(term) ||
-                normalize(p.address?.public).includes(term) ||
-                normalize(p.property_type).includes(term) ||
-                normalize(p.listing_type).includes(term) ||
-                normalize(p.status).includes(term) ||
-                normalize(p.friendly_id).includes(term) ||
-                typeTranslated.includes(term) ||
-                listingTypeTranslated.includes(term) ||
-                // listingTypeForTranslated.includes(term) ||
-                statusTranslated.includes(term) ||
-                propertyAmenitiesTranslated.some(a => a.includes(term))
-            );
-        }).sort((a, b) => {
-            if (filter.sortBy === 'price_asc') return Number(a.price) - Number(b.price);
-            if (filter.sortBy === 'price_desc') return Number(b.price) - Number(a.price);
-            if (filter.sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-            if (filter.sortBy === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-            if (filter.sortBy === 'beds_desc') return Number(b.characteristics?.bedrooms || 0) - Number(a.characteristics?.bedrooms || 0);
-            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        });
-    }, [propertiesMatchingFilter, searchQuery, filter.sortBy, t]);
-
-    const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
-
-    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
-    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-
-    const currentItems = filteredProperties.slice(indexOfFirstItem, indexOfLastItem);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 1024);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-
-
-    useEffect(() => {
-        const fetchTypes = async () => {
-            try {
-                const res = await api.get('/types');
-                setPropertyTypes(res.data);
-            } catch (err) {
-                console.error('Failed to fetch property types:', err);
-            }
-        };
-        const fetchListingTypes = async () => {
-            try {
-                const res = await api.get('/listing-types');
-                setListingTypes(res.data);
-            } catch (err) {
-                console.error('Failed to fetch listing types:', err);
-            }
-        };
-        const fetchStatuses = async () => {
-            try {
-                const res = await api.get('/statuses');
-                setPropertyStatuses(res.data);
-            } catch (err) {
-                console.error('Failed to fetch statuses:', err);
-            }
-        };
-        const fetchAmenities = async () => {
-            try {
-                const res = await api.get('/amenities');
-                setAvailableAmenities(res.data);
-            } catch (err) {
-                console.error('Failed to fetch amenities:', err);
-            }
-        };
-
-        fetchTypes();
-        fetchListingTypes();
-        fetchStatuses();
-        fetchAmenities();
-    }, []);
-
-    // Fetch countries and translate based on current language
-    // Fetch countries logic removed (unused)
-    /*
-    useEffect(() => {
-        const fetchCountries = async () => {
-            // ... (removed)
-        };
-        fetchCountries();
-    }, [currentLanguage]);
-    */
-
-    // Fetch states when country changes
-    useEffect(() => {
-        const fetchStates = async () => {
-            if (filter.country === 'all') {
-                setCountryStates([]);
-                setStateCities([]);
-                // If country is reset, we might want to clear state/city selection if they were set?
-                // But the user might just be changing filter.
-                return;
+            // Pagination Cursor
+            if (!reset && properties.length > 0) {
+                const lastId = properties[properties.length - 1].id;
+                params.start_after = lastId;
             }
 
-            try {
-                const res = await fetch('https://countriesnow.space/api/v0.1/countries/states', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ country: filter.country })
-                });
-                const json = await res.json();
-                if (!json.error) {
-                    setCountryStates(json.data.states.map(s => s.name));
-                } else {
-                    setCountryStates([]);
-                }
-            } catch (err) {
-                console.error('Failed to fetch states:', err);
-                setCountryStates([]);
-            }
-        };
-        fetchStates();
-    }, [filter.country]);
+            const res = await api.get('/announcements', { params });
+            const newDate = res.data;
 
-    // Fetch cities when state changes (and country is selected)
-    useEffect(() => {
-        const fetchCities = async () => {
-            if (filter.country === 'all' || filter.state === 'all') {
-                setStateCities([]);
-                return;
+            if (reset) {
+                setProperties(newDate);
+            } else {
+                setProperties(prev => [...prev, ...newDate]);
             }
 
-            try {
-                const res = await fetch('https://countriesnow.space/api/v0.1/countries/state/cities', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ country: filter.country, state: filter.state })
-                });
-                const json = await res.json();
-                if (!json.error) {
-                    setStateCities(json.data);
-                } else {
-                    setStateCities([]);
-                }
-            } catch (err) {
-                console.error('Failed to fetch cities:', err);
-                setStateCities([]);
-            }
-        };
-        fetchCities();
-    }, [filter.state, filter.country]);
-
-    useEffect(() => {
-        const fetchProperties = async () => {
-            try {
-                // Fetch ALL properties to support global autocomplete and client-side filtering
-                // The filtering logic is fully handled in 'propertiesMatchingFilter' and 'filteredProperties' hashes
-                const res = await api.get('/announcements');
-                setProperties(res.data);
-                sessionStorage.setItem('home_properties', JSON.stringify(res.data));
-                sessionStorage.setItem('home_filter', JSON.stringify(filter));
-                setLoading(false);
-            } catch (err) {
-                console.error('Failed to fetch properties:', err);
-                if (err.response) {
-                    console.error('Error response:', err.response.status, err.response.data);
-                }
-                setLoading(false);
-            }
-        };
-        fetchProperties();
-    }, []); // Only fetch once on mount (since we fetch ALL), or maybe re-fetch if needed? 
-    // Actually, 'filter' dependency was causing re-fetch on every filter change.
-    // Now we want client-side filtering, so we DON'T need to re-fetch on filter change.
-    // So dependency array should be empty [] or maybe just on mount.
-    // However, if the user adds a property via another tab/component, we might want to refresh?
-    // For now, [] is correct for "Load all once, filter locally".
-    // But wait, the original code had `[filter]` dependency.
-    // If I change it to `[]`, I must remove `filter` from dependency array inside the `useEffect` block?
-    // Actually, I should remove `params` construction which uses `filter`.
-    // And also remove `[filter]` from the dependency array, otherwise it runs redundantly (though harmlessly if no params).
-    // Let's stick to `[]`.
-
-    const jumpToPage = (page) => {
-        setCurrentPage(page);
+            setHasMore(newDate.length === ITEMS_PER_PAGE);
+            setLoading(false);
+            setIsLoadingMore(false);
+        } catch (err) {
+            console.error('Failed to fetch properties:', err);
+            setLoading(false);
+            setIsLoadingMore(false);
+        }
     };
 
+    // Debounce Filter Changes
     useEffect(() => {
-        setCurrentPage(1);
+        const timer = setTimeout(() => {
+            fetchProperties(true);
+        }, 500); // 500ms debounce
+        return () => clearTimeout(timer);
     }, [filter, searchQuery]);
 
-    const paginate = (newDirection) => {
-        if (newDirection > 0 && currentPage < totalPages) {
-            setCurrentPage((prev) => prev + 1);
-        } else if (newDirection < 0 && currentPage > 1) {
-            setCurrentPage((prev) => prev - 1);
+    const loadMore = () => {
+        if (!isLoadingMore && hasMore) {
+            fetchProperties(false);
         }
     };
 
@@ -740,9 +501,10 @@ const Home = () => {
                                     </>
                                 );
                             })()}
+
                             {/* Suggestions Autocomplete */}
                             <AnimatePresence>
-                                {showSuggestions && suggestions.length > 0 && (
+                                {showSuggestions && searchQuery && suggestions.filter(s => normalize(s).includes(normalize(searchQuery))).slice(0, 5).length > 0 && (
                                     <Motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -750,16 +512,19 @@ const Home = () => {
                                         className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 ring-1 ring-slate-100"
                                     >
                                         <div className="py-2">
-                                            {suggestions.map((suggestion, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => { setSearchQuery(suggestion); setShowSuggestions(false); }}
-                                                    className="w-full text-left px-6 py-3 hover:bg-slate-50 text-slate-600 font-medium transition-colors flex items-center gap-3"
-                                                >
-                                                    <Search className="w-4 h-4 text-slate-300" />
-                                                    <span>{suggestion}</span>
-                                                </button>
-                                            ))}
+                                            {suggestions
+                                                .filter(s => normalize(s).includes(normalize(searchQuery)))
+                                                .slice(0, 5)
+                                                .map((suggestion, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => { setSearchQuery(suggestion); setShowSuggestions(false); }}
+                                                        className="w-full text-left px-6 py-3 hover:bg-slate-50 text-slate-600 font-medium transition-colors flex items-center gap-3"
+                                                    >
+                                                        <Search className="w-4 h-4 text-slate-300" />
+                                                        <span>{suggestion}</span>
+                                                    </button>
+                                                ))}
                                         </div>
                                     </Motion.div>
                                 )}
@@ -839,7 +604,7 @@ const Home = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsFilterOpen(false)}
-                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+                            className="fixed inset-0 bg-black/40 z-[100]"
                         />
                         <Motion.div
                             initial={{ x: '100%' }}
@@ -1033,7 +798,7 @@ const Home = () => {
                             </div>
 
                             {/* Sticky Footer Action Buttons */}
-                            <div className="p-6 border-t border-slate-100 bg-white/80 backdrop-blur-md absolute bottom-0 left-0 right-0 grid grid-cols-2 gap-4">
+                            <div className="p-6 border-t border-slate-100 bg-white absolute bottom-0 left-0 right-0 grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => {
                                         setFilter({
@@ -1064,7 +829,7 @@ const Home = () => {
                                     onClick={() => setIsFilterOpen(false)}
                                     className="py-4 bg-primary-600 text-white rounded-2xl font-bold shadow-xl shadow-primary-200 hover:bg-primary-700 transition-all"
                                 >
-                                    {t('common.show_results').replace('{count}', filteredProperties.length)}
+                                    {t('common.show_results')}
                                 </button>
                             </div>
                         </Motion.div>
@@ -1073,18 +838,18 @@ const Home = () => {
             </AnimatePresence>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-                {loading ? (
-                    [...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                {properties.map((p) => (
+                    <PropertyCard key={p.id} property={p} propertyStatuses={propertyStatuses} />
+                ))}
+
+                {(loading || isLoadingMore) && (
+                    [...Array(3)].map((_, i) => (
                         <PropertyCardSkeleton key={`skeleton-${i}`} />
-                    ))
-                ) : (
-                    currentItems.map((p) => (
-                        <PropertyCard key={p.id} property={p} propertyStatuses={propertyStatuses} />
                     ))
                 )}
             </div>
 
-            {filteredProperties.length === 0 && !loading && (
+            {properties.length === 0 && !loading && !isLoadingMore && (
                 <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                     <div className="bg-slate-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Search className="text-slate-500" />
@@ -1094,96 +859,26 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Pagination Controls */}
-            {filteredProperties.length > ITEMS_PER_PAGE && (
-                <div className="flex justify-center items-center mt-12 gap-2 md:gap-4">
-                    {/* First Page Button */}
-                    {totalPages > (isMobile ? 3 : 9) && (
-                        <button
-                            onClick={() => jumpToPage(1)}
-                            disabled={currentPage === 1}
-                            className="pagination-btn hidden md:flex"
-                        >
-                            <ChevronsLeft className="w-5 h-5" />
-                        </button>
-                    )}
-                    {/* Mobile First Page Button */}
-                    {totalPages > (isMobile ? 3 : 9) && isMobile && (
-                        <button
-                            onClick={() => jumpToPage(1)}
-                            disabled={currentPage === 1}
-                            className="pagination-btn flex md:hidden"
-                        >
-                            <ChevronsLeft className="w-4 h-4" />
-                        </button>
-                    )}
-
-
+            {/* Load More Button */}
+            {hasMore && !loading && properties.length > 0 && (
+                <div className="flex justify-center mt-12 pb-12">
                     <button
-                        onClick={() => paginate(-1)}
-                        disabled={currentPage === 1}
-                        className="pagination-btn"
+                        onClick={loadMore}
+                        disabled={isLoadingMore}
+                        className="bg-white border-2 border-slate-100 text-slate-600 hover:border-primary-500 hover:text-primary-600 px-8 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <ChevronLeft className="w-5 h-5" />
+                        {isLoadingMore ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                {t('common.loading') || 'Loading...'}
+                            </>
+                        ) : (
+                            <>
+                                {t('common.load_more') || 'Load More'}
+                                <ChevronRight className="w-5 h-5" />
+                            </>
+                        )}
                     </button>
-
-                    <div className="flex items-center gap-1 md:gap-2">
-                        {(() => {
-                            const MAX_VISIBLE_PAGES = isMobile ? 3 : 9;
-                            let start = Math.max(1, currentPage - Math.floor(MAX_VISIBLE_PAGES / 2));
-                            let end = start + MAX_VISIBLE_PAGES - 1;
-
-                            if (end > totalPages) {
-                                end = totalPages;
-                                start = Math.max(1, end - MAX_VISIBLE_PAGES + 1);
-                            }
-
-                            // Ensure start is at least 1
-                            if (start < 1) start = 1;
-
-                            // Recalculate end if start changed (to maintain window size if possible, or clamp)
-                            end = Math.min(start + MAX_VISIBLE_PAGES - 1, totalPages);
-
-                            return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((page) => (
-                                <button
-                                    key={page}
-                                    onClick={() => jumpToPage(page)}
-                                    className={`pagination-number ${currentPage === page ? 'active' : 'inactive'}`}
-                                >
-                                    {page}
-                                </button>
-                            ));
-                        })()}
-                    </div>
-
-                    <button
-                        onClick={() => paginate(1)}
-                        disabled={currentPage === totalPages}
-                        className="pagination-btn"
-                    >
-                        <ChevronRight className="w-5 h-5" />
-                    </button>
-
-                    {/* Last Page Button */}
-                    {totalPages > (isMobile ? 3 : 9) && (
-                        <button
-                            onClick={() => jumpToPage(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="pagination-btn hidden md:flex"
-                        >
-                            <ChevronsRight className="w-5 h-5" />
-                        </button>
-                    )}
-                    {/* Mobile Last Page Button */}
-                    {totalPages > (isMobile ? 3 : 9) && isMobile && (
-                        <button
-                            onClick={() => jumpToPage(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="pagination-btn flex md:hidden"
-                        >
-                            <ChevronsRight className="w-4 h-4" />
-                        </button>
-                    )}
                 </div>
             )}
         </div>

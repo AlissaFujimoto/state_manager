@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 # Local imports
 from server_utils.database import Database
+from firebase_admin import firestore
 import flask
 
 INTERNAL_KEYS = {"bedrooms", "bathrooms", "suites", "rooms", "garages", "area", "total", "total_area", "area_unit", "total_area_unit"}
@@ -23,6 +24,8 @@ def generate_friendly_id() -> str:
 class PropertyAddress:
     private: str = ""
     public: str = ""
+    state: str = ""
+    city: str = ""
     location: Optional[Dict[str, float]] = None
 
 @dataclass
@@ -59,6 +62,10 @@ class PropertyData:
     condo_fee: Optional[float] = 0.0
     favorite_count: int = 0
     show_exact_address: bool = False
+    
+    # Optimization Fields
+    search_snippet: Dict[str, Any] = field(default_factory=dict)
+    micro_thumb_urls: List[str] = field(default_factory=list)
     
     # Nested Data Classes
     characteristics: PropertyCharacteristics = field(default_factory=PropertyCharacteristics)
@@ -110,6 +117,8 @@ class Property:
         addr_dict = {
             "private": addr.private,
             "public": addr.public,
+            "state": addr.state,
+            "city": addr.city,
             "location": addr.location
         }
         
@@ -160,7 +169,6 @@ class Property:
             "layout_image": d.layout_image,
             "address": addr_dict,
             "display_address": display_str,
-            "location": addr_dict["location"],
             "currency": d.currency,
             "rent_period": d.rent_period,
             "vacation_period": d.vacation_period,
@@ -170,7 +178,9 @@ class Property:
             "owner_id": d.owner_id,
             "friendly_id": d.friendly_id,
             "show_exact_address": d.show_exact_address,
-            "created_at": None
+            "created_at": None,
+            "searchSnippet": d.search_snippet,
+            "microThumbUrls": d.micro_thumb_urls
         }
 
         # Date serialization
@@ -233,6 +243,8 @@ class Property:
             addr = PropertyAddress(
                 private=a_data.get("private", ""),
                 public=a_data.get("public", ""),
+                state=a_data.get("state") or data.get("state", ""),
+                city=a_data.get("city") or data.get("city", ""),
                 location=a_data.get("location")
             )
         else:
@@ -240,6 +252,8 @@ class Property:
             addr = PropertyAddress(
                 private=data.get("private_address") or data.get("address") or "",
                 public=data.get("public_address", ""),
+                state=data.get("state", ""),
+                city=data.get("city", ""),
                 location=data.get("location")
             )
 
@@ -317,7 +331,9 @@ class Property:
             layout_image=data.get("layout_image"),
             owner_id=data.get("owner_id", ""),
             show_exact_address=data.get("show_exact_address", False),
-            created_at=data.get("created_at")
+            created_at=data.get("created_at"),
+            search_snippet=data.get("searchSnippet", {}),
+            micro_thumb_urls=data.get("microThumbUrls", [])
         )
         return cls(prop_data)
 
@@ -333,38 +349,154 @@ class PropertyManager:
     def get_all_announcements(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Get all property announcements with optional filtering.
-
-        Args:
-            filters (dict, optional): Filtering criteria. Defaults to None.
-
-        Returns:
-            list: List of property dictionaries.
         """
         query = self.db.collection(self.COLLECTION)
         
-        if filters:
-            if "type" in filters:
-                query = query.where("property_type", "==", filters["type"])
-            if "listing_type" in filters:
-                query = query.where("listing_type", "==", filters["listing_type"])
-            if "min_price" in filters:
-                query = query.where("price", ">=", float(filters["min_price"]))
-            if "max_price" in filters:
-                query = query.where("price", "<=", float(filters["max_price"]))
-            # Add more filters as needed (bedrooms, etc.)
+        if not filters:
+            filters = {}
 
-        docs = query.get()
+        # 1. Apply BASIC Equality Filters in Firestore (Fast & Index-safe)
+        if filters.get("property_type") and filters["property_type"] != "all":
+            query = query.where("property_type", "==", filters["property_type"])
+        
+        if filters.get("listing_type") and filters["listing_type"] != "all":
+            query = query.where("listing_type", "==", filters["listing_type"])
+
+        if filters.get("state") and filters["state"] != "all":
+            query = query.where("address.state", "==", filters["state"])
+            
+        if filters.get("city") and filters["city"] != "all":
+            query = query.where("address.city", "==", filters["city"])
+
+        # 2. Fetch a batch to handle complex filters and sorting in hardware/memory
+        # We fetch up to 1000 items (reasonable for Firestore and memory)
+        # We don't use Firestore sorting/inequality here to avoid "Index Needed" errors.
+        docs = query.limit(1000).get()
         results = []
+        
+        search_query = filters.get("search", "").lower()
+        limit_val = int(filters.get("limit", 20))
+        
         for doc in docs:
+            data = doc.to_dict()
+            data["id"] = doc.id # Ensure ID is present
+            
+            # 3. In-Memory Filtering
+            # Search
+            if search_query:
+                title = data.get("title", "").lower()
+                desc = data.get("description", "").lower()
+                addr = data.get("display_address", "").lower()
+                fid = data.get("friendly_id", "").lower()
+                if search_query not in title and search_query not in desc and search_query not in addr and search_query not in fid:
+                    continue
+
+            # Price Range
+            price = float(data.get("price", 0))
+            if filters.get("min_price") and price < float(filters["min_price"]): continue
+            if filters.get("max_price") and price > float(filters["max_price"]): continue
+
+            # Area Range
+            area = float(data.get("characteristics", {}).get("area", 0))
+            if filters.get("min_area") and area < float(filters["min_area"]): continue
+            if filters.get("max_area") and area > float(filters["max_area"]): continue
+
+            # Bed/Bath/etc.
+            chars = data.get("characteristics", {})
+            if filters.get("bedrooms") and int(chars.get("bedrooms", 0)) < int(filters["bedrooms"]): continue
+            if filters.get("bathrooms") and int(chars.get("bathrooms", 0)) < int(filters["bathrooms"]): continue
+            if filters.get("suites") and int(chars.get("suites", 0)) < int(filters["suites"]): continue
+            if filters.get("garages") and int(chars.get("garages", 0)) < int(filters["garages"]): continue
+
+            # Amenities
+            requested_amenities = filters.get("amenities", [])
+            if isinstance(requested_amenities, str):
+                requested_amenities = [a.strip() for a in requested_amenities.split(",") if a.strip()]
+            
+            if requested_amenities:
+                prop_amenities = data.get("amenities", [])
+                if not all(item in prop_amenities for item in requested_amenities):
+                    continue
+
+            results.append(data)
+
+        # 4. Sorting logic (In-Memory)
+        sort_by = filters.get("sort_by", "newest")
+        
+        def get_sort_key(item):
             try:
-                # Safely attempt to convert each document
-                prop = Property.from_dict(doc.to_dict())
-                results.append(prop.to_dict(include_location=False))
+                if sort_by.startswith("price"):
+                    # Handle both full objects and snippets
+                    price = item.get("price")
+                    if price is None:
+                        # Fallback for snippets if not at top level
+                        price = item.get("searchSnippet", {}).get("price", 0)
+                    return float(price or 0)
+                
+                # Dates
+                dt = item.get("created_at")
+                if dt is None: return 0.0
+                if hasattr(dt, 'timestamp'): return float(dt.timestamp())
+                if isinstance(dt, (int, float)): return float(dt)
+                return 0.0
+            except Exception:
+                return 0.0
+
+        is_reverse = sort_by in ["newest", "price_desc"]
+        results.sort(key=get_sort_key, reverse=is_reverse)
+
+        # 5. Pagination (Limit and Offset)
+        # Note: True pagination with start_after is harder in-memory, 
+        # but for this scale we can just slice.
+        start_index = 0
+        if filters.get("start_after"):
+            for i, res in enumerate(results):
+                if res["id"] == filters["start_after"]:
+                    start_index = i + 1
+                    break
+        
+        paginated_results = results[start_index : start_index + limit_val]
+        
+        # 6. Snippet conversion
+        final_results = []
+        snippet_only = filters.get("snippet_only", "false").lower() == "true"
+        
+        for data in paginated_results:
+            try:
+                if snippet_only:
+                    snippet = data.get("searchSnippet")
+                    if not snippet:
+                        # Fallback construction
+                        price = data.get("price", 0)
+                        images = data.get("images", [])
+                        first_image = images[0] if images else None
+                        snippet = {
+                            "id": data["id"],
+                            "title": data.get("title", ""),
+                            "price": price,
+                            "currency": data.get("currency", "BRL"),
+                            "listing_type": data.get("listing_type", "sale"),
+                            "property_type": data.get("property_type", "apartment"),
+                            "status": data.get("status", "available"),
+                            "first_image": first_image,
+                            "short_desc": (data.get("description") or "")[:100],
+                            "microThumbUrls": data.get("microThumbUrls", []),
+                            "characteristics": data.get("characteristics", {}),
+                            "display_address": data.get("display_address", ""),
+                            "friendly_id": data.get("friendly_id", ""),
+                            "created_at": data.get("created_at") if not hasattr(data.get("created_at"), "isoformat") else data.get("created_at").isoformat(),
+                            "favorite_count": data.get("favorite_count", 0),
+                            "owner_id": data.get("owner_id")
+                        }
+                    final_results.append(snippet)
+                else:
+                    prop = Property.from_dict(data)
+                    final_results.append(prop.to_dict(include_location=False))
             except Exception as e:
-                # Log bad document but don't crash the endpoint
-                print(f"[ERROR] Skipping corrupt property {doc.id}: {e}")
+                print(f"[ERROR] Skipping corrupt property {data.get('id')}: {e}")
                 continue
-        return results
+        
+        return final_results
 
     def get_announcement(self, property_id: str) -> Optional[Property]:
         """Get a specific announcement."""

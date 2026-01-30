@@ -100,8 +100,8 @@ const SearchableSelect = ({
     const handleInputClick = () => {
         if (!disabled) {
             setIsOpen(true);
-            // Always clear the text so it looks like a placeholder for new typing
-            setSearchTerm('');
+            // Don't clear, just select the text if possible (standard behavior)
+            inputRef.current?.select();
         }
     };
 
